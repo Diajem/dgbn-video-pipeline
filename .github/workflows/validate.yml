@@ -1,0 +1,38 @@
+name: Validate production manifests
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - 'agent/**'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validate scheduled bulletin fixture
+        run: node scripts/validate-manifest.mjs jobs/samples/dgbn-2026-08-05-evening.json
+
+      - name: Validate breaking-news fixture
+        run: node scripts/validate-manifest.mjs jobs/samples/dgbn-breaking-example.json
+
+      - name: Validate human-presenter fixture
+        run: node scripts/validate-manifest.mjs jobs/samples/dgbn-human-presenter-example.json
+
+      - name: Dry-run scheduled production route
+        run: node scripts/produce.mjs jobs/samples/dgbn-2026-08-05-evening.json
+
+      - name: Dry-run breaking-news route
+        run: node scripts/produce.mjs jobs/samples/dgbn-breaking-example.json
+
+      - name: Dry-run human-presenter route
+        run: node scripts/produce.mjs jobs/samples/dgbn-human-presenter-example.json
