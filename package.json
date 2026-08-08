@@ -7,7 +7,9 @@
     "video-studio/remotion"
   ],
   "scripts": {
-    "validate:manifest": "node scripts/validate-manifest.mjs jobs/samples/dgbn-2026-08-05-evening.json",
+    "validate:manifest": "node scripts/validate-manifest.mjs",
+    "validate:sample": "node scripts/validate-manifest.mjs jobs/samples/dgbn-2026-08-05-evening.json",
+    "produce": "node scripts/produce.mjs",
     "remotion:studio": "npm --workspace @dgbn/remotion-studio run studio",
     "render:bulletin": "npm --workspace @dgbn/remotion-studio run render:bulletin",
     "render:flash": "npm --workspace @dgbn/remotion-studio run render:flash",
