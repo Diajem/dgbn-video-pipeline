@@ -1,0 +1,19 @@
+{
+  "name": "dgbn-video-pipeline",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "video-studio/remotion"
+  ],
+  "scripts": {
+    "validate:manifest": "node scripts/validate-manifest.mjs jobs/samples/dgbn-2026-08-05-evening.json",
+    "remotion:studio": "npm --workspace @dgbn/remotion-studio run studio",
+    "render:bulletin": "npm --workspace @dgbn/remotion-studio run render:bulletin",
+    "render:flash": "npm --workspace @dgbn/remotion-studio run render:flash",
+    "render:card": "npm --workspace @dgbn/remotion-studio run render:card",
+    "hyperframes:doctor": "npx hyperframes doctor",
+    "hyperframes:preview": "cd video-studio/hyperframes && npx hyperframes preview",
+    "hyperframes:skills": "npx skills add heygen-com/hyperframes --full-depth"
+  }
+}
