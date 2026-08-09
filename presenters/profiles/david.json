@@ -1,0 +1,6 @@
+{
+  "id":"david","displayName":"David","legalName":"David","role":"DGBN/DSN Support Presenter","channel":"DGBN","motionStyle":"standard-news",
+  "avatarBackend":{"preferred":"musetalk-v1.5","benchmarkOrder":["MuseTalk 1.5","JoyVASA+MuseTalk","SoulX-FlashHead"]},
+  "assets":{"master":"runtime-assets/presenters/david/david_02.png","supports":["runtime-assets/presenters/david/david_04.png","runtime-assets/presenters/david/david_07_angle.png"],"voiceReference":"runtime-assets/presenters/david/reference.wav"},
+  "status":{"imagesCurated":true,"voiceReady":true,"avatarBenchmarked":false,"remotionSlotTested":false}
+}
