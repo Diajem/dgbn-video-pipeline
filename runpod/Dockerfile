@@ -50,4 +50,7 @@ RUN chmod +x /tmp/download_models.sh && /tmp/download_models.sh
 WORKDIR /worker
 COPY runpod/handler.py /worker/handler.py
 
+# runpod/pytorch is a Pod-oriented base image and inherits /start.sh. Serverless
+# needs to launch only our worker process, so clear the inherited entrypoint.
+ENTRYPOINT []
 CMD ["python", "-u", "/worker/handler.py"]

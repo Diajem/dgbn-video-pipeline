@@ -15,9 +15,13 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build RunPod MuseTalk image
         run: docker build --progress=plain -f runpod/Dockerfile -t dgbn-musetalk-ci .
+      - name: Verify Serverless launch config
+        run: |
+          test "$(docker inspect --format '{{json .Config.Entrypoint}}' dgbn-musetalk-ci)" = "null"
+          test "$(docker inspect --format '{{json .Config.Cmd}}' dgbn-musetalk-ci)" = '["python","-u","/worker/handler.py"]'
       - name: Import worker runtime
         run: |
           docker run --rm --entrypoint python dgbn-musetalk-ci -c "import runpod, torch, huggingface_hub; print('runpod', runpod.__version__ if hasattr(runpod, '__version__') else 'ok'); print('torch', torch.__version__); print('hf', huggingface_hub.__version__)"
       - name: Run local handler healthcheck
         run: |
-          docker run --rm dgbn-musetalk-ci python -u /worker/handler.py --test_input '{"input":{"healthcheck":true}}'
+          docker run --rm --entrypoint python dgbn-musetalk-ci -u /worker/handler.py --test_input '{"input":{"healthcheck":true}}'
