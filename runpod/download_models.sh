@@ -11,10 +11,10 @@ mkdir -p models/syncnet models/dwpose models/face-parse-bisent models/sd-vae mod
 # Keep the large MuseTalk V1.5 weights out of the Docker image. The handler
 # resolves them from RunPod's Hugging Face model cache when configured, and
 # falls back to a one-time download at worker initialization.
-hf download stabilityai/sd-vae-ft-mse --local-dir models/sd-vae --include "config.json" "diffusion_pytorch_model.bin"
-hf download openai/whisper-tiny --local-dir models/whisper --include "config.json" "pytorch_model.bin" "preprocessor_config.json"
-hf download yzd-v/DWPose --local-dir models/dwpose --include "dw-ll_ucoco_384.pth"
-hf download ByteDance/LatentSync --local-dir models/syncnet --include "latentsync_syncnet.pt"
+huggingface-cli download stabilityai/sd-vae-ft-mse --local-dir models/sd-vae --include "config.json" "diffusion_pytorch_model.bin"
+huggingface-cli download openai/whisper-tiny --local-dir models/whisper --include "config.json" "pytorch_model.bin" "preprocessor_config.json"
+huggingface-cli download yzd-v/DWPose --local-dir models/dwpose --include "dw-ll_ucoco_384.pth"
+huggingface-cli download ByteDance/LatentSync --local-dir models/syncnet --include "latentsync_syncnet.pt"
 
 # MuseTalk upstream distributes the BiSeNet checkpoint via Google Drive and
 # ResNet-18 from PyTorch's model host; do not substitute an incomplete HF mirror.
