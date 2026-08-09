@@ -6,7 +6,7 @@ import {PresenterSlot} from '../components/PresenterSlot.jsx';
 
 const StoryPanel = ({story, presenter}) => (
   <BrandFrame>
-    <PresenterSlot presenter={presenter} />
+    <PresenterSlot presenter={presenter} videoPath={story.presenterVideoPath || story.presenterVideo || undefined} />
     <div style={{position: 'absolute', left: 840, right: 90, top: 205}}>
       <div style={{fontSize: 28, color: '#d7a62a', fontWeight: 800, letterSpacing: 2}}>{story.desk?.toUpperCase()}</div>
       <div style={{fontSize: 58, fontWeight: 900, lineHeight: 1.05, marginTop: 18}}>{story.headline}</div>
