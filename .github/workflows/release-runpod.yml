@@ -1,0 +1,30 @@
+name: Release RunPod worker
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'runpod/**'
+      - '.github/workflows/release-runpod.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create deployment release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          TARGET_SHA: ${{ github.sha }}
+          TAG: runpod-${{ github.run_number }}
+        run: |
+          gh release create "$TAG" \
+            --repo "$REPOSITORY" \
+            --target "$TARGET_SHA" \
+            --title "RunPod worker $TAG" \
+            --notes "Validated DGBN MuseTalk RunPod worker deployment from main at commit $TARGET_SHA."
