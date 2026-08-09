@@ -16,6 +16,10 @@
     "render:card": "npm --workspace @dgbn/remotion-studio run render:card",
     "hyperframes:doctor": "npx hyperframes doctor",
     "hyperframes:preview": "cd video-studio/hyperframes && npx hyperframes preview",
-    "hyperframes:skills": "npx skills add heygen-com/hyperframes --full-depth"
+    "hyperframes:skills": "npx skills add heygen-com/hyperframes --full-depth",
+    "prepare:presenters": "node scripts/prepare-presenters.mjs",
+    "avatar:musetalk:source:peet": "node scripts/prepare-musetalk-source.mjs peet",
+    "avatar:musetalk:preflight": "node scripts/musetalk-preflight.mjs",
+    "avatar:musetalk:benchmark:peet": "node scripts/run-musetalk-benchmark.mjs peet"
   }
 }
