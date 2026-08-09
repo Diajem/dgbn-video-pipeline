@@ -17,7 +17,7 @@ jobs:
         run: docker build --progress=plain -f runpod/Dockerfile -t dgbn-musetalk-ci .
       - name: Verify Serverless launch config
         run: |
-          test "$(docker inspect --format '{{json .Config.Entrypoint}}' dgbn-musetalk-ci)" = "[]"
+          test "$(docker inspect --format '{{json .Config.Entrypoint}}' dgbn-musetalk-ci)" = "null"
           test "$(docker inspect --format '{{json .Config.Cmd}}' dgbn-musetalk-ci)" = '["python","-u","/worker/handler.py"]'
       - name: Import worker runtime
         run: |
