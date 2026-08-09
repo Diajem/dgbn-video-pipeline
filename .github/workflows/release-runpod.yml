@@ -12,6 +12,7 @@ on:
 permissions:
   contents: write
 
+# Updates to the RunPod worker or this release workflow create a deployment release.
 jobs:
   release:
     runs-on: ubuntu-latest
