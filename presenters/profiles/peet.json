@@ -1,0 +1,6 @@
+{
+  "id":"peet","displayName":"Peet","legalName":"Peter","role":"DGBN Africa & Diaspora","channel":"DGBN","motionStyle":"standard-news",
+  "avatarBackend":{"preferred":"musetalk-v1.5","benchmarkOrder":["MuseTalk 1.5","JoyVASA+MuseTalk","SoulX-FlashHead"]},
+  "assets":{"master":"runtime-assets/presenters/peet/peter_02_plaid_frontal.jpg","supports":["runtime-assets/presenters/peet/peter_03_blanket_closeup.jpg","runtime-assets/presenters/peet/peter_05_fur_collar_closeup.jpg"],"voiceReference":"runtime-assets/presenters/peet/reference.wav"},
+  "status":{"imagesCurated":true,"voiceReady":true,"avatarBenchmarked":false,"remotionSlotTested":false}
+}
