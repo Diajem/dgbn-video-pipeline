@@ -1,0 +1,6 @@
+{
+  "id":"denise","displayName":"Denise","legalName":"Denise","role":"DGBN Caribbean Bulletin","channel":"DGBN","motionStyle":"standard-news",
+  "avatarBackend":{"preferred":"musetalk-v1.5","benchmarkOrder":["MuseTalk 1.5","JoyVASA+MuseTalk","SoulX-FlashHead"]},
+  "assets":{"master":"runtime-assets/presenters/denise/denise_05.png","supports":["runtime-assets/presenters/denise/denise_04.png","runtime-assets/presenters/denise/denise_06.png"],"voiceReference":"runtime-assets/presenters/denise/reference.wav"},
+  "status":{"imagesCurated":true,"voiceReady":true,"avatarBenchmarked":false,"remotionSlotTested":false}
+}
