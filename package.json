@@ -20,6 +20,7 @@
     "prepare:presenters": "node scripts/prepare-presenters.mjs",
     "avatar:musetalk:source:peet": "node scripts/prepare-musetalk-source.mjs peet",
     "avatar:musetalk:preflight": "node scripts/musetalk-preflight.mjs",
-    "avatar:musetalk:benchmark:peet": "node scripts/run-musetalk-benchmark.mjs peet"
+    "avatar:musetalk:benchmark:peet": "node scripts/run-musetalk-benchmark.mjs peet",
+    "avatar:runpod:peet": "node scripts/runpod-musetalk-client.mjs peet"
   }
 }
