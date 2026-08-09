@@ -1,0 +1,170 @@
+{
+  "jobId": "dgbn-20260805-evening-bulletin",
+  "brand": "DGBN",
+  "channel": "Africa",
+  "jobType": "bulletin",
+  "createdAt": "2026-08-05T22:00:00+01:00",
+  "title": "Diajem Global Black News Evening Bulletin",
+  "tagline": "Shaping the Black world from the African continent to the Caribbean and the Diaspora.",
+  "approval": {
+    "mode": "human-required",
+    "status": "draft"
+  },
+  "presenter": {
+    "id": "peet",
+    "mode": "avatar",
+    "avatarProfile": "peet-standard-news"
+  },
+  "opening": "Welcome to Diajem Global Black News. Shaping the Black world from the African continent to the Caribbean and the Diaspora. My name is Peet.",
+  "closing": "That’s our global Black news for today. Please subscribe to our channel to support us. Our People. Our Story. Our Own Way. Thanks for watching.",
+  "stories": [
+    {
+      "storyId": "south-africa-migration",
+      "desk": "Africa",
+      "grade": "A",
+      "headline": "South Africa Pushes Regional Dialogue on Migration Management Across SADC",
+      "verification": {
+        "status": "verified",
+        "confidence": 0.9,
+        "sensitive": false,
+        "sources": [
+          {"name": "Africanews", "url": null, "publishedAt": "2026-08-05T20:56:00+01:00", "tier": 2},
+          {"name": "SABC", "url": null, "publishedAt": null, "tier": 2}
+        ]
+      },
+      "narration": "We open today in Southern Africa, where the South African government has initiated calls for comprehensive continent-wide talks to address regional migration frameworks. Officials emphasize the necessity of coordinated multilateral strategies across the Southern African Development Community to streamline border management while supporting economic integration.",
+      "lowerThird": "SOUTH AFRICA CALLS FOR CONTINENTAL MIGRATION DIALOGUE",
+      "callout": "Focus on SADC regional frameworks and coordinated border policy.",
+      "visuals": {
+        "brollQueries": ["Pretoria government buildings", "SADC regional summit", "Southern African border posts"],
+        "assetPaths": [],
+        "rightsStatus": "editorial-review"
+      }
+    },
+    {
+      "storyId": "puntland-security",
+      "desk": "Africa",
+      "grade": "A",
+      "headline": "Security Escalation Reported in Galkayo as Regional Forces Take Positions",
+      "verification": {
+        "status": "verified",
+        "confidence": 0.88,
+        "sensitive": true,
+        "sources": [
+          {"name": "Al Jazeera", "url": null, "publishedAt": "2026-08-05T21:37:00+01:00", "tier": 2},
+          {"name": "Shabelle Media", "url": null, "publishedAt": null, "tier": 2}
+        ]
+      },
+      "narration": "Turning to the Horn of Africa, security developments are unfolding in Somalia following movements by regional forces near Galkayo. Local authorities report shifts in territorial oversight along key transport corridors, prompting renewed calls from regional bodies to prioritize stability and institutional dialogue.",
+      "lowerThird": "SOMALIA: SECURITY SHIFTS REPORTED NEAR GALKAYO",
+      "callout": "Regional authorities emphasize need for territorial stability.",
+      "visuals": {
+        "brollQueries": ["map of Somalia Puntland Galkayo", "security forces regional routes"],
+        "assetPaths": [],
+        "rightsStatus": "editorial-review"
+      }
+    },
+    {
+      "storyId": "east-africa-cyber",
+      "desk": "AI & Tech",
+      "grade": "B",
+      "headline": "Interpol Flags Cyber Threats Facing East Africa’s Expanding Digital Infrastructure",
+      "verification": {
+        "status": "verified",
+        "confidence": 0.93,
+        "sensitive": false,
+        "sources": [
+          {"name": "Interpol", "url": null, "publishedAt": "2026-08-05T11:42:00+01:00", "tier": 1},
+          {"name": "Capital FM", "url": null, "publishedAt": null, "tier": 2},
+          {"name": "AllAfrica", "url": null, "publishedAt": null, "tier": 3}
+        ]
+      },
+      "narration": "In technology and regional infrastructure, Interpol has released a detailed report highlighting significant digital threat exposure across East Africa. As nations like Kenya accelerate financial technology adoption, law enforcement agencies are recommending immediate upgrades to cross-border cyber protocols and regulatory frameworks.",
+      "lowerThird": "INTERPOL FLAGS DIGITAL CYBER THREATS IN EAST AFRICA",
+      "callout": "Rapid FinTech expansion drives demand for upgraded security.",
+      "visuals": {
+        "brollQueries": ["Nairobi digital hub", "server infrastructure", "cybersecurity network animation"],
+        "assetPaths": [],
+        "rightsStatus": "editorial-review"
+      }
+    },
+    {
+      "storyId": "afdb-natural-capital",
+      "desk": "Finance",
+      "grade": "B",
+      "headline": "African Development Bank Allocates $4.3 Million to Strengthen Natural Capital Integration",
+      "verification": {
+        "status": "verified",
+        "confidence": 0.96,
+        "sensitive": false,
+        "sources": [
+          {"name": "African Development Bank", "url": null, "publishedAt": "2026-08-05T10:15:00+01:00", "tier": 1}
+        ]
+      },
+      "narration": "In development finance, the African Development Bank has approved a four point three million dollar fund to assist thirteen member countries. This initiative focuses on incorporating natural capital and environmental assets directly into national economic policy planning.",
+      "lowerThird": "AfDB APPROVES $4.3M FOR CONTINENTAL NATURAL CAPITAL",
+      "callout": "13 nations to integrate environmental assets into economic planning.",
+      "visuals": {
+        "brollQueries": ["African Development Bank headquarters", "African forestry", "water management conservation Africa"],
+        "assetPaths": [],
+        "rightsStatus": "editorial-review"
+      }
+    },
+    {
+      "storyId": "africa-cdc-vectors",
+      "desk": "Health & Wellbeing",
+      "grade": "B",
+      "headline": "Africa CDC Issues Alert Over Urban Spread of Invasive Disease Vectors",
+      "verification": {
+        "status": "verified",
+        "confidence": 0.94,
+        "sensitive": true,
+        "sources": [
+          {"name": "Africa CDC", "url": null, "publishedAt": "2026-08-05T13:50:00+01:00", "tier": 1},
+          {"name": "Africanews", "url": null, "publishedAt": null, "tier": 2}
+        ]
+      },
+      "narration": "On public health across the continent, the Africa CDC has issued an advisory concerning fast-spreading invasive mosquito species in urban centers. Epidemiologists warn that shifting climate patterns require intensified surveillance to protect dense metropolitan populations.",
+      "lowerThird": "AFRICA CDC ISSUES URBAN PUBLIC HEALTH ADVISORY",
+      "callout": "Surveillance increased for invasive vectors in metropolitan areas.",
+      "visuals": {
+        "brollQueries": ["vector research laboratory Africa", "mosquito microscope", "urban health clinic Africa"],
+        "assetPaths": [],
+        "rightsStatus": "editorial-review"
+      }
+    },
+    {
+      "storyId": "wfp-climate-food",
+      "desk": "Africa",
+      "grade": "B",
+      "headline": "WFP Highlights Climate Risks Facing Millions Across Vulnerable Agricultural Zones",
+      "verification": {
+        "status": "verified",
+        "confidence": 0.95,
+        "sensitive": false,
+        "sources": [
+          {"name": "World Food Programme", "url": null, "publishedAt": "2026-08-05T17:29:00+01:00", "tier": 1},
+          {"name": "UN News", "url": null, "publishedAt": null, "tier": 1}
+        ]
+      },
+      "narration": "Finally, the World Food Programme has outlined potential food security challenges tied to global climate anomalies affecting East and Southern Africa. International agencies are requesting proactive logistics preparation to safeguard agricultural yield supply chains.",
+      "lowerThird": "WFP WARNS OF CLIMATE RISKS TO REGIONAL FOOD SUPPLY",
+      "callout": "Agencies request early action for vulnerable agricultural zones.",
+      "visuals": {
+        "brollQueries": ["East Africa agricultural fields", "grain silos Africa", "WFP relief distribution"],
+        "assetPaths": [],
+        "rightsStatus": "editorial-review"
+      }
+    }
+  ],
+  "documentaryWatchlist": [
+    "The Evolution of African Free Trade (AfCFTA)",
+    "Preserving the Great Green Wall",
+    "FinTech Transformation in Sub-Saharan Africa"
+  ],
+  "editorialNotes": {
+    "delivery": "Authoritative, clear broadcast pacing; avoid unnecessary dramatic inflection.",
+    "separationRule": "Continental Africa desk only for this sample.",
+    "renderPolicy": "Draft-only because source URLs have not yet been populated in this fixture."
+  }
+}

@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://diajem.example/schemas/production-manifest.schema.json",
+  "title": "Diajem Production Manifest",
+  "type": "object",
+  "required": ["jobId", "brand", "channel", "jobType", "createdAt", "approval", "presenter", "stories"],
+  "properties": {
+    "jobId": {"type": "string", "minLength": 3},
+    "brand": {"enum": ["DGBN", "DSN"]},
+    "channel": {"type": "string"},
+    "jobType": {"enum": ["bulletin", "breaking-news", "news-flash", "news-card", "full-report", "documentary", "podcast", "reaction", "match-preview", "match-review", "transfer-news", "long-to-short", "product-ad"]},
+    "createdAt": {"type": "string"},
+    "approval": {
+      "type": "object",
+      "required": ["mode", "status"],
+      "properties": {
+        "mode": {"enum": ["auto", "human-required"]},
+        "status": {"enum": ["draft", "approved", "blocked"]}
+      }
+    },
+    "presenter": {
+      "type": "object",
+      "required": ["id", "mode"],
+      "properties": {
+        "id": {"type": "string"},
+        "mode": {"enum": ["avatar", "human", "voiceover-only", "none"]},
+        "avatarProfile": {"type": ["string", "null"]}
+      }
+    },
+    "stories": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["storyId", "headline", "verification", "narration", "lowerThird", "visuals"],
+        "properties": {
+          "storyId": {"type": "string"},
+          "headline": {"type": "string"},
+          "desk": {"type": "string"},
+          "grade": {"enum": ["A", "B", "C", "D"]},
+          "verification": {
+            "type": "object",
+            "required": ["status", "sources"],
+            "properties": {
+              "status": {"enum": ["verified", "provisional", "unverified", "blocked"]},
+              "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+              "sensitive": {"type": "boolean"},
+              "sources": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["name"],
+                  "properties": {
+                    "name": {"type": "string"},
+                    "url": {"type": ["string", "null"]},
+                    "publishedAt": {"type": ["string", "null"]},
+                    "tier": {"type": ["integer", "null"]}
+                  }
+                }
+              }
+            }
+          },
+          "narration": {"type": "string"},
+          "lowerThird": {"type": "string"},
+          "callout": {"type": "string"},
+          "visuals": {
+            "type": "object",
+            "properties": {
+              "brollQueries": {"type": "array", "items": {"type": "string"}},
+              "assetPaths": {"type": "array", "items": {"type": "string"}},
+              "rightsStatus": {"enum": ["cleared", "editorial-review", "unknown"]}
+            }
+          }
+        }
+      }
+    }
+  }
+}

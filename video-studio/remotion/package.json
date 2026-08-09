@@ -1,0 +1,19 @@
+{
+  "name": "@dgbn/remotion-studio",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "studio": "remotion studio src/index.jsx",
+    "render:bulletin": "remotion render src/index.jsx DGBNBulletin16x9 ../../renders/dgbn-bulletin-16x9.mp4",
+    "render:flash": "remotion render src/index.jsx DGBNNewsFlash9x16 ../../renders/dgbn-news-flash-9x16.mp4",
+    "render:card": "remotion render src/index.jsx DGBNNewsCard9x16 ../../renders/dgbn-news-card-9x16.mp4"
+  },
+  "dependencies": {
+    "@remotion/cli": "latest",
+    "@remotion/media": "latest",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "remotion": "latest"
+  }
+}

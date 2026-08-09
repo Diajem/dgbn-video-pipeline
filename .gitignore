@@ -1,0 +1,17 @@
+node_modules/
+.env
+.env.*
+!.env.example
+out/
+renders/
+.tmp/
+.cache/
+*.mp4
+*.mov
+*.webm
+*.wav
+*.mp3
+.DS_Store
+runtime-assets/
+avatar-service/work/
+avatar-service/output/

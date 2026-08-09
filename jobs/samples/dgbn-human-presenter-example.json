@@ -1,0 +1,48 @@
+{
+  "jobId": "dgbn-human-presenter-example",
+  "brand": "DGBN",
+  "channel": "Analysis",
+  "jobType": "full-report",
+  "createdAt": "2026-08-08T23:55:00+01:00",
+  "approval": {
+    "mode": "human-required",
+    "status": "draft"
+  },
+  "presenter": {
+    "id": "peter",
+    "mode": "human",
+    "mediaPath": "inputs/presenter/peter-analysis.mp4"
+  },
+  "stories": [
+    {
+      "storyId": "human-presenter-fixture",
+      "desk": "Analysis",
+      "grade": "A",
+      "headline": "HUMAN PRESENTER PRODUCTION TEST",
+      "verification": {
+        "status": "provisional",
+        "confidence": 0.5,
+        "sensitive": false,
+        "sources": [
+          {
+            "name": "Presenter-supplied research pack",
+            "url": null,
+            "publishedAt": null,
+            "tier": null
+          }
+        ]
+      },
+      "narration": "The transcript from the uploaded presenter recording becomes the timing source for captions, B-roll placement, lower thirds and on-screen graphics.",
+      "lowerThird": "DGBN ANALYSIS",
+      "callout": "Human-presenter mode bypasses avatar generation.",
+      "visuals": {
+        "brollQueries": ["topic-specific B-roll generated from transcript"],
+        "assetPaths": [],
+        "rightsStatus": "editorial-review"
+      }
+    }
+  ],
+  "editorialNotes": {
+    "processing": "Clean audio and framing, transcribe, identify B-roll beats, add lower thirds, captions, intro and outro, then render horizontal and vertical derivatives."
+  }
+}

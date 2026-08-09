@@ -1,0 +1,48 @@
+{
+  "jobId": "dgbn-breaking-example",
+  "brand": "DGBN",
+  "channel": "Africa",
+  "jobType": "breaking-news",
+  "createdAt": "2026-08-08T23:55:00+01:00",
+  "approval": {
+    "mode": "human-required",
+    "status": "draft"
+  },
+  "presenter": {
+    "id": "peet",
+    "mode": "avatar",
+    "avatarProfile": "peet-breaking-news"
+  },
+  "stories": [
+    {
+      "storyId": "breaking-fixture",
+      "desk": "Africa",
+      "grade": "A",
+      "headline": "BREAKING NEWS TEST FIXTURE",
+      "verification": {
+        "status": "provisional",
+        "confidence": 0.5,
+        "sensitive": false,
+        "sources": [
+          {
+            "name": "Test source — replace before production",
+            "url": null,
+            "publishedAt": null,
+            "tier": null
+          }
+        ]
+      },
+      "narration": "This is a non-publishable test fixture used to verify the DGBN breaking-news render path. Replace the headline, narration and sources with a verified production story before approval.",
+      "lowerThird": "DGBN BREAKING NEWS",
+      "callout": "Event-driven render path — not tied to scheduled newsroom cycles.",
+      "visuals": {
+        "brollQueries": ["breaking news visual placeholder"],
+        "assetPaths": [],
+        "rightsStatus": "unknown"
+      }
+    }
+  ],
+  "editorialNotes": {
+    "renderPolicy": "Test fixture only. Never publish without verified sources and explicit approval."
+  }
+}
