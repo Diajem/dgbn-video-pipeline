@@ -1,20 +1,25 @@
 # Presenter assets
 
-Do not commit heavy or sensitive source media to a public repository.
+Do not commit heavy or sensitive source media to this public repository.
 
-Expected local structure:
+Raw presenter packs should be extracted into a private folder such as:
 
 ```text
-presenters/
-  peet/
-    master.png
-    profile.json
+presenter-packs/
+  peter/
+    images/
+    voice/reference.wav
   aisha/
-    master.png
-    profile.json
   denise/
-    master.png
-    profile.json
+  david/
 ```
 
-`profile.json` will store crop rules, preferred motion style, voice ID/engine reference, pronunciation hints and avatar-backend tuning parameters. Actual source images should be supplied on the production machine or through private object storage.
+Set `PRESENTER_PACKS_ROOT` to that folder, then run:
+
+```bash
+npm run prepare:presenters
+```
+
+The selection rules live in `config/presenter-selections.json`. The script copies only the curated master/support stills and voice reference into ignored `runtime-assets/` storage and writes safe metadata contracts into `presenters/profiles/`.
+
+Current first-pass masters are Peet/Peter, Aisha, Denise and David. The raw packs remain private and are never committed.
