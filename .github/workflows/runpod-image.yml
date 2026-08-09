@@ -1,0 +1,17 @@
+name: Validate RunPod worker image
+
+on:
+  pull_request:
+    paths:
+      - 'runpod/**'
+      - '.github/workflows/runpod-image.yml'
+  workflow_dispatch:
+
+jobs:
+  docker-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build RunPod MuseTalk image
+        run: docker build --progress=plain -f runpod/Dockerfile -t dgbn-musetalk-ci .

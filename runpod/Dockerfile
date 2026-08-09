@@ -1,27 +1,48 @@
-FROM nvidia/cuda:11.8.0-cudnn8-runtime-ubuntu22.04
+FROM runpod/pytorch:2.0.1-py3.10-cuda11.8.0-devel-ubuntu22.04
 
 ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1 \
-    MUSE_TALK_HOME=/opt/MuseTalk
+    MUSE_TALK_HOME=/opt/MuseTalk \
+    RUNPOD_INIT_TIMEOUT=1200
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3.10 python3-pip python3.10-dev git ffmpeg curl ca-certificates build-essential \
-    && rm -rf /var/lib/apt/lists/* \
-    && ln -sf /usr/bin/python3.10 /usr/local/bin/python
+    git ffmpeg curl ca-certificates build-essential libsndfile1 libgl1 libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
 
-RUN python -m pip install --upgrade pip setuptools wheel
+# MuseTalk/OpenMMLab includes legacy packages (notably chumpy). Keep a
+# conservative pip/setuptools toolchain rather than the latest build backend.
+RUN python -m pip install --upgrade "pip<25" "setuptools<70" "wheel<0.44"
 
 WORKDIR /opt
 RUN git clone --depth 1 https://github.com/TMElyralab/MuseTalk.git MuseTalk
 
-WORKDIR /opt/MuseTalk
-RUN python -m pip install torch==2.0.1 torchvision==0.15.2 torchaudio==2.0.2 --index-url https://download.pytorch.org/whl/cu118
-RUN python -m pip install -r requirements.txt
-RUN python -m pip install --no-cache-dir -U openmim runpod "huggingface_hub[hf_xet]"
-RUN mim install mmengine && \
-    mim install "mmcv==2.0.1" && \
-    mim install "mmdet==3.1.0" && \
-    mim install "mmpose==1.1.0"
+COPY runpod/requirements-worker.txt /tmp/requirements-worker.txt
+RUN python -m pip install --no-cache-dir -r /tmp/requirements-worker.txt
+
+# Install the OpenMMLab inference stack without allowing its metadata to replace
+# MuseTalk's NumPy/OpenCV pins. MMPose 1.1.0 depends on legacy chumpy; installing
+# chumpy outside PEP-517 build isolation keeps pip available to its setup.py.
+RUN python -m pip install --no-cache-dir --no-deps mmengine==0.10.7 && \
+    python -m pip install --no-cache-dir \
+      addict termcolor "yapf<0.41" "matplotlib<3.8" && \
+    python -m pip install --no-cache-dir --no-deps mmcv==2.0.1 \
+      -f https://download.openmmlab.com/mmcv/dist/cu118/torch2.0/index.html && \
+    python -m pip install --no-cache-dir --no-build-isolation chumpy==0.70 && \
+    python -m pip install --no-cache-dir \
+      json-tricks munkres xtcocotools pycocotools shapely terminaltables && \
+    python -m pip install --no-cache-dir --no-deps mmdet==3.1.0 mmpose==1.1.0 && \
+    python -m pip uninstall -y opencv-python || true
+
+# Re-assert the versions MuseTalk expects after installing OpenMMLab helpers.
+RUN python -m pip install --no-cache-dir --force-reinstall --no-deps \
+      numpy==1.23.5 opencv-python-headless==4.9.0.80 && \
+    python - <<'PY'
+import numpy, cv2, torch
+assert numpy.__version__ == '1.23.5', numpy.__version__
+assert cv2.__version__.startswith('4.9.'), cv2.__version__
+assert torch.__version__.startswith('2.0.1'), torch.__version__
+print('Pinned runtime:', numpy.__version__, cv2.__version__, torch.__version__)
+PY
 
 COPY runpod/download_models.sh /tmp/download_models.sh
 RUN chmod +x /tmp/download_models.sh && /tmp/download_models.sh
@@ -29,4 +50,4 @@ RUN chmod +x /tmp/download_models.sh && /tmp/download_models.sh
 WORKDIR /worker
 COPY runpod/handler.py /worker/handler.py
 
-CMD ["python", "/worker/handler.py"]
+CMD ["python", "-u", "/worker/handler.py"]
