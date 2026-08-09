@@ -18,7 +18,7 @@ huggingface-cli download ByteDance/LatentSync --local-dir models/syncnet --inclu
 
 # MuseTalk upstream distributes the BiSeNet checkpoint via Google Drive and
 # ResNet-18 from PyTorch's model host; do not substitute an incomplete HF mirror.
-gdown --id 154JgKpzCPW82qINcVieuPH3fZ2e0P812 \
+gdown 154JgKpzCPW82qINcVieuPH3fZ2e0P812 \
   -O models/face-parse-bisent/79999_iter.pth
 curl -fL --retry 4 --retry-delay 3 \
   https://download.pytorch.org/models/resnet18-5c106cde.pth \
