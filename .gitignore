@@ -12,3 +12,6 @@ renders/
 *.wav
 *.mp3
 .DS_Store
+runtime-assets/
+avatar-service/work/
+avatar-service/output/
