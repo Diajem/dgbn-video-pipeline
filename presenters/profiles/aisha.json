@@ -1,0 +1,6 @@
+{
+  "id":"aisha","displayName":"Aisha","legalName":"Aisha","role":"DGBN Caribbean & Culture","channel":"DGBN","motionStyle":"standard-news",
+  "avatarBackend":{"preferred":"musetalk-v1.5","benchmarkOrder":["MuseTalk 1.5","JoyVASA+MuseTalk","SoulX-FlashHead"]},
+  "assets":{"master":"runtime-assets/presenters/aisha/aisha_02.png","supports":["runtime-assets/presenters/aisha/aisha_06_angle.png","runtime-assets/presenters/aisha/aisha_07_angle.png"],"voiceReference":"runtime-assets/presenters/aisha/reference.wav"},
+  "status":{"imagesCurated":true,"voiceReady":true,"avatarBenchmarked":false,"remotionSlotTested":false}
+}
