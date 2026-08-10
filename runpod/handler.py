@@ -7,7 +7,6 @@ import tempfile
 from pathlib import Path
 
 import runpod
-from huggingface_hub import hf_hub_download
 
 MUSE_ROOT = Path(os.environ.get("MUSE_TALK_HOME", "/opt/MuseTalk"))
 CACHE_ROOT = Path("/runpod-volume/huggingface-cache/hub/models--TMElyralab--MuseTalk/snapshots")
@@ -37,7 +36,8 @@ def _ensure_main_weights():
 
     target.mkdir(parents=True, exist_ok=True)
 
-    # Preferred: RunPod cached model mounted under /runpod-volume.
+    # Production path: RunPod caches TMElyralab/MuseTalk before the worker starts.
+    # Never silently download the 3.4 GB UNet during paid worker runtime.
     if CACHE_ROOT.exists():
         snapshots = sorted(
             [p for p in CACHE_ROOT.iterdir() if p.is_dir()],
@@ -57,23 +57,21 @@ def _ensure_main_weights():
                         shutil.copy2(source, dest)
                 return {"source": "runpod-cache", "path": str(snapshot)}
 
-    # Fallback for the first test if model caching was not configured yet.
-    hf_hub_download(
-        repo_id="TMElyralab/MuseTalk",
-        filename="musetalkV15/unet.pth",
-        local_dir=str(MUSE_ROOT / "models"),
+    raise RuntimeError(
+        "MuseTalk V1.5 cached weights are missing. Configure the RunPod endpoint "
+        "Model field with TMElyralab/MuseTalk before running paid inference."
     )
-    hf_hub_download(
-        repo_id="TMElyralab/MuseTalk",
-        filename="musetalkV15/musetalk.json",
-        local_dir=str(MUSE_ROOT / "models"),
-    )
-    return {"source": "huggingface-fallback", "path": str(target)}
 
 
 def _runtime_info():
     check = subprocess.run(
-        ["python", "-c", "import torch; print(torch.__version__); print(torch.cuda.is_available()); print(torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'NO_CUDA')"],
+        [
+            "python",
+            "-c",
+            "import torch; print(torch.__version__); print(torch.version.cuda); "
+            "print(torch.cuda.is_available()); "
+            "print(torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'NO_CUDA')",
+        ],
         text=True,
         capture_output=True,
     )
@@ -81,8 +79,10 @@ def _runtime_info():
     return {
         "python_ok": check.returncode == 0,
         "torch": lines[0] if len(lines) > 0 else None,
-        "cuda": lines[1] if len(lines) > 1 else None,
-        "gpu": lines[2] if len(lines) > 2 else None,
+        "torch_cuda": lines[1] if len(lines) > 1 else None,
+        "cuda_available": lines[2] if len(lines) > 2 else None,
+        "gpu": lines[3] if len(lines) > 3 else None,
+        "cached_weights_present": CACHE_ROOT.exists(),
     }
 
 
@@ -100,7 +100,10 @@ def handler(job):
     if not video_b64 or not audio_b64:
         return {"error": "video_b64 and audio_b64 are required"}
 
-    weight_info = _ensure_main_weights()
+    try:
+        weight_info = _ensure_main_weights()
+    except RuntimeError as error:
+        return {"error": str(error), "code": "MODEL_CACHE_MISSING"}
 
     with tempfile.TemporaryDirectory(prefix="dgbn-musetalk-") as tmp:
         tmp = Path(tmp)
