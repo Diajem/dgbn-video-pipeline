@@ -1,8 +1,12 @@
 const API_BASE = 'https://rest.runpod.io/v1';
 const SERVERLESS_BASE = 'https://api.runpod.ai/v2';
 
-const apiKey = process.env.RUNPOD_API_KEY;
-if (!apiKey) throw new Error('RUNPOD_API_KEY is not configured');
+const rawApiKey = process.env.RUNPOD_API_KEY;
+if (!rawApiKey) throw new Error('RUNPOD_API_KEY is not configured');
+// GitHub secrets are sometimes pasted with surrounding straight/smart quotes.
+// RunPod keys are ASCII, so remove quote marks and surrounding whitespace only.
+const apiKey = rawApiKey.trim().replace(/[“”‘’"'`]/g, '');
+if (!apiKey) throw new Error('RUNPOD_API_KEY is empty after normalization');
 
 const controlPath = process.env.RUNPOD_CONTROL_FILE || '.runpod/control.json';
 const { readFile } = await import('node:fs/promises');
