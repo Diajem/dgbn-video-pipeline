@@ -1,4 +1,4 @@
 {
-  "action": "freeze",
+  "action": "inspect",
   "endpointName": "dgbn-video-pipeline"
 }
