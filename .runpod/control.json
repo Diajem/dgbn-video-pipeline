@@ -1,4 +1,4 @@
 {
-  "action": "freeze",
-  "endpointName": "dgbn-video-pipeline"
+  "action": "stop_pod",
+  "podId": "69m2gymbett7iw"
 }
