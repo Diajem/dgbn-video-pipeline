@@ -1,0 +1,31 @@
+name: DGBN Pod state inspection
+
+on:
+  push:
+    paths:
+      - '.github/workflows/runpod-pod-inspect.yml'
+      - '.runpod/pod-inspect.json'
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    env:
+      RUNPOD_API_KEY_RAW: ${{ secrets.RUNPOD_API_KEY }}
+    steps:
+      - name: Inspect exact DGBN debug Pod only
+        shell: bash
+        run: |
+          set -euo pipefail
+          key=$(python - <<'PY'
+          import os
+          raw=os.environ['RUNPOD_API_KEY_RAW']
+          print(raw.strip().translate({ord(c):None for c in '“”‘’\"\'`'}))
+          PY
+          )
+          pods=$(curl -fsS -H "Authorization: Bearer $key" https://rest.runpod.io/v1/pods)
+          count=$(jq '[.[] | select(.name=="dgbn-musetalk-debug")] | length' <<<"$pods")
+          echo "DGBN_DEBUG_POD_COUNT=$count"
+          jq '.[] | select(.name=="dgbn-musetalk-debug") | {id,name,desiredStatus,costPerHr,adjustedCostPerHr,image,gpu:(.gpu.displayName // .machine.gpuDisplayName),dataCenter:(.machine.dataCenterId // null),publicIp,portMappings,lastStatusChange,lastStartedAt}' <<<"$pods"
