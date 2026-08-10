@@ -1,0 +1,36 @@
+name: RunPod control
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.runpod/control.json'
+      - 'scripts/runpod-control.mjs'
+      - '.github/workflows/runpod-control.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  control:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate RunPod secret
+        shell: bash
+        env:
+          RUNPOD_API_KEY: ${{ secrets.RUNPOD_API_KEY }}
+        run: |
+          if [ -z "$RUNPOD_API_KEY" ]; then
+            echo "RUNPOD_API_KEY secret is missing"
+            exit 1
+          fi
+          echo "RunPod API secret is configured"
+      - name: Execute RunPod control action
+        env:
+          RUNPOD_API_KEY: ${{ secrets.RUNPOD_API_KEY }}
+          RUNPOD_CONTROL_FILE: .runpod/control.json
+        run: node scripts/runpod-control.mjs
