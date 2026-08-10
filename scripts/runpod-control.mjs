@@ -88,8 +88,6 @@ async function freezeEndpoint() {
   if (updated.workersMin !== 0 || updated.workersMax !== 0) {
     throw new Error('Endpoint freeze verification failed');
   }
-  const pods = await api('/pods');
-  console.log('PODS', JSON.stringify(pods.map(podSummary), null, 2));
 }
 
 async function configureEndpoint() {
@@ -103,7 +101,6 @@ async function configureEndpoint() {
     allowedCudaVersions: control.allowedCudaVersions || ['11.8'],
     idleTimeout: Number.isInteger(control.idleTimeout) ? control.idleTimeout : 5,
   };
-  console.log('Applying configuration:', JSON.stringify(payload, null, 2));
   await api(`/endpoints/${endpoint.id}/update`, { method: 'POST', body: JSON.stringify(payload) });
   const updated = await findEndpoint();
   console.log('Updated endpoint:', JSON.stringify(endpointSummary(updated), null, 2));
@@ -119,16 +116,33 @@ async function getPodOrThrow() {
 
 async function stopPod() {
   const pod = await getPodOrThrow();
-  console.log('Stopping pod:', JSON.stringify(podSummary(pod), null, 2));
+  if (!pod.name.startsWith('dgbn-')) {
+    throw new Error(`Safety guard: refusing to stop non-DGBN pod ${pod.name}`);
+  }
   await api(`/pods/${pod.id}/stop`, { method: 'POST' });
-  console.log(`Stop request accepted for pod ${pod.id}`);
+  console.log(`Stop request accepted for DGBN pod ${pod.id}`);
 }
 
 async function startPod() {
   const pod = await getPodOrThrow();
-  console.log('Starting pod:', JSON.stringify(podSummary(pod), null, 2));
-  await api(`/pods/${pod.id}/start`, { method: 'POST' });
-  console.log(`Start request accepted for pod ${pod.id}`);
+  const restoreOnlyId = '69m2gymbett7iw';
+  if (!pod.name.startsWith('dgbn-') && pod.id !== restoreOnlyId) {
+    throw new Error(`Safety guard: refusing to start non-DGBN pod ${pod.name}`);
+  }
+  const attempts = pod.id === restoreOnlyId ? 20 : 1;
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    try {
+      console.log(`Start attempt ${attempt}/${attempts} for ${pod.name} (${pod.id})`);
+      await api(`/pods/${pod.id}/start`, { method: 'POST' });
+      console.log(`Start request accepted for pod ${pod.id}`);
+      return;
+    } catch (error) {
+      const retryable = String(error.message).includes('not enough free GPUs');
+      if (!retryable || attempt === attempts) throw error;
+      console.log('Original host GPU unavailable; retrying same pod in 30 seconds without migration or configuration changes.');
+      await new Promise((resolve) => setTimeout(resolve, 30000));
+    }
+  }
 }
 
 async function healthcheck() {
@@ -159,24 +173,11 @@ async function healthcheck() {
 }
 
 switch (control.action) {
-  case 'inspect':
-    await inspectAll();
-    break;
-  case 'freeze':
-    await freezeEndpoint();
-    break;
-  case 'configure':
-    await configureEndpoint();
-    break;
-  case 'stop_pod':
-    await stopPod();
-    break;
-  case 'start_pod':
-    await startPod();
-    break;
-  case 'healthcheck':
-    await healthcheck();
-    break;
-  default:
-    throw new Error(`Unsupported control action: ${control.action}`);
+  case 'inspect': await inspectAll(); break;
+  case 'freeze': await freezeEndpoint(); break;
+  case 'configure': await configureEndpoint(); break;
+  case 'stop_pod': await stopPod(); break;
+  case 'start_pod': await startPod(); break;
+  case 'healthcheck': await healthcheck(); break;
+  default: throw new Error(`Unsupported control action: ${control.action}`);
 }
