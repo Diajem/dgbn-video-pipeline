@@ -58,6 +58,14 @@ async function findEndpoint() {
   return endpoint;
 }
 
+async function updateEndpoint(endpoint, payload) {
+  await api(`/endpoints/${endpoint.id}/update`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+  return findEndpoint();
+}
+
 async function inspectEndpoint() {
   const endpoint = await findEndpoint();
   console.log('ENDPOINT', JSON.stringify(endpointSummary(endpoint), null, 2));
@@ -66,69 +74,112 @@ async function inspectEndpoint() {
 async function freezeEndpoint() {
   const endpoint = await findEndpoint();
   console.log('Before freeze:', JSON.stringify(endpointSummary(endpoint), null, 2));
-  await api(`/endpoints/${endpoint.id}/update`, {
-    method: 'POST',
-    body: JSON.stringify({ workersMin: 0, workersMax: 0 }),
-  });
-  const updated = await findEndpoint();
+  const updated = await updateEndpoint(endpoint, { workersMin: 0, workersMax: 0 });
   console.log('After freeze:', JSON.stringify(endpointSummary(updated), null, 2));
   if (updated.workersMin !== 0 || updated.workersMax !== 0) {
     throw new Error('Endpoint freeze verification failed');
   }
 }
 
-async function configureEndpoint() {
-  const endpoint = await findEndpoint();
-  const gpuTypeIds = control.gpuTypeIds || ['NVIDIA RTX A4000'];
-  const payload = {
-    workersMin: Number.isInteger(control.workersMin) ? control.workersMin : 0,
-    workersMax: Number.isInteger(control.workersMax) ? control.workersMax : 1,
-    gpuCount: Number.isInteger(control.gpuCount) ? control.gpuCount : 1,
-    gpuTypeIds,
-    allowedCudaVersions: control.allowedCudaVersions || ['11.8'],
+function testConfig() {
+  return {
+    workersMin: 0,
+    workersMax: 1,
+    gpuCount: 1,
+    gpuTypeIds: control.gpuTypeIds || [
+      'NVIDIA RTX A4000',
+      'NVIDIA RTX A4500',
+      'NVIDIA RTX 4000 Ada Generation',
+    ],
+    allowedCudaVersions: control.allowedCudaVersions || [
+      '11.8', '12.0', '12.1', '12.2', '12.3', '12.4',
+      '12.5', '12.6', '12.7', '12.8', '12.9', '13.0',
+    ],
     idleTimeout: Number.isInteger(control.idleTimeout) ? control.idleTimeout : 5,
   };
-  await api(`/endpoints/${endpoint.id}/update`, {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  });
-  const updated = await findEndpoint();
+}
+
+async function configureEndpoint() {
+  const endpoint = await findEndpoint();
+  const payload = {
+    ...testConfig(),
+    workersMin: Number.isInteger(control.workersMin) ? control.workersMin : 0,
+    workersMax: Number.isInteger(control.workersMax) ? control.workersMax : 1,
+  };
+  const updated = await updateEndpoint(endpoint, payload);
   console.log('Updated endpoint:', JSON.stringify(endpointSummary(updated), null, 2));
 }
 
-async function healthcheck() {
-  const endpoint = await findEndpoint();
-  const submit = await fetch(`${SERVERLESS_BASE}/${endpoint.id}/run`, {
+async function cancelJob(endpointId, jobId) {
+  if (!jobId) return;
+  const response = await fetch(`${SERVERLESS_BASE}/${endpointId}/cancel/${jobId}`, {
     method: 'POST',
     headers,
-    body: JSON.stringify({ input: { healthcheck: true } }),
   });
-  const submitText = await submit.text();
-  const job = submitText ? JSON.parse(submitText) : null;
-  if (!submit.ok) throw new Error(`Healthcheck submit failed (${submit.status}): ${submitText}`);
-  console.log('Healthcheck job:', JSON.stringify({ id: job.id, status: job.status }, null, 2));
-  const timeoutMs = control.pollTimeoutMs || 180000;
-  const started = Date.now();
-  while (Date.now() - started < timeoutMs) {
-    await new Promise((resolve) => setTimeout(resolve, 5000));
-    const response = await fetch(`${SERVERLESS_BASE}/${endpoint.id}/status/${job.id}`, { headers });
-    const text = await response.text();
-    const status = text ? JSON.parse(text) : null;
-    if (!response.ok) throw new Error(`Healthcheck status failed (${response.status}): ${text}`);
-    console.log('Healthcheck status:', status.status);
-    if (['COMPLETED', 'FAILED', 'CANCELLED', 'TIMED_OUT'].includes(status.status)) {
-      console.log('Healthcheck result:', JSON.stringify(status, null, 2));
-      if (status.status !== 'COMPLETED') process.exitCode = 1;
-      return;
+  const text = await response.text();
+  if (!response.ok && response.status !== 404) {
+    console.warn(`Cancel failed (${response.status}): ${text}`);
+  } else {
+    console.log(`Cancel response: ${text || response.status}`);
+  }
+}
+
+async function healthcheckOnce() {
+  let endpoint = await findEndpoint();
+  let jobId = null;
+  let completed = false;
+  const timeoutMs = Number.isInteger(control.pollTimeoutMs) ? control.pollTimeoutMs : 240000;
+
+  try {
+    endpoint = await updateEndpoint(endpoint, testConfig());
+    console.log('Test configuration:', JSON.stringify(endpointSummary(endpoint), null, 2));
+
+    const submit = await fetch(`${SERVERLESS_BASE}/${endpoint.id}/run`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ input: { healthcheck: true }, ttl: Math.ceil(timeoutMs / 1000) + 60 }),
+    });
+    const submitText = await submit.text();
+    const job = submitText ? JSON.parse(submitText) : null;
+    if (!submit.ok) throw new Error(`Healthcheck submit failed (${submit.status}): ${submitText}`);
+    jobId = job?.id;
+    console.log('Healthcheck job:', JSON.stringify({ id: jobId, status: job?.status }, null, 2));
+
+    const started = Date.now();
+    while (Date.now() - started < timeoutMs) {
+      await new Promise((resolve) => setTimeout(resolve, 5000));
+      const response = await fetch(`${SERVERLESS_BASE}/${endpoint.id}/status/${jobId}`, { headers });
+      const text = await response.text();
+      const status = text ? JSON.parse(text) : null;
+      if (!response.ok) throw new Error(`Healthcheck status failed (${response.status}): ${text}`);
+      console.log('Healthcheck status:', status.status);
+      if (['COMPLETED', 'FAILED', 'CANCELLED', 'TIMED_OUT'].includes(status.status)) {
+        console.log('Healthcheck result:', JSON.stringify(status, null, 2));
+        completed = status.status === 'COMPLETED';
+        if (!completed) throw new Error(`Healthcheck ended with ${status.status}`);
+        return;
+      }
+    }
+    throw new Error(`Healthcheck exceeded ${timeoutMs}ms`);
+  } finally {
+    if (!completed && jobId) {
+      await cancelJob(endpoint.id, jobId);
+    }
+    try {
+      const current = await findEndpoint();
+      const frozen = await updateEndpoint(current, { workersMin: 0, workersMax: 0 });
+      console.log('Cleanup freeze:', JSON.stringify(endpointSummary(frozen), null, 2));
+    } catch (cleanupError) {
+      console.error('CRITICAL: endpoint cleanup failed:', cleanupError.message);
+      process.exitCode = 1;
     }
   }
-  throw new Error(`Healthcheck polling exceeded ${timeoutMs}ms`);
 }
 
 switch (control.action) {
   case 'inspect': await inspectEndpoint(); break;
   case 'freeze': await freezeEndpoint(); break;
   case 'configure': await configureEndpoint(); break;
-  case 'healthcheck': await healthcheck(); break;
+  case 'healthcheck_once': await healthcheckOnce(); break;
   default: throw new Error(`Unsupported DGBN control action: ${control.action}`);
 }
