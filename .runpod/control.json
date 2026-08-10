@@ -1,4 +1,5 @@
 {
   "action": "inspect",
-  "endpointName": "dgbn-video-pipeline"
+  "endpointName": "dgbn-video-pipeline",
+  "check": "post-runpod-4-release"
 }
