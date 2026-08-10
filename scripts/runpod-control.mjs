@@ -46,6 +46,19 @@ function endpointSummary(endpoint) {
   };
 }
 
+function templateSummary(template) {
+  return {
+    id: template.id,
+    name: template.name,
+    imageName: template.imageName,
+    isServerless: template.isServerless,
+    containerDiskInGb: template.containerDiskInGb,
+    dockerEntrypoint: template.dockerEntrypoint,
+    dockerStartCmd: template.dockerStartCmd,
+    runtimeInMin: template.runtimeInMin,
+  };
+}
+
 async function findEndpoint() {
   const endpoints = await api('/endpoints');
   const endpoint = control.endpointId
@@ -68,7 +81,12 @@ async function updateEndpoint(endpoint, payload) {
 
 async function inspectEndpoint() {
   const endpoint = await findEndpoint();
-  console.log('ENDPOINT', JSON.stringify(endpointSummary(endpoint), null, 2));
+  const summary = endpointSummary(endpoint);
+  console.log('ENDPOINT', JSON.stringify(summary, null, 2));
+  if (summary.templateId) {
+    const template = await api(`/templates/${summary.templateId}?includeEndpointBoundTemplates=true`);
+    console.log('TEMPLATE', JSON.stringify(templateSummary(template), null, 2));
+  }
 }
 
 async function freezeEndpoint() {
