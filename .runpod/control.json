@@ -1,4 +1,4 @@
 {
-  "action": "stop_pod",
-  "podId": "69m2gymbett7iw"
+  "action": "inspect",
+  "endpointName": "dgbn-video-pipeline"
 }
