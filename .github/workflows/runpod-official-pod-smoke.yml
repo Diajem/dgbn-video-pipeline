@@ -1,0 +1,162 @@
+name: DGBN official RunPod Pod smoke test
+
+on:
+  push:
+    paths:
+      - '.github/workflows/runpod-official-pod-smoke.yml'
+      - '.runpod/official-pod-smoke.json'
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    env:
+      RUNPOD_API_KEY: ${{ secrets.RUNPOD_API_KEY }}
+      POD_NAME: dgbn-official-pytorch-smoke
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate API and freeze DGBN Serverless
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$RUNPOD_API_KEY"
+          AUTH="Authorization: Bearer $RUNPOD_API_KEY"
+          endpoints=$(curl -fsS -H "$AUTH" https://rest.runpod.io/v1/endpoints)
+          endpoint_id=$(jq -r '.[] | select(.name=="dgbn-video-pipeline") | .id' <<<"$endpoints" | head -1)
+          if [[ -z "$endpoint_id" || "$endpoint_id" == "null" ]]; then
+            echo 'DGBN endpoint not found' >&2
+            exit 1
+          fi
+          curl -fsS -X POST -H "$AUTH" -H 'Content-Type: application/json' \
+            -d '{"workersMin":0,"workersMax":0}' \
+            "https://rest.runpod.io/v1/endpoints/$endpoint_id/update" >/dev/null
+          echo 'RunPod API validated; DGBN Serverless remains frozen.'
+
+      - name: Create official-image DGBN Pod
+        id: create
+        shell: bash
+        run: |
+          set -euo pipefail
+          AUTH="Authorization: Bearer $RUNPOD_API_KEY"
+
+          # Safety: remove only a stale Pod with this exact DGBN smoke-test name.
+          pods=$(curl -fsS -H "$AUTH" https://rest.runpod.io/v1/pods)
+          while IFS= read -r stale_id; do
+            [[ -z "$stale_id" ]] && continue
+            echo "Removing stale DGBN smoke Pod: $stale_id"
+            curl -fsS -X DELETE -H "$AUTH" "https://rest.runpod.io/v1/pods/$stale_id" >/dev/null || true
+          done < <(jq -r '.[] | select(.name=="dgbn-official-pytorch-smoke") | .id' <<<"$pods")
+
+          START_CMD=$(cat <<'CMD'
+          mkdir -p /tmp/dgbn
+          {
+            echo '=== DGBN OFFICIAL RUNPOD IMAGE DIAGNOSTICS ==='
+            date -u
+            echo '--- NVIDIA SMI ---'
+            nvidia-smi
+            echo '--- PYTORCH ---'
+            python - <<'PY'
+          import torch
+          print('torch', torch.__version__)
+          print('cuda_available', torch.cuda.is_available())
+          print('cuda_runtime', torch.version.cuda)
+          print('gpu', torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'NO_GPU')
+          PY
+          } > /tmp/dgbn/diagnostics.txt 2>&1
+          exec python -m http.server 8000 --bind 0.0.0.0 --directory /tmp/dgbn
+          CMD
+          )
+
+          payload=$(jq -n \
+            --arg name "$POD_NAME" \
+            --arg cmd "$START_CMD" \
+            '{
+              name:$name,
+              imageName:"runpod/pytorch:2.1.0-py3.10-cuda11.8.0-devel-ubuntu22.04",
+              cloudType:"SECURE",
+              computeType:"GPU",
+              gpuCount:1,
+              gpuTypeIds:[
+                "NVIDIA RTX A4000",
+                "NVIDIA RTX A4500",
+                "NVIDIA RTX A5000",
+                "NVIDIA GeForce RTX 3090",
+                "NVIDIA L4",
+                "NVIDIA GeForce RTX 4090",
+                "NVIDIA A40",
+                "NVIDIA RTX A6000",
+                "NVIDIA RTX 4000 Ada Generation"
+              ],
+              gpuTypePriority:"availability",
+              allowedCudaVersions:["11.8","12.0","12.1","12.2","12.3","12.4","12.5","12.6","12.7","12.8","12.9"],
+              dataCenterPriority:"availability",
+              containerDiskInGb:30,
+              volumeInGb:0,
+              ports:["8000/http"],
+              supportPublicIp:true,
+              interruptible:false,
+              locked:false,
+              dockerEntrypoint:["/bin/bash","-lc"],
+              dockerStartCmd:[$cmd]
+            }')
+
+          response=$(curl -fsS -X POST -H "$AUTH" -H 'Content-Type: application/json' \
+            -d "$payload" https://rest.runpod.io/v1/pods)
+          pod_id=$(jq -r '.id' <<<"$response")
+          if [[ -z "$pod_id" || "$pod_id" == "null" ]]; then
+            echo 'RunPod did not return a Pod ID.' >&2
+            exit 1
+          fi
+          echo "pod_id=$pod_id" >> "$GITHUB_OUTPUT"
+          echo "Created DGBN smoke Pod: $pod_id"
+          jq '{id,name,desiredStatus,costPerHr,adjustedCostPerHr,gpu:(.gpu.displayName // .machine.gpuDisplayName // null),dataCenter:(.machine.dataCenterId // null),image}' <<<"$response"
+
+      - name: Wait up to six minutes for GPU diagnostics
+        shell: bash
+        run: |
+          set -euo pipefail
+          AUTH="Authorization: Bearer $RUNPOD_API_KEY"
+          pod_id='${{ steps.create.outputs.pod_id }}'
+          url="https://${pod_id}-8000.proxy.runpod.net/diagnostics.txt"
+
+          for i in $(seq 1 36); do
+            pods=$(curl -fsS -H "$AUTH" https://rest.runpod.io/v1/pods)
+            jq --arg id "$pod_id" '.[] | select(.id==$id) | {id,name,desiredStatus,costPerHr,gpu:(.gpu.displayName // .machine.gpuDisplayName // null),dataCenter:(.machine.dataCenterId // null),publicIp,portMappings,lastStatusChange}' <<<"$pods" || true
+
+            if curl -fsS --max-time 8 "$url" -o /tmp/dgbn-diagnostics.txt; then
+              cat /tmp/dgbn-diagnostics.txt
+              grep -q 'cuda_available True' /tmp/dgbn-diagnostics.txt
+              echo 'DGBN_OFFICIAL_POD_SMOKE=PASS'
+              exit 0
+            fi
+            sleep 10
+          done
+
+          echo 'Official RunPod image did not become reachable within six minutes.' >&2
+          exit 1
+
+      - name: Delete only the DGBN smoke Pod
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          AUTH="Authorization: Bearer $RUNPOD_API_KEY"
+          pods=$(curl -fsS -H "$AUTH" https://rest.runpod.io/v1/pods)
+          while IFS= read -r pod_id; do
+            [[ -z "$pod_id" ]] && continue
+            echo "Deleting DGBN official smoke Pod: $pod_id"
+            curl -fsS -X DELETE -H "$AUTH" "https://rest.runpod.io/v1/pods/$pod_id" >/dev/null
+          done < <(jq -r '.[] | select(.name=="dgbn-official-pytorch-smoke") | .id' <<<"$pods")
+
+          endpoints=$(curl -fsS -H "$AUTH" https://rest.runpod.io/v1/endpoints)
+          endpoint_id=$(jq -r '.[] | select(.name=="dgbn-video-pipeline") | .id' <<<"$endpoints" | head -1)
+          if [[ -n "$endpoint_id" && "$endpoint_id" != "null" ]]; then
+            curl -fsS -X POST -H "$AUTH" -H 'Content-Type: application/json' \
+              -d '{"workersMin":0,"workersMax":0}' \
+              "https://rest.runpod.io/v1/endpoints/$endpoint_id/update" >/dev/null
+          fi
+          echo 'DGBN smoke cleanup complete.'
