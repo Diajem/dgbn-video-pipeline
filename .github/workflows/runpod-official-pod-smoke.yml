@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 9
     env:
-      RUNPOD_API_KEY: ${{ secrets.RUNPOD_API_KEY }}
+      RUNPOD_API_KEY_RAW: ${{ secrets.RUNPOD_API_KEY }}
       POD_NAME: dgbn-official-pytorch-smoke
     steps:
       - uses: actions/checkout@v4
@@ -23,8 +23,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test -n "$RUNPOD_API_KEY"
-          AUTH="Authorization: Bearer $RUNPOD_API_KEY"
+          key=$(python - <<'PY'
+          import os
+          raw = os.environ.get('RUNPOD_API_KEY_RAW', '')
+          print(raw.strip().strip('“”‘’\"\'`'))
+          PY
+          )
+          test -n "$key"
+          echo "::add-mask::$key"
+          AUTH="Authorization: Bearer $key"
           endpoints=$(curl -fsS -H "$AUTH" https://rest.runpod.io/v1/endpoints)
           endpoint_id=$(jq -r '.[] | select(.name=="dgbn-video-pipeline") | .id' <<<"$endpoints" | head -1)
           if [[ -z "$endpoint_id" || "$endpoint_id" == "null" ]]; then
@@ -41,9 +48,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          AUTH="Authorization: Bearer $RUNPOD_API_KEY"
+          key=$(python - <<'PY'
+          import os
+          raw = os.environ.get('RUNPOD_API_KEY_RAW', '')
+          print(raw.strip().strip('“”‘’\"\'`'))
+          PY
+          )
+          echo "::add-mask::$key"
+          AUTH="Authorization: Bearer $key"
 
-          # Safety: remove only a stale Pod with this exact DGBN smoke-test name.
           pods=$(curl -fsS -H "$AUTH" https://rest.runpod.io/v1/pods)
           while IFS= read -r stale_id; do
             [[ -z "$stale_id" ]] && continue
@@ -119,7 +132,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          AUTH="Authorization: Bearer $RUNPOD_API_KEY"
+          key=$(python - <<'PY'
+          import os
+          raw = os.environ.get('RUNPOD_API_KEY_RAW', '')
+          print(raw.strip().strip('“”‘’\"\'`'))
+          PY
+          )
+          echo "::add-mask::$key"
+          AUTH="Authorization: Bearer $key"
           pod_id='${{ steps.create.outputs.pod_id }}'
           url="https://${pod_id}-8000.proxy.runpod.net/diagnostics.txt"
 
@@ -144,7 +164,15 @@ jobs:
         shell: bash
         run: |
           set +e
-          AUTH="Authorization: Bearer $RUNPOD_API_KEY"
+          key=$(python - <<'PY'
+          import os
+          raw = os.environ.get('RUNPOD_API_KEY_RAW', '')
+          print(raw.strip().strip('“”‘’\"\'`'))
+          PY
+          )
+          [[ -z "$key" ]] && exit 0
+          echo "::add-mask::$key"
+          AUTH="Authorization: Bearer $key"
           pods=$(curl -fsS -H "$AUTH" https://rest.runpod.io/v1/pods)
           while IFS= read -r pod_id; do
             [[ -z "$pod_id" ]] && continue
