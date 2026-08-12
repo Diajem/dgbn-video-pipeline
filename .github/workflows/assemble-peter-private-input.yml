@@ -1,0 +1,55 @@
+name: Assemble encrypted Peter benchmark input
+
+on:
+  push:
+    paths:
+      - '.runpod/private-transfer/peter-chunks.ready'
+
+permissions:
+  contents: write
+
+jobs:
+  assemble:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Reassemble and verify encrypted payload
+        shell: bash
+        run: |
+          set -euo pipefail
+          out='.runpod/private-transfer/peter-benchmark.enc.b64'
+          : > "$out"
+          for i in 00 01 02 03 04 05 06 07 08; do
+            f=".runpod/private-transfer/peter-benchmark.part${i}"
+            test -s "$f"
+            tr -d '\r\n' < "$f" >> "$out"
+          done
+
+          length=$(wc -c < "$out" | tr -d ' ')
+          digest=$(sha256sum "$out" | awk '{print $1}')
+          echo "Encrypted payload length: $length"
+          echo "Encrypted payload SHA256: $digest"
+
+          test "$length" = '25520'
+          test "$digest" = '6ebabc8d2b7e7cb6f9011cf6a776b4ebfb027c850ca4a31c6ce94611b5fa6bae'
+          base64 -d "$out" >/tmp/peter-envelope.bin
+          test "$(head -c 8 /tmp/peter-envelope.bin)" = 'DGBNPTR1'
+          echo 'Encrypted Peter payload verified exactly.'
+
+      - name: Commit verified encrypted envelope
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'DGBN Automation'
+          git config user.email 'actions@users.noreply.github.com'
+          git add .runpod/private-transfer/peter-benchmark.enc.b64
+          if git diff --cached --quiet; then
+            echo 'Verified envelope already committed.'
+            exit 0
+          fi
+          git commit -m 'Assemble verified encrypted Peter benchmark input'
+          git push origin HEAD:main
