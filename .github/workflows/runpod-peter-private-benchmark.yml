@@ -1,6 +1,7 @@
 name: DGBN Peter private MuseTalk benchmark
 
 on:
+  workflow_dispatch:
   push:
     paths:
       - '.runpod/private-transfer/peter-benchmark.enc.b64'
