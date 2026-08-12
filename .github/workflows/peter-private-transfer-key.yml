@@ -1,0 +1,34 @@
+name: Generate Peter private-transfer public key
+
+on:
+  push:
+    paths:
+      - '.github/workflows/peter-private-transfer-key.yml'
+      - '.runpod/peter-transfer-key.json'
+
+permissions:
+  contents: read
+
+jobs:
+  key:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    env:
+      RUNPOD_API_KEY_RAW: ${{ secrets.RUNPOD_API_KEY }}
+    steps:
+      - name: Derive transfer public key
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import os, hashlib, base64
+          from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
+          from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
+          raw = os.environ.get('RUNPOD_API_KEY_RAW','').strip().strip('“”‘’\"\'`')
+          if not raw:
+              raise SystemExit('RUNPOD_API_KEY missing')
+          seed = hashlib.sha256(b'DGBN-PETER-PRIVATE-TRANSFER-V1\0' + raw.encode()).digest()
+          priv = X25519PrivateKey.from_private_bytes(seed)
+          pub = priv.public_key().public_bytes(Encoding.Raw, PublicFormat.Raw)
+          print('PETER_TRANSFER_PUBLIC_KEY_B64=' + base64.b64encode(pub).decode())
+          PY
