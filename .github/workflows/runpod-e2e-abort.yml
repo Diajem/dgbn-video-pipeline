@@ -1,0 +1,51 @@
+name: Abort stuck DGBN MuseTalk E2E test
+
+on:
+  push:
+    paths:
+      - '.github/workflows/runpod-e2e-abort.yml'
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  abort:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    env:
+      RUNPOD_API_KEY_RAW: ${{ secrets.RUNPOD_API_KEY }}
+      TARGET_RUN_ID: '31649995432'
+    steps:
+      - name: Delete exact stuck DGBN Pod
+        shell: bash
+        run: |
+          set -euo pipefail
+          key=$(python - <<'PY'
+          import os
+          raw=os.environ.get('RUNPOD_API_KEY_RAW','')
+          print(raw.strip().strip('“”‘’\"\'`'))
+          PY
+          )
+          echo "::add-mask::$key"
+          AUTH="Authorization: Bearer $key"
+          pods=$(curl -fsS -H "$AUTH" https://rest.runpod.io/v1/pods)
+          while IFS= read -r pod_id; do
+            [[ -z "$pod_id" ]] && continue
+            echo "Deleting stuck DGBN MuseTalk Pod: $pod_id"
+            curl -fsS -X DELETE -H "$AUTH" "https://rest.runpod.io/v1/pods/$pod_id" >/dev/null
+          done < <(jq -r '.[] | select(.name=="dgbn-musetalk-e2e-smoke") | .id' <<<"$pods")
+          echo 'Exact DGBN Pod cleanup complete.'
+
+      - name: Cancel old waiting GitHub run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set +e
+          curl -fsS -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/runs/${TARGET_RUN_ID}/cancel"
+          echo 'Old E2E wait cancellation requested.'
