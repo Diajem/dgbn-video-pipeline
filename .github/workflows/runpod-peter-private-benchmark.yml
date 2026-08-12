@@ -1,0 +1,363 @@
+name: DGBN Peter private MuseTalk benchmark
+
+on:
+  push:
+    paths:
+      - '.runpod/private-transfer/peter-benchmark.enc.b64'
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 24
+    env:
+      RUNPOD_API_KEY_RAW: ${{ secrets.RUNPOD_API_KEY }}
+      POD_NAME: dgbn-peter-musetalk-benchmark
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Decrypt Peter benchmark inputs in runner memory
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/peter-private
+          python - <<'PY'
+          import os, hashlib, base64, zipfile
+          from pathlib import Path
+          from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey, X25519PublicKey
+          from cryptography.hazmat.primitives.kdf.hkdf import HKDF
+          from cryptography.hazmat.primitives import hashes
+          from cryptography.hazmat.primitives.ciphers.aead import ChaCha20Poly1305
+
+          raw = os.environ.get('RUNPOD_API_KEY_RAW','').strip().strip('“”‘’\"\'`')
+          if not raw:
+              raise SystemExit('RUNPOD_API_KEY missing')
+          seed = hashlib.sha256(b'DGBN-PETER-PRIVATE-TRANSFER-V1\0' + raw.encode()).digest()
+          priv = X25519PrivateKey.from_private_bytes(seed)
+          payload = base64.b64decode(Path('.runpod/private-transfer/peter-benchmark.enc.b64').read_text().strip())
+          if payload[:8] != b'DGBNPTR1':
+              raise SystemExit('Invalid encrypted benchmark payload')
+          eph_pub = X25519PublicKey.from_public_bytes(payload[8:40])
+          nonce = payload[40:52]
+          ciphertext = payload[52:]
+          shared = priv.exchange(eph_pub)
+          key = HKDF(algorithm=hashes.SHA256(), length=32, salt=None, info=b'DGBN-PETER-PRIVATE-TRANSFER-V1').derive(shared)
+          plain = ChaCha20Poly1305(key).decrypt(nonce, ciphertext, b'DGBN-PETER-BENCHMARK')
+          zip_path = Path('/tmp/peter-private/input.zip')
+          zip_path.write_bytes(plain)
+          with zipfile.ZipFile(zip_path) as z:
+              allowed={'peter.jpg','peter.mp3'}
+              names=set(z.namelist())
+              if names != allowed:
+                  raise SystemExit(f'Unexpected private payload files: {names}')
+              z.extractall('/tmp/peter-private')
+          for name in ('peter.jpg','peter.mp3'):
+              p=Path('/tmp/peter-private')/name
+              if not p.exists() or p.stat().st_size < 1000:
+                  raise SystemExit(f'Invalid {name}')
+          print('Private Peter benchmark payload decrypted successfully; media contents are not logged.')
+          PY
+
+      - name: Create private-transfer MuseTalk Pod
+        id: create
+        shell: bash
+        run: |
+          set -euo pipefail
+          key=$(python - <<'PY'
+          import os
+          print(os.environ.get('RUNPOD_API_KEY_RAW','').strip().strip('“”‘’\"\'`'))
+          PY
+          )
+          test -n "$key"
+          echo "::add-mask::$key"
+          AUTH="Authorization: Bearer $key"
+
+          endpoints=$(curl -fsS -H "$AUTH" https://rest.runpod.io/v1/endpoints)
+          endpoint_id=$(jq -r '.[] | select(.name=="dgbn-video-pipeline") | .id' <<<"$endpoints" | head -1)
+          if [[ -n "$endpoint_id" && "$endpoint_id" != "null" ]]; then
+            curl -fsS -X POST -H "$AUTH" -H 'Content-Type: application/json' \
+              -d '{"workersMin":0,"workersMax":0}' \
+              "https://rest.runpod.io/v1/endpoints/$endpoint_id/update" >/dev/null
+          fi
+
+          pods=$(curl -fsS -H "$AUTH" https://rest.runpod.io/v1/pods)
+          while IFS= read -r stale_id; do
+            [[ -z "$stale_id" ]] && continue
+            echo "Removing stale DGBN Peter benchmark Pod: $stale_id"
+            curl -fsS -X DELETE -H "$AUTH" "https://rest.runpod.io/v1/pods/$stale_id" >/dev/null || true
+          done < <(jq -r '.[] | select(.name=="dgbn-peter-musetalk-benchmark") | .id' <<<"$pods")
+
+          SERVER_CMD=$(cat <<'CMD'
+          set -e
+          mkdir -p /tmp/dgbn/input
+          cat > /tmp/dgbn/server.py <<'PY'
+          from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
+          from pathlib import Path
+          import subprocess, threading, mimetypes
+
+          ROOT=Path('/tmp/dgbn')
+          INPUT=ROOT/'input'
+          INPUT.mkdir(parents=True, exist_ok=True)
+          allowed_uploads={'/upload/peter.jpg':'peter.jpg','/upload/peter.mp3':'peter.mp3'}
+          allowed_get={'/status.txt':'status.txt','/bootstrap.log':'bootstrap.log','/result.mp4':'result.mp4'}
+          run_lock=threading.Lock()
+          started=False
+
+          class H(BaseHTTPRequestHandler):
+              def send_bytes(self, code, data, ctype='text/plain'):
+                  self.send_response(code)
+                  self.send_header('Content-Type', ctype)
+                  self.send_header('Content-Length', str(len(data)))
+                  self.end_headers()
+                  self.wfile.write(data)
+              def do_GET(self):
+                  if self.path == '/health':
+                      return self.send_bytes(200,b'OK')
+                  if self.path in allowed_get:
+                      p=ROOT/allowed_get[self.path]
+                      if not p.exists():
+                          return self.send_bytes(404,b'pending')
+                      data=p.read_bytes()
+                      ctype='video/mp4' if p.suffix=='.mp4' else 'text/plain'
+                      return self.send_bytes(200,data,ctype)
+                  self.send_bytes(404,b'not found')
+              def do_PUT(self):
+                  if self.path not in allowed_uploads:
+                      return self.send_bytes(404,b'not found')
+                  n=int(self.headers.get('Content-Length','0'))
+                  if n <= 0 or n > 5_000_000:
+                      return self.send_bytes(400,b'invalid length')
+                  data=self.rfile.read(n)
+                  p=INPUT/allowed_uploads[self.path]
+                  p.write_bytes(data)
+                  return self.send_bytes(200,b'uploaded')
+              def do_POST(self):
+                  global started
+                  if self.path != '/run':
+                      return self.send_bytes(404,b'not found')
+                  with run_lock:
+                      if started:
+                          return self.send_bytes(409,b'already started')
+                      if not (INPUT/'peter.jpg').exists() or not (INPUT/'peter.mp3').exists():
+                          return self.send_bytes(400,b'inputs missing')
+                      started=True
+                      log=open(ROOT/'bootstrap.log','ab', buffering=0)
+                      subprocess.Popen(['bash','/tmp/dgbn/run.sh'], stdout=log, stderr=subprocess.STDOUT)
+                  return self.send_bytes(202,b'started')
+              def log_message(self, fmt, *args):
+                  pass
+
+          ThreadingHTTPServer(('0.0.0.0',8000),H).serve_forever()
+          PY
+
+          cat > /tmp/dgbn/run.sh <<'SH'
+          #!/usr/bin/env bash
+          set -euxo pipefail
+          fail() { rc=$?; echo "FAIL:$rc" > /tmp/dgbn/status.txt; exit $rc; }
+          trap fail ERR
+          export DEBIAN_FRONTEND=noninteractive
+          export PYTHONUNBUFFERED=1
+
+          echo '=== PETER 12S MUSETALK BENCHMARK START ==='
+          date -u
+          nvidia-smi
+
+          apt-get update
+          apt-get install -y --no-install-recommends git ffmpeg curl ca-certificates build-essential libsndfile1 libgl1 libglib2.0-0
+          rm -rf /var/lib/apt/lists/*
+
+          python -m pip install --upgrade 'pip<25' 'setuptools<70' 'wheel<0.44'
+          python -m pip install --no-cache-dir torch==2.0.1 torchvision==0.15.2 torchaudio==2.0.2 --index-url https://download.pytorch.org/whl/cu118
+
+          rm -rf /opt/MuseTalk /opt/dgbn-pipeline
+          git clone --depth 1 https://github.com/TMElyralab/MuseTalk.git /opt/MuseTalk
+          git clone --depth 1 https://github.com/Diajem/dgbn-video-pipeline.git /opt/dgbn-pipeline
+
+          python -m pip install --no-cache-dir -r /opt/dgbn-pipeline/runpod/requirements-worker.txt
+          python -m pip install --no-cache-dir --no-deps mmengine==0.10.7
+          python -m pip install --no-cache-dir addict termcolor 'yapf<0.41' 'matplotlib<3.8'
+          python -m pip install --no-cache-dir --no-deps mmcv==2.0.1 -f https://download.openmmlab.com/mmcv/dist/cu118/torch2.0/index.html
+          python -m pip install --no-cache-dir --no-build-isolation chumpy==0.70
+          python -m pip install --no-cache-dir json-tricks munkres xtcocotools pycocotools shapely terminaltables
+          python -m pip install --no-cache-dir --no-deps mmdet==3.1.0 mmpose==1.1.0
+          python -m pip uninstall -y opencv-python || true
+          python -m pip install --no-cache-dir --force-reinstall --no-deps numpy==1.23.5 opencv-python-headless==4.9.0.80
+
+          cd /opt/MuseTalk
+          bash /opt/dgbn-pipeline/runpod/download_models.sh
+          huggingface-cli download TMElyralab/MuseTalk --local-dir models --include 'musetalkV15/musetalk.json' 'musetalkV15/unet.pth'
+
+          ffmpeg -y -loop 1 -framerate 25 -i /tmp/dgbn/input/peter.jpg -t 12 -vf 'scale=640:-2,format=yuv420p' -r 25 -c:v libx264 -preset ultrafast -crf 18 -an /tmp/dgbn/input/source.mp4
+          ffmpeg -y -i /tmp/dgbn/input/peter.mp3 -t 12 -ac 1 -ar 16000 /tmp/dgbn/input/audio.wav
+
+          cat > /tmp/dgbn/inference.yaml <<'YAML'
+          task_0:
+            video_path: "/tmp/dgbn/input/source.mp4"
+            audio_path: "/tmp/dgbn/input/audio.wav"
+            bbox_shift: 0
+          YAML
+
+          python - <<'PY'
+          import torch, cv2, numpy
+          print('RUNTIME', torch.__version__, torch.version.cuda, torch.cuda.is_available(), torch.cuda.get_device_name(0))
+          print('VERSIONS', cv2.__version__, numpy.__version__)
+          assert torch.__version__.startswith('2.0.1')
+          assert torch.version.cuda == '11.8'
+          assert torch.cuda.is_available()
+          PY
+
+          python -m scripts.inference \
+            --inference_config /tmp/dgbn/inference.yaml \
+            --result_dir /tmp/dgbn/results \
+            --unet_model_path models/musetalkV15/unet.pth \
+            --unet_config models/musetalkV15/musetalk.json \
+            --version v15
+
+          result=$(find /tmp/dgbn/results -type f -name '*.mp4' | head -1)
+          test -n "$result"
+          cp "$result" /tmp/dgbn/result.mp4
+          ffprobe -v error -show_entries format=duration,size -of default=nw=1 /tmp/dgbn/result.mp4
+          echo PASS > /tmp/dgbn/status.txt
+          echo '=== PETER 12S MUSETALK BENCHMARK PASS ==='
+          trap - ERR
+          SH
+          chmod +x /tmp/dgbn/run.sh
+          exec python /tmp/dgbn/server.py
+          CMD
+          )
+
+          payload=$(jq -n --arg name "$POD_NAME" --arg cmd "$SERVER_CMD" '{
+            name:$name,
+            imageName:"runpod/pytorch:2.1.0-py3.10-cuda11.8.0-devel-ubuntu22.04",
+            cloudType:"SECURE",
+            computeType:"GPU",
+            gpuCount:1,
+            gpuTypeIds:["NVIDIA GeForce RTX 4090","NVIDIA RTX A5000","NVIDIA RTX A4500","NVIDIA RTX A4000","NVIDIA L4","NVIDIA GeForce RTX 3090","NVIDIA A40","NVIDIA RTX A6000","NVIDIA RTX 4000 Ada Generation"],
+            gpuTypePriority:"availability",
+            allowedCudaVersions:["11.8","12.0","12.1","12.2","12.3","12.4","12.5","12.6","12.7","12.8","12.9"],
+            dataCenterPriority:"availability",
+            containerDiskInGb:45,
+            volumeInGb:0,
+            ports:["8000/http"],
+            supportPublicIp:true,
+            interruptible:false,
+            locked:false,
+            dockerEntrypoint:["/bin/bash","-lc"],
+            dockerStartCmd:[$cmd]
+          }')
+
+          response=$(curl -fsS -X POST -H "$AUTH" -H 'Content-Type: application/json' -d "$payload" https://rest.runpod.io/v1/pods)
+          pod_id=$(jq -r '.id' <<<"$response")
+          test -n "$pod_id" && test "$pod_id" != null
+          echo "pod_id=$pod_id" >> "$GITHUB_OUTPUT"
+          echo "Created Peter benchmark Pod: $pod_id"
+          jq '{id,name,desiredStatus,costPerHr,adjustedCostPerHr,dataCenter:(.machine.dataCenterId // null)}' <<<"$response"
+
+      - name: Upload private inputs directly to Pod and run MuseTalk
+        id: run
+        shell: bash
+        run: |
+          set -euo pipefail
+          pod_id='${{ steps.create.outputs.pod_id }}'
+          base="https://${pod_id}-8000.proxy.runpod.net"
+
+          ready=0
+          for i in $(seq 1 18); do
+            if curl -fsS --max-time 8 "$base/health" >/dev/null 2>&1; then
+              ready=1
+              break
+            fi
+            sleep 10
+          done
+          if [[ "$ready" != 1 ]]; then
+            echo 'Peter benchmark Pod did not expose upload service within 3 minutes.' >&2
+            exit 1
+          fi
+
+          curl -fsS --max-time 60 -X PUT --data-binary @/tmp/peter-private/peter.jpg "$base/upload/peter.jpg"
+          curl -fsS --max-time 60 -X PUT --data-binary @/tmp/peter-private/peter.mp3 "$base/upload/peter.mp3"
+          curl -fsS --max-time 30 -X POST "$base/run"
+          echo 'Private media uploaded directly to Pod; benchmark started.'
+
+          for i in $(seq 1 108); do
+            if (( i % 6 == 1 )); then
+              echo "--- Peter benchmark progress $(date -u +%H:%M:%S) ---"
+              curl -fsS --max-time 15 "$base/bootstrap.log" -o /tmp/peter-bootstrap.log 2>/dev/null || true
+              tail -n 35 /tmp/peter-bootstrap.log 2>/dev/null || true
+            fi
+            if status=$(curl -fsS --max-time 8 "$base/status.txt" 2>/dev/null); then
+              echo "Peter benchmark status: $status"
+              curl -fsS --max-time 15 "$base/bootstrap.log" -o /tmp/peter-bootstrap.log || true
+              tail -n 120 /tmp/peter-bootstrap.log || true
+              if [[ "$status" == PASS ]]; then
+                curl -fsS --max-time 120 "$base/result.mp4" -o /tmp/peter-result.mp4
+                test -s /tmp/peter-result.mp4
+                ffprobe -v error -show_entries format=duration,size -of default=nw=1 /tmp/peter-result.mp4
+                exit 0
+              fi
+              exit 1
+            fi
+            sleep 10
+          done
+          echo 'Peter benchmark exceeded 18 minutes.' >&2
+          exit 1
+
+      - name: Encrypt Peter result before artifact upload
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import os, base64
+          from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey, X25519PublicKey
+          from cryptography.hazmat.primitives.kdf.hkdf import HKDF
+          from cryptography.hazmat.primitives import hashes
+          from cryptography.hazmat.primitives.ciphers.aead import ChaCha20Poly1305
+          from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
+
+          pub_b64=Path('.runpod/private-transfer/peter-return-public.b64').read_text().strip()
+          recipient=X25519PublicKey.from_public_bytes(base64.b64decode(pub_b64))
+          eph=X25519PrivateKey.generate()
+          eph_pub=eph.public_key().public_bytes(Encoding.Raw, PublicFormat.Raw)
+          shared=eph.exchange(recipient)
+          key=HKDF(algorithm=hashes.SHA256(), length=32, salt=None, info=b'DGBN-PETER-RESULT-RETURN-V1').derive(shared)
+          nonce=os.urandom(12)
+          plain=Path('/tmp/peter-result.mp4').read_bytes()
+          ct=ChaCha20Poly1305(key).encrypt(nonce, plain, b'DGBN-PETER-RESULT')
+          payload=b'DGBNRES1'+eph_pub+nonce+ct
+          Path('peter-result.enc').write_bytes(payload)
+          print('Encrypted Peter result prepared for return; plaintext result is not uploaded as an artifact.')
+          PY
+
+      - name: Upload encrypted Peter result only
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: peter-musetalk-12s-encrypted
+          path: peter-result.enc
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Delete only the Peter benchmark Pod
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          key=$(python - <<'PY'
+          import os
+          print(os.environ.get('RUNPOD_API_KEY_RAW','').strip().strip('“”‘’\"\'`'))
+          PY
+          )
+          [[ -z "$key" ]] && exit 0
+          echo "::add-mask::$key"
+          AUTH="Authorization: Bearer $key"
+          pods=$(curl -fsS -H "$AUTH" https://rest.runpod.io/v1/pods)
+          while IFS= read -r pod_id; do
+            [[ -z "$pod_id" ]] && continue
+            echo "Deleting Peter benchmark Pod: $pod_id"
+            curl -fsS -X DELETE -H "$AUTH" "https://rest.runpod.io/v1/pods/$pod_id" >/dev/null
+          done < <(jq -r '.[] | select(.name=="dgbn-peter-musetalk-benchmark") | .id' <<<"$pods")
+          echo 'Peter benchmark Pod cleanup complete.'
