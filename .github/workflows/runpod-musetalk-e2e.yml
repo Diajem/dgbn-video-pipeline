@@ -12,7 +12,7 @@ permissions:
 jobs:
   e2e:
     runs-on: ubuntu-24.04
-    timeout-minutes: 28
+    timeout-minutes: 22
     env:
       RUNPOD_API_KEY_RAW: ${{ secrets.RUNPOD_API_KEY }}
       POD_NAME: dgbn-musetalk-e2e-smoke
@@ -34,7 +34,6 @@ jobs:
           echo "::add-mask::$key"
           AUTH="Authorization: Bearer $key"
 
-          # Keep Serverless disabled while we use the normal Pod path.
           endpoints=$(curl -fsS -H "$AUTH" https://rest.runpod.io/v1/endpoints)
           endpoint_id=$(jq -r '.[] | select(.name=="dgbn-video-pipeline") | .id' <<<"$endpoints" | head -1)
           if [[ -n "$endpoint_id" && "$endpoint_id" != "null" ]]; then
@@ -43,7 +42,6 @@ jobs:
               "https://rest.runpod.io/v1/endpoints/$endpoint_id/update" >/dev/null
           fi
 
-          # Safety: delete only an old Pod with the exact DGBN E2E test name.
           pods=$(curl -fsS -H "$AUTH" https://rest.runpod.io/v1/pods)
           while IFS= read -r stale_id; do
             [[ -z "$stale_id" ]] && continue
@@ -53,16 +51,24 @@ jobs:
 
           BOOTSTRAP=$(cat <<'CMD'
           mkdir -p /tmp/dgbn
+          : > /tmp/dgbn/bootstrap.log
           (
             set -euxo pipefail
             export DEBIAN_FRONTEND=noninteractive
             export PYTHONUNBUFFERED=1
+
+            echo '=== DGBN MUSETALK BOOTSTRAP START ==='
+            date -u
+            nvidia-smi
 
             apt-get update
             apt-get install -y --no-install-recommends git ffmpeg curl ca-certificates build-essential libsndfile1 libgl1 libglib2.0-0
             rm -rf /var/lib/apt/lists/*
 
             python -m pip install --upgrade 'pip<25' 'setuptools<70' 'wheel<0.44'
+            python -m pip install --no-cache-dir \
+              torch==2.0.1 torchvision==0.15.2 torchaudio==2.0.2 \
+              --index-url https://download.pytorch.org/whl/cu118
 
             rm -rf /opt/MuseTalk /opt/dgbn-pipeline
             git clone --depth 1 https://github.com/TMElyralab/MuseTalk.git /opt/MuseTalk
@@ -71,7 +77,8 @@ jobs:
             python -m pip install --no-cache-dir -r /opt/dgbn-pipeline/runpod/requirements-worker.txt
             python -m pip install --no-cache-dir --no-deps mmengine==0.10.7
             python -m pip install --no-cache-dir addict termcolor 'yapf<0.41' 'matplotlib<3.8'
-            python -m pip install --no-cache-dir --no-deps mmcv==2.0.1 -f https://download.openmmlab.com/mmcv/dist/cu118/torch2.0/index.html
+            python -m pip install --no-cache-dir --no-deps mmcv==2.0.1 \
+              -f https://download.openmmlab.com/mmcv/dist/cu118/torch2.0/index.html
             python -m pip install --no-cache-dir --no-build-isolation chumpy==0.70
             python -m pip install --no-cache-dir json-tricks munkres xtcocotools pycocotools shapely terminaltables
             python -m pip install --no-cache-dir --no-deps mmdet==3.1.0 mmpose==1.1.0
@@ -80,7 +87,9 @@ jobs:
 
             cd /opt/MuseTalk
             bash /opt/dgbn-pipeline/runpod/download_models.sh
-            huggingface-cli download TMElyralab/MuseTalk --local-dir models --include 'musetalkV15/musetalk.json' 'musetalkV15/unet.pth'
+            huggingface-cli download TMElyralab/MuseTalk \
+              --local-dir models \
+              --include 'musetalkV15/musetalk.json' 'musetalkV15/unet.pth'
 
             mkdir -p /tmp/dgbn/input /tmp/dgbn/results
             ffmpeg -y -i data/video/yongen.mp4 -t 3 -vf fps=25 -an /tmp/dgbn/input/source.mp4
@@ -97,6 +106,9 @@ jobs:
           import torch, cv2, numpy
           print('RUNTIME', torch.__version__, torch.version.cuda, torch.cuda.is_available(), torch.cuda.get_device_name(0))
           print('VERSIONS', cv2.__version__, numpy.__version__)
+          assert torch.__version__.startswith('2.0.1')
+          assert torch.version.cuda == '11.8'
+          assert torch.cuda.is_available()
           PY
 
             python -m scripts.inference \
@@ -111,10 +123,12 @@ jobs:
             cp "$result" /tmp/dgbn/result.mp4
             ffprobe -v error -show_entries format=duration,size -of default=nw=1 /tmp/dgbn/result.mp4
             echo PASS > /tmp/dgbn/status.txt
-          ) > /tmp/dgbn/bootstrap.log 2>&1 || {
+            echo '=== DGBN MUSETALK E2E PASS ==='
+          ) >> /tmp/dgbn/bootstrap.log 2>&1 || {
             rc=$?
             echo "FAIL:$rc" > /tmp/dgbn/status.txt
-          }
+            echo "=== DGBN MUSETALK E2E FAIL:$rc ===" >> /tmp/dgbn/bootstrap.log
+          } &
           exec python -m http.server 8000 --bind 0.0.0.0 --directory /tmp/dgbn
           CMD
           )
@@ -124,7 +138,7 @@ jobs:
             --arg cmd "$BOOTSTRAP" \
             '{
               name:$name,
-              imageName:"runpod/pytorch:2.0.1-py3.10-cuda11.8.0-devel-ubuntu22.04",
+              imageName:"runpod/pytorch:2.1.0-py3.10-cuda11.8.0-devel-ubuntu22.04",
               cloudType:"SECURE",
               computeType:"GPU",
               gpuCount:1,
@@ -160,7 +174,6 @@ jobs:
           jq '{id,name,desiredStatus,costPerHr,adjustedCostPerHr,dataCenter:(.machine.dataCenterId // null)}' <<<"$response"
 
       - name: Wait for MuseTalk render
-        id: wait
         shell: bash
         run: |
           set -euo pipefail
@@ -175,16 +188,32 @@ jobs:
           pod_id='${{ steps.create.outputs.pod_id }}'
           base="https://${pod_id}-8000.proxy.runpod.net"
 
-          for i in $(seq 1 120); do
+          echo 'Waiting up to 2 minutes for the known-good base container to expose its log...'
+          reachable=0
+          for i in $(seq 1 12); do
+            if curl -fsS --max-time 8 "$base/bootstrap.log" -o /tmp/bootstrap.log 2>/dev/null; then
+              reachable=1
+              echo 'Container is reachable; MuseTalk bootstrap is running.'
+              break
+            fi
+            sleep 10
+          done
+          if [[ "$reachable" != 1 ]]; then
+            echo 'Base container did not become reachable within 2 minutes.' >&2
+            exit 1
+          fi
+
+          for i in $(seq 1 90); do
             if (( i % 6 == 1 )); then
-              pods=$(curl -fsS -H "$AUTH" https://rest.runpod.io/v1/pods)
-              jq --arg id "$pod_id" '.[] | select(.id==$id) | {id,name,desiredStatus,costPerHr,gpu:(.gpu.displayName // .machine.gpuDisplayName // null),dataCenter:(.machine.dataCenterId // null),publicIp,portMappings,lastStatusChange}' <<<"$pods" || true
+              echo "--- bootstrap progress $(date -u +%H:%M:%S) ---"
+              curl -fsS --max-time 15 "$base/bootstrap.log" -o /tmp/bootstrap.log || true
+              tail -n 40 /tmp/bootstrap.log || true
             fi
 
             if status=$(curl -fsS --max-time 8 "$base/status.txt" 2>/dev/null); then
               echo "MuseTalk status: $status"
               curl -fsS --max-time 15 "$base/bootstrap.log" -o /tmp/bootstrap.log || true
-              tail -n 160 /tmp/bootstrap.log || true
+              tail -n 180 /tmp/bootstrap.log || true
               if [[ "$status" == PASS ]]; then
                 curl -fsS --max-time 60 "$base/result.mp4" -o musetalk-e2e-sample.mp4
                 test -s musetalk-e2e-sample.mp4
@@ -197,7 +226,7 @@ jobs:
             sleep 10
           done
 
-          echo 'MuseTalk E2E test exceeded 20 minutes.' >&2
+          echo 'MuseTalk E2E bootstrap/render exceeded 15 minutes.' >&2
           curl -fsS --max-time 15 "$base/bootstrap.log" -o /tmp/bootstrap.log || true
           tail -n 200 /tmp/bootstrap.log || true
           exit 1
