@@ -1,0 +1,58 @@
+name: Enable and dispatch verified Peter benchmark
+
+on:
+  push:
+    paths:
+      - '.runpod/private-transfer/dispatch-peter.ready'
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Enable workflow_dispatch on Peter benchmark
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('.github/workflows/runpod-peter-private-benchmark.yml')
+          s=p.read_text()
+          if '  workflow_dispatch:' not in s:
+              needle='on:\n  push:\n'
+              if needle not in s:
+                  raise SystemExit('Could not locate workflow on/push block')
+              s=s.replace(needle, 'on:\n  workflow_dispatch:\n  push:\n', 1)
+              p.write_text(s)
+          PY
+          git config user.name 'DGBN Automation'
+          git config user.email 'actions@users.noreply.github.com'
+          git add .github/workflows/runpod-peter-private-benchmark.yml
+          if ! git diff --cached --quiet; then
+            git commit -m 'Enable dispatch for verified Peter benchmark'
+            git push origin HEAD:main
+          fi
+
+      - name: Dispatch verified Peter benchmark
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          sleep 3
+          curl -fsS -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            -H 'Content-Type: application/json' \
+            -d '{"ref":"main"}' \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/runpod-peter-private-benchmark.yml/dispatches"
+          echo 'Verified Peter benchmark dispatched.'
