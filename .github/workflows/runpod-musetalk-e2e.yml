@@ -1,0 +1,234 @@
+name: DGBN MuseTalk end-to-end Pod test
+
+on:
+  push:
+    paths:
+      - '.github/workflows/runpod-musetalk-e2e.yml'
+      - '.runpod/musetalk-e2e.json'
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 28
+    env:
+      RUNPOD_API_KEY_RAW: ${{ secrets.RUNPOD_API_KEY }}
+      POD_NAME: dgbn-musetalk-e2e-smoke
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create MuseTalk test Pod
+        id: create
+        shell: bash
+        run: |
+          set -euo pipefail
+          key=$(python - <<'PY'
+          import os
+          raw = os.environ.get('RUNPOD_API_KEY_RAW', '')
+          print(raw.strip().strip('“”‘’\"\'`'))
+          PY
+          )
+          test -n "$key"
+          echo "::add-mask::$key"
+          AUTH="Authorization: Bearer $key"
+
+          # Keep Serverless disabled while we use the normal Pod path.
+          endpoints=$(curl -fsS -H "$AUTH" https://rest.runpod.io/v1/endpoints)
+          endpoint_id=$(jq -r '.[] | select(.name=="dgbn-video-pipeline") | .id' <<<"$endpoints" | head -1)
+          if [[ -n "$endpoint_id" && "$endpoint_id" != "null" ]]; then
+            curl -fsS -X POST -H "$AUTH" -H 'Content-Type: application/json' \
+              -d '{"workersMin":0,"workersMax":0}' \
+              "https://rest.runpod.io/v1/endpoints/$endpoint_id/update" >/dev/null
+          fi
+
+          # Safety: delete only an old Pod with the exact DGBN E2E test name.
+          pods=$(curl -fsS -H "$AUTH" https://rest.runpod.io/v1/pods)
+          while IFS= read -r stale_id; do
+            [[ -z "$stale_id" ]] && continue
+            echo "Removing stale DGBN E2E Pod: $stale_id"
+            curl -fsS -X DELETE -H "$AUTH" "https://rest.runpod.io/v1/pods/$stale_id" >/dev/null || true
+          done < <(jq -r '.[] | select(.name=="dgbn-musetalk-e2e-smoke") | .id' <<<"$pods")
+
+          BOOTSTRAP=$(cat <<'CMD'
+          mkdir -p /tmp/dgbn
+          (
+            set -euxo pipefail
+            export DEBIAN_FRONTEND=noninteractive
+            export PYTHONUNBUFFERED=1
+
+            apt-get update
+            apt-get install -y --no-install-recommends git ffmpeg curl ca-certificates build-essential libsndfile1 libgl1 libglib2.0-0
+            rm -rf /var/lib/apt/lists/*
+
+            python -m pip install --upgrade 'pip<25' 'setuptools<70' 'wheel<0.44'
+
+            rm -rf /opt/MuseTalk /opt/dgbn-pipeline
+            git clone --depth 1 https://github.com/TMElyralab/MuseTalk.git /opt/MuseTalk
+            git clone --depth 1 https://github.com/Diajem/dgbn-video-pipeline.git /opt/dgbn-pipeline
+
+            python -m pip install --no-cache-dir -r /opt/dgbn-pipeline/runpod/requirements-worker.txt
+            python -m pip install --no-cache-dir --no-deps mmengine==0.10.7
+            python -m pip install --no-cache-dir addict termcolor 'yapf<0.41' 'matplotlib<3.8'
+            python -m pip install --no-cache-dir --no-deps mmcv==2.0.1 -f https://download.openmmlab.com/mmcv/dist/cu118/torch2.0/index.html
+            python -m pip install --no-cache-dir --no-build-isolation chumpy==0.70
+            python -m pip install --no-cache-dir json-tricks munkres xtcocotools pycocotools shapely terminaltables
+            python -m pip install --no-cache-dir --no-deps mmdet==3.1.0 mmpose==1.1.0
+            python -m pip uninstall -y opencv-python || true
+            python -m pip install --no-cache-dir --force-reinstall --no-deps numpy==1.23.5 opencv-python-headless==4.9.0.80
+
+            cd /opt/MuseTalk
+            bash /opt/dgbn-pipeline/runpod/download_models.sh
+            huggingface-cli download TMElyralab/MuseTalk --local-dir models --include 'musetalkV15/musetalk.json' 'musetalkV15/unet.pth'
+
+            mkdir -p /tmp/dgbn/input /tmp/dgbn/results
+            ffmpeg -y -i data/video/yongen.mp4 -t 3 -vf fps=25 -an /tmp/dgbn/input/source.mp4
+            ffmpeg -y -i data/audio/eng.wav -t 3 -ac 1 -ar 16000 /tmp/dgbn/input/audio.wav
+
+            cat > /tmp/dgbn/inference.yaml <<'YAML'
+          task_0:
+            video_path: "/tmp/dgbn/input/source.mp4"
+            audio_path: "/tmp/dgbn/input/audio.wav"
+            bbox_shift: -7
+          YAML
+
+            python - <<'PY'
+          import torch, cv2, numpy
+          print('RUNTIME', torch.__version__, torch.version.cuda, torch.cuda.is_available(), torch.cuda.get_device_name(0))
+          print('VERSIONS', cv2.__version__, numpy.__version__)
+          PY
+
+            python -m scripts.inference \
+              --inference_config /tmp/dgbn/inference.yaml \
+              --result_dir /tmp/dgbn/results \
+              --unet_model_path models/musetalkV15/unet.pth \
+              --unet_config models/musetalkV15/musetalk.json \
+              --version v15
+
+            result=$(find /tmp/dgbn/results -type f -name '*.mp4' | head -1)
+            test -n "$result"
+            cp "$result" /tmp/dgbn/result.mp4
+            ffprobe -v error -show_entries format=duration,size -of default=nw=1 /tmp/dgbn/result.mp4
+            echo PASS > /tmp/dgbn/status.txt
+          ) > /tmp/dgbn/bootstrap.log 2>&1 || {
+            rc=$?
+            echo "FAIL:$rc" > /tmp/dgbn/status.txt
+          }
+          exec python -m http.server 8000 --bind 0.0.0.0 --directory /tmp/dgbn
+          CMD
+          )
+
+          payload=$(jq -n \
+            --arg name "$POD_NAME" \
+            --arg cmd "$BOOTSTRAP" \
+            '{
+              name:$name,
+              imageName:"runpod/pytorch:2.0.1-py3.10-cuda11.8.0-devel-ubuntu22.04",
+              cloudType:"SECURE",
+              computeType:"GPU",
+              gpuCount:1,
+              gpuTypeIds:[
+                "NVIDIA GeForce RTX 4090",
+                "NVIDIA RTX A5000",
+                "NVIDIA RTX A4500",
+                "NVIDIA RTX A4000",
+                "NVIDIA L4",
+                "NVIDIA GeForce RTX 3090",
+                "NVIDIA A40",
+                "NVIDIA RTX A6000",
+                "NVIDIA RTX 4000 Ada Generation"
+              ],
+              gpuTypePriority:"availability",
+              allowedCudaVersions:["11.8","12.0","12.1","12.2","12.3","12.4","12.5","12.6","12.7","12.8","12.9"],
+              dataCenterPriority:"availability",
+              containerDiskInGb:45,
+              volumeInGb:0,
+              ports:["8000/http"],
+              supportPublicIp:true,
+              interruptible:false,
+              locked:false,
+              dockerEntrypoint:["/bin/bash","-lc"],
+              dockerStartCmd:[$cmd]
+            }')
+
+          response=$(curl -fsS -X POST -H "$AUTH" -H 'Content-Type: application/json' -d "$payload" https://rest.runpod.io/v1/pods)
+          pod_id=$(jq -r '.id' <<<"$response")
+          test -n "$pod_id" && test "$pod_id" != null
+          echo "pod_id=$pod_id" >> "$GITHUB_OUTPUT"
+          echo "Created DGBN MuseTalk E2E Pod: $pod_id"
+          jq '{id,name,desiredStatus,costPerHr,adjustedCostPerHr,dataCenter:(.machine.dataCenterId // null)}' <<<"$response"
+
+      - name: Wait for MuseTalk render
+        id: wait
+        shell: bash
+        run: |
+          set -euo pipefail
+          key=$(python - <<'PY'
+          import os
+          raw = os.environ.get('RUNPOD_API_KEY_RAW', '')
+          print(raw.strip().strip('“”‘’\"\'`'))
+          PY
+          )
+          echo "::add-mask::$key"
+          AUTH="Authorization: Bearer $key"
+          pod_id='${{ steps.create.outputs.pod_id }}'
+          base="https://${pod_id}-8000.proxy.runpod.net"
+
+          for i in $(seq 1 120); do
+            if (( i % 6 == 1 )); then
+              pods=$(curl -fsS -H "$AUTH" https://rest.runpod.io/v1/pods)
+              jq --arg id "$pod_id" '.[] | select(.id==$id) | {id,name,desiredStatus,costPerHr,gpu:(.gpu.displayName // .machine.gpuDisplayName // null),dataCenter:(.machine.dataCenterId // null),publicIp,portMappings,lastStatusChange}' <<<"$pods" || true
+            fi
+
+            if status=$(curl -fsS --max-time 8 "$base/status.txt" 2>/dev/null); then
+              echo "MuseTalk status: $status"
+              curl -fsS --max-time 15 "$base/bootstrap.log" -o /tmp/bootstrap.log || true
+              tail -n 160 /tmp/bootstrap.log || true
+              if [[ "$status" == PASS ]]; then
+                curl -fsS --max-time 60 "$base/result.mp4" -o musetalk-e2e-sample.mp4
+                test -s musetalk-e2e-sample.mp4
+                echo 'DGBN_MUSETALK_E2E=PASS'
+                exit 0
+              fi
+              echo 'MuseTalk bootstrap or inference failed.' >&2
+              exit 1
+            fi
+            sleep 10
+          done
+
+          echo 'MuseTalk E2E test exceeded 20 minutes.' >&2
+          curl -fsS --max-time 15 "$base/bootstrap.log" -o /tmp/bootstrap.log || true
+          tail -n 200 /tmp/bootstrap.log || true
+          exit 1
+
+      - name: Upload MuseTalk sample result
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: musetalk-e2e-sample
+          path: musetalk-e2e-sample.mp4
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Delete only the DGBN MuseTalk E2E Pod
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          key=$(python - <<'PY'
+          import os
+          raw = os.environ.get('RUNPOD_API_KEY_RAW', '')
+          print(raw.strip().strip('“”‘’\"\'`'))
+          PY
+          )
+          [[ -z "$key" ]] && exit 0
+          echo "::add-mask::$key"
+          AUTH="Authorization: Bearer $key"
+          pods=$(curl -fsS -H "$AUTH" https://rest.runpod.io/v1/pods)
+          while IFS= read -r pod_id; do
+            [[ -z "$pod_id" ]] && continue
+            echo "Deleting DGBN MuseTalk E2E Pod: $pod_id"
+            curl -fsS -X DELETE -H "$AUTH" "https://rest.runpod.io/v1/pods/$pod_id" >/dev/null
+          done < <(jq -r '.[] | select(.name=="dgbn-musetalk-e2e-smoke") | .id' <<<"$pods")
+          echo 'DGBN MuseTalk E2E cleanup complete.'
