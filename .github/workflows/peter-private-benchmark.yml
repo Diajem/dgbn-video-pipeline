@@ -201,7 +201,11 @@ jobs:
           key = HKDF(algorithm=hashes.SHA256(), length=32, salt=None, info=b'DGBN-PETER-RETURN-V1').derive(eph.exchange(pub))
           nonce = os.urandom(12); magic = b'DGBNOUT1'
           ciphertext = AESGCM(key).encrypt(nonce, result.read_bytes(), magic + eph_pub)
-          Path('/tmp/dgbn/result.enc').write_bytes(magic + eph_pub + nonce + ciphertext)
+          encrypted = magic + eph_pub + nonce + ciphertext
+          Path('/tmp/dgbn/result.enc').write_bytes(encrypted)
+          print('DGBN_RESULT_B64_BEGIN')
+          print(base64.b64encode(encrypted).decode('ascii'))
+          print('DGBN_RESULT_B64_END')
           PY
             rm -f /tmp/dgbn/input/peter.jpg /tmp/dgbn/input/peter.mp3 /tmp/dgbn/input/peter.wav /tmp/dgbn/input/return_public.b64
             echo PASS > /tmp/dgbn/status.txt
@@ -239,12 +243,21 @@ jobs:
           for i in $(seq 1 96); do
             status=$(curl -fsS --max-time 8 "$base/status.txt" 2>/dev/null || true)
             if [[ "$status" == PASS ]]; then
-              got=0
-              for j in $(seq 1 20); do
-                if curl -fsS --max-time 30 "$base/result.enc" -o peter-musetalk-12s.enc 2>/dev/null && [[ -s peter-musetalk-12s.enc ]]; then got=1; break; fi
-                rm -f peter-musetalk-12s.enc; sleep 2
-              done
-              [[ "$got" == 1 ]]
+              curl -fsS --max-time 45 "$base/bootstrap.log" -o /tmp/bootstrap.log
+              python - <<'PY2'
+          import base64
+          from pathlib import Path
+          text = Path('/tmp/bootstrap.log').read_text(errors='replace')
+          start = text.rfind('DGBN_RESULT_B64_BEGIN\n')
+          end = text.rfind('\nDGBN_RESULT_B64_END')
+          if start < 0 or end < 0 or end <= start: raise SystemExit('Encrypted Peter result marker missing from bootstrap log')
+          payload = text[start + len('DGBN_RESULT_B64_BEGIN\n'):end].strip()
+          data = base64.b64decode(payload, validate=True)
+          if len(data) < 10000: raise SystemExit('Encrypted Peter result unexpectedly small')
+          Path('peter-musetalk-12s.enc').write_bytes(data)
+          print('Recovered encrypted Peter result from bootstrap log:', len(data), 'bytes')
+          PY2
+              test -s peter-musetalk-12s.enc
               echo 'PETER_MUSETALK_12S=PASS'
               exit 0
             elif [[ "$status" == FAIL:* ]]; then
