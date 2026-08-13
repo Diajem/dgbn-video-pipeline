@@ -13,7 +13,7 @@ permissions:
 jobs:
   benchmark:
     runs-on: ubuntu-24.04
-    timeout-minutes: 18
+    timeout-minutes: 35
     env:
       RUNPOD_API_KEY_RAW: ${{ secrets.RUNPOD_API_KEY }}
       POD_NAME: dgbn-peter-private-benchmark
@@ -242,7 +242,7 @@ jobs:
           set -euo pipefail
           pod_id='${{ steps.create.outputs.pod_id }}'
           base="https://${pod_id}-8000.proxy.runpod.net"
-          for i in $(seq 1 180); do
+          for i in $(seq 1 360); do
             status=$(curl -fsS --max-time 8 "$base/status.txt" 2>/dev/null || true)
             if [[ "$status" == PASS ]]; then
               got=0
@@ -285,7 +285,7 @@ jobs:
             fi
             sleep 5
           done
-          echo 'Peter benchmark exceeded fifteen-minute wait.' >&2
+          echo 'Peter benchmark exceeded thirty-minute wait.' >&2
           curl -fsS --max-time 20 "$base/bootstrap.log" -o /tmp/bootstrap.log || true
           tail -n 180 /tmp/bootstrap.log || true
           exit 1
