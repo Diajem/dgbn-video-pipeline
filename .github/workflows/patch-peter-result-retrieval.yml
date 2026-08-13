@@ -2,6 +2,7 @@ name: Patch Peter encrypted-result retrieval
 
 on:
   push:
+    branches: [main]
     paths:
       - '.github/workflows/patch-peter-result-retrieval.yml'
 
@@ -11,11 +12,12 @@ permissions:
 jobs:
   patch:
     runs-on: ubuntu-24.04
+    timeout-minutes: 3
     steps:
       - uses: actions/checkout@v4
         with:
           ref: main
-      - name: Add retry window after Peter PASS
+      - name: Route encrypted Peter result through proven bootstrap log
         shell: bash
         run: |
           set -euo pipefail
@@ -23,37 +25,60 @@ jobs:
           from pathlib import Path
           p = Path('.github/workflows/peter-private-benchmark.yml')
           s = p.read_text()
-          old = '''            if [[ "$status" == PASS ]]; then
-              curl -fsS --max-time 60 -H "X-DGBN-Token: $token" "$base/result.enc" -o peter-musetalk-12s.enc
+
+          old_encrypt = """          Path('/tmp/dgbn/result.enc').write_bytes(magic + eph_pub + nonce + ciphertext)
+          PY
+"""
+          new_encrypt = """          encrypted = magic + eph_pub + nonce + ciphertext
+          Path('/tmp/dgbn/result.enc').write_bytes(encrypted)
+          print('DGBN_RESULT_B64_BEGIN')
+          print(base64.b64encode(encrypted).decode('ascii'))
+          print('DGBN_RESULT_B64_END')
+          PY
+"""
+          if old_encrypt not in s:
+              raise SystemExit('Expected encryption block not found; refusing blind patch')
+          s = s.replace(old_encrypt, new_encrypt, 1)
+
+          old_return = """            if [[ \"$status\" == PASS ]]; then
+              got=0
+              for j in $(seq 1 20); do
+                if curl -fsS --max-time 30 \"$base/result.enc\" -o peter-musetalk-12s.enc 2>/dev/null && [[ -s peter-musetalk-12s.enc ]]; then got=1; break; fi
+                rm -f peter-musetalk-12s.enc; sleep 2
+              done
+              [[ \"$got\" == 1 ]]
+              echo 'PETER_MUSETALK_12S=PASS'
+              exit 0
+"""
+          new_return = """            if [[ \"$status\" == PASS ]]; then
+              curl -fsS --max-time 45 \"$base/bootstrap.log\" -o /tmp/bootstrap.log
+              python - <<'PY2'
+          import base64
+          from pathlib import Path
+          text = Path('/tmp/bootstrap.log').read_text(errors='replace')
+          start = text.rfind('DGBN_RESULT_B64_BEGIN\\n')
+          end = text.rfind('\\nDGBN_RESULT_B64_END')
+          if start < 0 or end < 0 or end <= start:
+              raise SystemExit('Encrypted Peter result marker missing from bootstrap log')
+          payload = text[start + len('DGBN_RESULT_B64_BEGIN\\n'):end].strip()
+          data = base64.b64decode(payload, validate=True)
+          if len(data) < 10000:
+              raise SystemExit('Encrypted Peter result unexpectedly small')
+          Path('peter-musetalk-12s.enc').write_bytes(data)
+          print('Recovered encrypted Peter result from bootstrap log:', len(data), 'bytes')
+          PY2
               test -s peter-musetalk-12s.enc
               echo 'PETER_MUSETALK_12S=PASS'
               exit 0
-'''
-          new = '''            if [[ "$status" == PASS ]]; then
-              result_ready=0
-              for attempt in $(seq 1 15); do
-                if curl -fsS --max-time 30 -H "X-DGBN-Token: $token" "$base/result.enc" -o peter-musetalk-12s.enc 2>/dev/null && [[ -s peter-musetalk-12s.enc ]]; then
-                  result_ready=1
-                  break
-                fi
-                rm -f peter-musetalk-12s.enc
-                echo "Encrypted result not visible yet; retry $attempt/15."
-                sleep 2
-              done
-              [[ "$result_ready" == 1 ]]
-              echo 'PETER_MUSETALK_12S=PASS'
-              exit 0
-'''
-          if old not in s:
-              raise SystemExit('Expected Peter result-retrieval block not found; refusing blind patch')
-          s = s.replace(old, new, 1)
-          # Keep the RunPod package's installed cryptography version instead of downgrading it.
-          s = s.replace("gdown 'cryptography>=42,<46' mmengine==0.10.7", "gdown 'cryptography>=50,<51' mmengine==0.10.7", 1)
+"""
+          if old_return not in s:
+              raise SystemExit('Expected result return block not found; refusing blind patch')
+          s = s.replace(old_return, new_return, 1)
           p.write_text(s)
           PY
           git config user.name 'DGBN CI'
           git config user.email 'actions@users.noreply.github.com'
           git add .github/workflows/peter-private-benchmark.yml
           git diff --cached --check
-          git commit -m 'Retry encrypted Peter result retrieval after PASS'
+          git commit -m 'Return encrypted Peter result through bootstrap log'
           git push origin HEAD:main
