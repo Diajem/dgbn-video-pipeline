@@ -21,7 +21,7 @@ python -m pip install --upgrade 'pip<25' 'setuptools<70' 'wheel<0.44'
 grep -v '^runpod$' /opt/dgbn-pipeline/runpod/requirements-worker.txt > /tmp/musetalk-inference-requirements.txt
 python -m pip install --no-cache-dir -r /tmp/musetalk-inference-requirements.txt
 python -m pip install --no-cache-dir --no-deps mmengine==0.10.7
-python -m pip install --no-cache-dir addict termcolor 'yapf<0.41' 'matplotlib<3.8'
+python -m pip install --no-cache-dir addict termcolor rich 'yapf<0.41' 'matplotlib<3.8'
 python -m pip install --no-cache-dir --no-deps mmcv==2.0.1 -f https://download.openmmlab.com/mmcv/dist/cu118/torch2.0/index.html
 python -m pip install --no-cache-dir --no-build-isolation chumpy==0.70
 python -m pip install --no-cache-dir json-tricks munkres xtcocotools pycocotools shapely terminaltables
