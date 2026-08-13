@@ -50,15 +50,24 @@ function endpointSummary(endpoint) {
 }
 
 function templateSummary(template) {
+  const env = template.env || template.envs || {};
+  const envKeys = Array.isArray(env)
+    ? env.map((item) => item?.key || item?.name).filter(Boolean)
+    : Object.keys(env);
   return {
     id: template.id,
     name: template.name,
     imageName: template.imageName,
     isServerless: template.isServerless,
     containerDiskInGb: template.containerDiskInGb,
+    volumeInGb: template.volumeInGb,
+    volumeMountPath: template.volumeMountPath,
+    ports: template.ports,
     dockerEntrypoint: template.dockerEntrypoint,
     dockerStartCmd: template.dockerStartCmd,
     runtimeInMin: template.runtimeInMin,
+    registryAuthConfigured: Boolean(template.containerRegistryAuthId),
+    envKeys,
   };
 }
 
