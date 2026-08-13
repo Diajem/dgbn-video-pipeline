@@ -1,4 +1,5 @@
 {
   "action": "inspect",
-  "endpointName": "dgbn-video-pipeline"
+  "endpointName": "dgbn-video-pipeline",
+  "inspectNonce": "peter-20260813-0038"
 }
