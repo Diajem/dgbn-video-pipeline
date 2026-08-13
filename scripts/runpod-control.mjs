@@ -71,6 +71,17 @@ function templateSummary(template) {
   };
 }
 
+function podSummary(pod) {
+  return {
+    id: pod.id,
+    name: pod.name,
+    desiredStatus: pod.desiredStatus,
+    costPerHr: pod.costPerHr,
+    adjustedCostPerHr: pod.adjustedCostPerHr,
+    gpu: pod.machine?.gpuDisplayName || pod.gpuTypeId || null,
+  };
+}
+
 async function findEndpoint() {
   const endpoints = await api('/endpoints');
   const endpoint = control.endpointId
@@ -99,6 +110,11 @@ async function inspectEndpoint() {
     const template = await api(`/templates/${summary.templateId}?includeEndpointBoundTemplates=true`);
     console.log('TEMPLATE', JSON.stringify(templateSummary(template), null, 2));
   }
+}
+
+async function inspectPods() {
+  const pods = await api('/pods');
+  console.log('PODS', JSON.stringify(pods.map(podSummary), null, 2));
 }
 
 async function freezeEndpoint() {
@@ -208,6 +224,7 @@ async function healthcheckOnce() {
 
 switch (control.action) {
   case 'inspect': await inspectEndpoint(); break;
+  case 'inspect_pods': await inspectPods(); break;
   case 'freeze': await freezeEndpoint(); break;
   case 'configure': await configureEndpoint(); break;
   case 'healthcheck_once': await healthcheckOnce(); break;
