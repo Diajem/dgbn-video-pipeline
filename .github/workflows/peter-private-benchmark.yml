@@ -98,11 +98,12 @@ jobs:
           cat > /tmp/dgbn/result_server.py <<'PY'
           from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
           from pathlib import Path
+          from urllib.parse import urlparse
           ROOT = Path('/tmp/dgbn')
           class H(BaseHTTPRequestHandler):
               def do_GET(self):
                   names = {'/status.txt':ROOT/'status.txt','/bootstrap.log':ROOT/'bootstrap.log','/result.enc':ROOT/'result.enc'}
-                  p = names.get(self.path)
+                  p = names.get(urlparse(self.path).path)
                   if not p or not p.exists():
                       self.send_response(404); self.end_headers(); return
                   data = p.read_bytes()
@@ -244,7 +245,17 @@ jobs:
           for i in $(seq 1 180); do
             status=$(curl -fsS --max-time 8 "$base/status.txt" 2>/dev/null || true)
             if [[ "$status" == PASS ]]; then
-              curl -fsS --max-time 45 "$base/bootstrap.log" -o /tmp/bootstrap.log
+              got=0
+              for j in $(seq 1 30); do
+                nonce=$(date +%s%N)
+                curl -fsS --max-time 30 "$base/bootstrap.log?nonce=$nonce" -o /tmp/bootstrap.log 2>/dev/null || true
+                if grep -q 'DGBN_RESULT_B64_BEGIN' /tmp/bootstrap.log 2>/dev/null && grep -q 'DGBN_RESULT_B64_END' /tmp/bootstrap.log 2>/dev/null; then
+                  got=1
+                  break
+                fi
+                sleep 2
+              done
+              [[ "$got" == 1 ]]
               python - <<'PY2'
           import base64
           from pathlib import Path
