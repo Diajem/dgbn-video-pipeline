@@ -1,0 +1,245 @@
+name: DGBN fast MuseTalk normal-Pod E2E
+
+on:
+  push:
+    paths:
+      - '.github/workflows/runpod-musetalk-fast-e2e.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      RUNPOD_API_KEY_RAW: ${{ secrets.RUNPOD_API_KEY }}
+      POD_NAME: dgbn-musetalk-fast-e2e
+    steps:
+      - name: Create trimmed MuseTalk test Pod
+        id: create
+        shell: bash
+        run: |
+          set -euo pipefail
+          key=$(python - <<'PY'
+          import os
+          print(os.environ.get('RUNPOD_API_KEY_RAW','').strip().strip('“”‘’\"\'`'))
+          PY
+          )
+          test -n "$key"
+          echo "::add-mask::$key"
+          AUTH="Authorization: Bearer $key"
+
+          endpoints=$(curl -fsS -H "$AUTH" https://rest.runpod.io/v1/endpoints)
+          endpoint_id=$(jq -r '.[] | select(.name=="dgbn-video-pipeline") | .id' <<<"$endpoints" | head -1)
+          test -n "$endpoint_id" && test "$endpoint_id" != null
+          curl -fsS -X POST -H "$AUTH" -H 'Content-Type: application/json' -d '{"workersMin":0,"workersMax":0}' "https://rest.runpod.io/v1/endpoints/$endpoint_id/update" >/dev/null
+
+          pods=$(curl -fsS -H "$AUTH" https://rest.runpod.io/v1/pods)
+          while IFS= read -r stale_id; do
+            [[ -z "$stale_id" ]] && continue
+            curl -fsS -X DELETE -H "$AUTH" "https://rest.runpod.io/v1/pods/$stale_id" >/dev/null || true
+          done < <(jq -r '.[] | select(.name=="dgbn-musetalk-fast-e2e") | .id' <<<"$pods")
+
+          BOOTSTRAP=$(cat <<'CMD'
+          set -euo pipefail
+          mkdir -p /tmp/dgbn
+          : > /tmp/dgbn/bootstrap.log
+          echo BOOTING > /tmp/dgbn/status.txt
+          python -m http.server 8000 --bind 0.0.0.0 --directory /tmp/dgbn >/tmp/dgbn/http.log 2>&1 &
+          (
+            set -euxo pipefail
+            export PYTHONUNBUFFERED=1
+            echo '=== FAST MUSETALK BOOTSTRAP ==='
+            date -u
+            python - <<'PY'
+          import torch
+          print('BASE TORCH', torch.__version__, torch.version.cuda, torch.cuda.is_available())
+          print('BASE GPU', torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'NO_GPU')
+          assert torch.__version__.startswith('2.1.0')
+          assert torch.version.cuda == '11.8'
+          assert torch.cuda.is_available()
+          PY
+
+            # No apt and no PyTorch reinstall. Use the working RunPod 2.1/CUDA 11.8 stack.
+            python -m pip install --no-cache-dir --disable-pip-version-check \
+              -r https://raw.githubusercontent.com/Diajem/dgbn-video-pipeline/main/runpod/requirements-worker.txt
+            python -m pip install --no-cache-dir --disable-pip-version-check 'huggingface_hub[hf_xet]==0.30.2' gdown \
+              mmengine==0.10.7 'mmdet==3.2.0' 'mmpose==1.2.0' chumpy==0.70 json-tricks munkres xtcocotools pycocotools shapely terminaltables addict termcolor 'yapf<0.41' 'matplotlib<3.8'
+            python -m pip install --no-cache-dir --disable-pip-version-check \
+              'mmcv==2.1.0' -f https://download.openmmlab.com/mmcv/dist/cu118/torch2.1.0/index.html
+            python -m pip install --no-cache-dir --force-reinstall --no-deps numpy==1.23.5 opencv-python-headless==4.9.0.80
+
+            # Fetch MuseTalk source without apt/git.
+            rm -rf /opt/MuseTalk /tmp/MuseTalk-main /tmp/musetalk.tar.gz
+            python - <<'PY'
+          import urllib.request, tarfile
+          url='https://github.com/TMElyralab/MuseTalk/archive/refs/heads/main.tar.gz'
+          urllib.request.urlretrieve(url, '/tmp/musetalk.tar.gz')
+          with tarfile.open('/tmp/musetalk.tar.gz','r:gz') as t:
+              t.extractall('/tmp')
+          PY
+            mv /tmp/MuseTalk-main /opt/MuseTalk
+            cd /opt/MuseTalk
+
+            # Ensure an ffmpeg executable without apt. imageio-ffmpeg is already in the requirements.
+            if ! command -v ffmpeg >/dev/null 2>&1; then
+              ffmpeg_bin=$(python - <<'PY'
+          import imageio_ffmpeg
+          print(imageio_ffmpeg.get_ffmpeg_exe())
+          PY
+              )
+              ln -sf "$ffmpeg_bin" /usr/local/bin/ffmpeg
+            fi
+            ffmpeg -version | head -2
+
+            # Only assets required by normal inference: no 1.4GB SyncNet evaluation model.
+            mkdir -p models/dwpose models/face-parse-bisent models/sd-vae models/whisper models/musetalkV15 "$HOME/.cache/torch/hub/checkpoints"
+            huggingface-cli download stabilityai/sd-vae-ft-mse --local-dir models/sd-vae --include 'config.json' 'diffusion_pytorch_model.bin'
+            huggingface-cli download openai/whisper-tiny --local-dir models/whisper --include 'config.json' 'pytorch_model.bin' 'preprocessor_config.json'
+            huggingface-cli download yzd-v/DWPose --local-dir models/dwpose --include 'dw-ll_ucoco_384.pth'
+            huggingface-cli download TMElyralab/MuseTalk --local-dir models --include 'musetalkV15/musetalk.json' 'musetalkV15/unet.pth'
+            gdown 154JgKpzCPW82qINcVieuPH3fZ2e0P812 -O models/face-parse-bisent/79999_iter.pth
+            python - <<'PY'
+          import urllib.request
+          urllib.request.urlretrieve('https://download.pytorch.org/models/resnet18-5c106cde.pth','models/face-parse-bisent/resnet18-5c106cde.pth')
+          urllib.request.urlretrieve('https://www.adrianbulat.com/downloads/python-fan/s3fd-619a316812.pth', '/root/.cache/torch/hub/checkpoints/s3fd-619a316812.pth')
+          PY
+
+            python - <<'PY'
+          import torch, cv2, numpy, mmcv, mmengine, mmdet, mmpose
+          print('RUNTIME', torch.__version__, torch.version.cuda, torch.cuda.is_available(), torch.cuda.get_device_name(0))
+          print('STACK', cv2.__version__, numpy.__version__, mmcv.__version__, mmengine.__version__, mmdet.__version__, mmpose.__version__)
+          assert torch.__version__.startswith('2.1.0')
+          assert torch.version.cuda == '11.8'
+          assert torch.cuda.is_available()
+          PY
+
+            # Stream-copy a three-second sample so CPU video encoding does not dominate the test.
+            mkdir -p /tmp/dgbn/input /tmp/dgbn/results
+            ffmpeg -y -v error -i data/video/yongen.mp4 -t 3 -c:v copy -an /tmp/dgbn/input/source.mp4
+            ffmpeg -y -v error -i data/audio/eng.wav -t 3 -ac 1 -ar 16000 /tmp/dgbn/input/audio.wav
+            cat > /tmp/dgbn/inference.yaml <<'YAML'
+          task_0:
+            video_path: "/tmp/dgbn/input/source.mp4"
+            audio_path: "/tmp/dgbn/input/audio.wav"
+          YAML
+
+            python -m scripts.inference \
+              --inference_config /tmp/dgbn/inference.yaml \
+              --result_dir /tmp/dgbn/results \
+              --unet_model_path models/musetalkV15/unet.pth \
+              --unet_config models/musetalkV15/musetalk.json \
+              --version v15
+
+            result=$(find /tmp/dgbn/results -type f -name '*.mp4' ! -name 'temp_*' | head -1)
+            test -n "$result" && test -s "$result"
+            cp "$result" /tmp/dgbn/result.mp4
+            python - <<'PY'
+          from pathlib import Path
+          p=Path('/tmp/dgbn/result.mp4')
+          print('RESULT_BYTES', p.stat().st_size)
+          assert p.stat().st_size > 10000
+          PY
+            echo PASS > /tmp/dgbn/status.txt
+            echo '=== FAST MUSETALK PASS ==='
+          ) >> /tmp/dgbn/bootstrap.log 2>&1 || {
+            rc=$?
+            echo "FAIL:$rc" > /tmp/dgbn/status.txt
+            echo "=== FAST MUSETALK FAIL:$rc ===" >> /tmp/dgbn/bootstrap.log
+          }
+          wait
+          CMD
+          )
+
+          payload=$(jq -n --arg name "$POD_NAME" --arg cmd "$BOOTSTRAP" '{
+            name:$name,
+            imageName:"runpod/pytorch:2.1.0-py3.10-cuda11.8.0-devel-ubuntu22.04",
+            cloudType:"SECURE",
+            computeType:"GPU",
+            gpuCount:1,
+            gpuTypeIds:["NVIDIA GeForce RTX 4090","NVIDIA RTX A5000","NVIDIA RTX A4500","NVIDIA RTX A4000","NVIDIA L4","NVIDIA GeForce RTX 3090","NVIDIA A40","NVIDIA RTX A6000"],
+            gpuTypePriority:"availability",
+            allowedCudaVersions:["11.8","12.0","12.1","12.2","12.3","12.4","12.5","12.6","12.7","12.8","12.9"],
+            dataCenterPriority:"availability",
+            containerDiskInGb:30,
+            volumeInGb:0,
+            ports:["8000/http"],
+            supportPublicIp:true,
+            interruptible:false,
+            locked:false,
+            dockerEntrypoint:["/bin/bash","-lc"],
+            dockerStartCmd:[$cmd]
+          }')
+          response=$(curl -fsS -X POST -H "$AUTH" -H 'Content-Type: application/json' -d "$payload" https://rest.runpod.io/v1/pods)
+          pod_id=$(jq -r '.id' <<<"$response")
+          test -n "$pod_id" && test "$pod_id" != null
+          echo "pod_id=$pod_id" >> "$GITHUB_OUTPUT"
+          echo "Created fast MuseTalk Pod: $pod_id"
+          jq '{id,name,desiredStatus,costPerHr,adjustedCostPerHr}' <<<"$response"
+
+      - name: Wait up to seven minutes for trimmed E2E
+        shell: bash
+        run: |
+          set -euo pipefail
+          pod_id='${{ steps.create.outputs.pod_id }}'
+          base="https://${pod_id}-8000.proxy.runpod.net"
+          reachable=0
+          for i in $(seq 1 24); do
+            if curl -fsS --max-time 6 "$base/bootstrap.log" -o /tmp/bootstrap.log 2>/dev/null; then reachable=1; break; fi
+            sleep 5
+          done
+          [[ "$reachable" == 1 ]]
+          for i in $(seq 1 84); do
+            status=$(curl -fsS --max-time 6 "$base/status.txt" 2>/dev/null || true)
+            if [[ "$status" == PASS ]]; then
+              curl -fsS --max-time 60 "$base/result.mp4" -o musetalk-fast-e2e.mp4
+              test -s musetalk-fast-e2e.mp4
+              echo 'DGBN_FAST_MUSETALK_E2E=PASS'
+              exit 0
+            elif [[ "$status" == FAIL:* ]]; then
+              echo "Fast MuseTalk failed: $status" >&2
+              curl -fsS --max-time 15 "$base/bootstrap.log" -o /tmp/bootstrap.log || true
+              tail -n 180 /tmp/bootstrap.log || true
+              exit 1
+            fi
+            if (( i % 12 == 0 )); then
+              echo "--- progress $((i*5))s ---"
+              curl -fsS --max-time 15 "$base/bootstrap.log" -o /tmp/bootstrap.log || true
+              tail -n 35 /tmp/bootstrap.log || true
+            fi
+            sleep 5
+          done
+          echo 'Fast MuseTalk E2E exceeded seven minutes.' >&2
+          curl -fsS --max-time 15 "$base/bootstrap.log" -o /tmp/bootstrap.log || true
+          tail -n 180 /tmp/bootstrap.log || true
+          exit 1
+
+      - name: Upload generic fast result
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: musetalk-fast-e2e
+          path: musetalk-fast-e2e.mp4
+          retention-days: 1
+
+      - name: Delete only the fast DGBN MuseTalk Pod
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          key=$(python - <<'PY'
+          import os
+          print(os.environ.get('RUNPOD_API_KEY_RAW','').strip().strip('“”‘’\"\'`'))
+          PY
+          )
+          [[ -z "$key" ]] && exit 0
+          echo "::add-mask::$key"
+          AUTH="Authorization: Bearer $key"
+          pods=$(curl -fsS -H "$AUTH" https://rest.runpod.io/v1/pods)
+          while IFS= read -r pod_id; do
+            [[ -z "$pod_id" ]] && continue
+            echo "Deleting fast DGBN MuseTalk Pod: $pod_id"
+            curl -fsS -X DELETE -H "$AUTH" "https://rest.runpod.io/v1/pods/$pod_id" >/dev/null
+          done < <(jq -r '.[] | select(.name=="dgbn-musetalk-fast-e2e") | .id' <<<"$pods")
+          echo 'Fast DGBN MuseTalk cleanup complete.'
