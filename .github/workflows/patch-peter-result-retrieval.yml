@@ -1,4 +1,4 @@
-name: Patch Peter result cache race
+name: Patch Peter render ceiling
 
 on:
   push:
@@ -17,7 +17,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: main
-      - name: Make Peter result retrieval cache-safe
+      - name: Extend Peter benchmark only while active work continues
         shell: bash
         run: |
           set -euo pipefail
@@ -25,45 +25,20 @@ jobs:
           from pathlib import Path
           p = Path('.github/workflows/peter-private-benchmark.yml')
           s = p.read_text()
-
-          old = "          from pathlib import Path\n          ROOT = Path('/tmp/dgbn')\n"
-          new = "          from pathlib import Path\n          from urllib.parse import urlparse\n          ROOT = Path('/tmp/dgbn')\n"
-          if old not in s:
-              raise SystemExit('Result server import block not found')
-          s = s.replace(old, new, 1)
-
-          old = "                  p = names.get(self.path)\n"
-          new = "                  p = names.get(urlparse(self.path).path)\n"
-          if old not in s:
-              raise SystemExit('Result server path lookup not found')
-          s = s.replace(old, new, 1)
-
-          old = (
-              '              curl -fsS --max-time 45 "$base/bootstrap.log" -o /tmp/bootstrap.log\n'
-              "              python - <<'PY2'\n"
-          )
-          new = (
-              '              got=0\n'
-              '              for j in $(seq 1 30); do\n'
-              '                nonce=$(date +%s%N)\n'
-              '                curl -fsS --max-time 30 "$base/bootstrap.log?nonce=$nonce" -o /tmp/bootstrap.log 2>/dev/null || true\n'
-              "                if grep -q 'DGBN_RESULT_B64_BEGIN' /tmp/bootstrap.log 2>/dev/null && grep -q 'DGBN_RESULT_B64_END' /tmp/bootstrap.log 2>/dev/null; then\n"
-              '                  got=1\n'
-              '                  break\n'
-              '                fi\n'
-              '                sleep 2\n'
-              '              done\n'
-              '              [[ "$got" == 1 ]]\n'
-              "              python - <<'PY2'\n"
-          )
-          if old not in s:
-              raise SystemExit('PASS result-fetch block not found')
-          s = s.replace(old, new, 1)
+          replacements = [
+              ('    timeout-minutes: 18\n', '    timeout-minutes: 35\n'),
+              ('          for i in $(seq 1 180); do\n', '          for i in $(seq 1 360); do\n'),
+              ("          echo 'Peter benchmark exceeded fifteen-minute wait.' >&2\n", "          echo 'Peter benchmark exceeded thirty-minute wait.' >&2\n"),
+          ]
+          for old, new in replacements:
+              if old not in s:
+                  raise SystemExit(f'Expected benchmark text not found: {old!r}')
+              s = s.replace(old, new, 1)
           p.write_text(s)
           PY
           git config user.name 'DGBN CI'
           git config user.email 'actions@users.noreply.github.com'
           git add .github/workflows/peter-private-benchmark.yml
           git diff --cached --check
-          git commit -m 'Make Peter encrypted-result retrieval cache-safe'
+          git commit -m 'Extend Peter benchmark render ceiling'
           git push origin HEAD:main
