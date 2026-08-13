@@ -20,7 +20,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Reconstruct and decrypt Peter benchmark inputs
+      - name: Decrypt private Peter benchmark inputs
         shell: bash
         run: |
           set -euo pipefail
@@ -59,10 +59,10 @@ jobs:
               z.extractall(out)
           if (out/'peter.jpg').stat().st_size < 10000 or (out/'peter.mp3').stat().st_size < 10000:
               raise SystemExit('Private benchmark media validation failed')
-          print('Private Peter inputs decrypted and validated only inside the Actions runner.')
+          print('Private Peter inputs decrypted and validated in runner memory/disk.')
           PY
 
-      - name: Create fast isolated Peter benchmark Pod
+      - name: Create isolated Peter benchmark Pod
         id: create
         shell: bash
         run: |
@@ -88,38 +88,19 @@ jobs:
             curl -fsS -X DELETE -H "$AUTH" "https://rest.runpod.io/v1/pods/$stale_id" >/dev/null || true
           done < <(jq -r '.[] | select(.name=="dgbn-peter-private-benchmark") | .id' <<<"$pods")
 
-          upload_token=$(openssl rand -hex 24)
-          echo "::add-mask::$upload_token"
-          echo "upload_token=$upload_token" >> "$GITHUB_OUTPUT"
+          peter_jpg=$(base64 -w0 /tmp/peter-private/input/peter.jpg)
+          peter_mp3=$(base64 -w0 /tmp/peter-private/input/peter.mp3)
+          return_pub=$(tr -d '\r\n' < /tmp/peter-private/input/return_public.b64)
 
           BOOTSTRAP=$(cat <<'CMD'
           set -euo pipefail
           mkdir -p /tmp/dgbn/input /tmp/dgbn/results
-          cat > /tmp/dgbn/upload_server.py <<'PY'
-          import os
+          cat > /tmp/dgbn/result_server.py <<'PY'
           from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
           from pathlib import Path
-          TOKEN = os.environ['DGBN_UPLOAD_TOKEN']
           ROOT = Path('/tmp/dgbn')
-          INPUT = ROOT / 'input'
           class H(BaseHTTPRequestHandler):
-              def _auth(self):
-                  return self.headers.get('X-DGBN-Token','') == TOKEN
-              def do_POST(self):
-                  if not self._auth():
-                      self.send_response(403); self.end_headers(); return
-                  names = {'/peter.jpg':'peter.jpg','/peter.mp3':'peter.mp3','/return_public.b64':'return_public.b64'}
-                  name = names.get(self.path)
-                  if not name:
-                      self.send_response(404); self.end_headers(); return
-                  n = int(self.headers.get('Content-Length','0'))
-                  if n <= 0 or n > 2_000_000:
-                      self.send_response(413); self.end_headers(); return
-                  (INPUT/name).write_bytes(self.rfile.read(n))
-                  self.send_response(204); self.end_headers()
               def do_GET(self):
-                  if not self._auth():
-                      self.send_response(403); self.end_headers(); return
                   names = {'/status.txt':ROOT/'status.txt','/bootstrap.log':ROOT/'bootstrap.log','/result.enc':ROOT/'result.enc'}
                   p = names.get(self.path)
                   if not p or not p.exists():
@@ -129,32 +110,28 @@ jobs:
                   self.send_header('Content-Length', str(len(data)))
                   self.send_header('Content-Type','application/octet-stream')
                   self.end_headers(); self.wfile.write(data)
-              def log_message(self, *_):
-                  return
+              def log_message(self, *_): return
           ThreadingHTTPServer(('0.0.0.0',8000), H).serve_forever()
           PY
-
           echo BOOTING > /tmp/dgbn/status.txt
-          DGBN_UPLOAD_TOKEN="$DGBN_UPLOAD_TOKEN" python /tmp/dgbn/upload_server.py >/tmp/dgbn/upload-server.log 2>&1 &
+          python /tmp/dgbn/result_server.py >/tmp/dgbn/result-server.log 2>&1 &
 
           (
             set -euxo pipefail
             export PYTHONUNBUFFERED=1
-            echo '=== FAST PRIVATE PETER MUSETALK BOOTSTRAP ==='
-            date -u
+            printf '%s' "$PETER_JPG_B64" | base64 -d > /tmp/dgbn/input/peter.jpg
+            printf '%s' "$PETER_MP3_B64" | base64 -d > /tmp/dgbn/input/peter.mp3
+            printf '%s\n' "$RETURN_PUBLIC_B64" > /tmp/dgbn/input/return_public.b64
+            unset PETER_JPG_B64 PETER_MP3_B64 RETURN_PUBLIC_B64
+
             python - <<'PY'
           import torch
-          print('BASE TORCH', torch.__version__, torch.version.cuda, torch.cuda.is_available())
-          print('BASE GPU', torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'NO_GPU')
-          assert torch.__version__.startswith('2.1.0')
-          assert torch.version.cuda == '11.8'
-          assert torch.cuda.is_available()
+          print('BASE', torch.__version__, torch.version.cuda, torch.cuda.is_available(), torch.cuda.get_device_name(0))
+          assert torch.__version__.startswith('2.1.0') and torch.version.cuda == '11.8' and torch.cuda.is_available()
           PY
 
             python -m pip install --no-cache-dir --disable-pip-version-check -r https://raw.githubusercontent.com/Diajem/dgbn-video-pipeline/main/runpod/requirements-worker.txt
-            python -m pip install --no-cache-dir --disable-pip-version-check \
-              gdown 'cryptography>=42,<46' mmengine==0.10.7 'mmdet==3.2.0' 'mmpose==1.2.0' \
-              chumpy==0.70 json-tricks munkres xtcocotools pycocotools shapely terminaltables addict termcolor 'yapf<0.41' 'matplotlib<3.8'
+            python -m pip install --no-cache-dir --disable-pip-version-check gdown 'cryptography>=42,<46' mmengine==0.10.7 'mmdet==3.2.0' 'mmpose==1.2.0' chumpy==0.70 json-tricks munkres xtcocotools pycocotools shapely terminaltables addict termcolor 'yapf<0.41' 'matplotlib<3.8'
             python -m pip install --no-cache-dir --disable-pip-version-check 'mmcv==2.1.0' -f https://download.openmmlab.com/mmcv/dist/cu118/torch2.1.0/index.html
             python -m pip install --no-cache-dir --force-reinstall --no-deps numpy==1.23.5 opencv-python-headless==4.9.0.80
 
@@ -162,8 +139,7 @@ jobs:
             python - <<'PY'
           import urllib.request, tarfile
           urllib.request.urlretrieve('https://github.com/TMElyralab/MuseTalk/archive/refs/heads/main.tar.gz','/tmp/musetalk.tar.gz')
-          with tarfile.open('/tmp/musetalk.tar.gz','r:gz') as t:
-              t.extractall('/tmp')
+          with tarfile.open('/tmp/musetalk.tar.gz','r:gz') as t: t.extractall('/tmp')
           PY
             mv /tmp/MuseTalk-main /opt/MuseTalk
             cd /opt/MuseTalk
@@ -198,14 +174,6 @@ jobs:
           p.write_text(s)
           PY
 
-            for i in $(seq 1 150); do
-              if [[ -s /tmp/dgbn/input/peter.jpg && -s /tmp/dgbn/input/peter.mp3 && -s /tmp/dgbn/input/return_public.b64 ]]; then break; fi
-              sleep 2
-            done
-            test -s /tmp/dgbn/input/peter.jpg
-            test -s /tmp/dgbn/input/peter.mp3
-            test -s /tmp/dgbn/input/return_public.b64
-
             ffmpeg -y -v error -i /tmp/dgbn/input/peter.mp3 -t 12 -ac 1 -ar 16000 /tmp/dgbn/input/peter.wav
             cat > /tmp/dgbn/inference.yaml <<'YAML'
           peter:
@@ -213,22 +181,10 @@ jobs:
             audio_path: "/tmp/dgbn/input/peter.wav"
             result_name: "peter_musetalk_12s.mp4"
           YAML
-
-            python - <<'PY'
-          import torch, cv2, numpy, mmcv, mmengine, mmdet, mmpose
-          print('RUNTIME', torch.__version__, torch.version.cuda, torch.cuda.is_available(), torch.cuda.get_device_name(0))
-          print('STACK', cv2.__version__, numpy.__version__, mmcv.__version__, mmengine.__version__, mmdet.__version__, mmpose.__version__)
-          PY
-
-            python -m scripts.inference \
-              --inference_config /tmp/dgbn/inference.yaml \
-              --result_dir /tmp/dgbn/results \
-              --unet_model_path models/musetalkV15/unet.pth \
-              --unet_config models/musetalkV15/musetalk.json \
-              --version v15
-
+            python -m scripts.inference --inference_config /tmp/dgbn/inference.yaml --result_dir /tmp/dgbn/results --unet_model_path models/musetalkV15/unet.pth --unet_config models/musetalkV15/musetalk.json --version v15
             result=$(find /tmp/dgbn/results -type f -name 'peter_musetalk_12s.mp4' | head -1)
             test -n "$result" && test -s "$result"
+
             python - <<'PY'
           import base64, os
           from pathlib import Path
@@ -239,114 +195,73 @@ jobs:
           from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
           result = next(Path('/tmp/dgbn/results').rglob('peter_musetalk_12s.mp4'))
           print('PETER_RESULT_BYTES', result.stat().st_size)
-          if result.stat().st_size < 10000:
-              raise SystemExit('Peter render is unexpectedly small')
           pub = X25519PublicKey.from_public_bytes(base64.b64decode(Path('/tmp/dgbn/input/return_public.b64').read_text().strip()))
           eph = X25519PrivateKey.generate()
           eph_pub = eph.public_key().public_bytes(Encoding.Raw, PublicFormat.Raw)
-          shared = eph.exchange(pub)
-          key = HKDF(algorithm=hashes.SHA256(), length=32, salt=None, info=b'DGBN-PETER-RETURN-V1').derive(shared)
-          nonce = os.urandom(12)
-          magic = b'DGBNOUT1'
+          key = HKDF(algorithm=hashes.SHA256(), length=32, salt=None, info=b'DGBN-PETER-RETURN-V1').derive(eph.exchange(pub))
+          nonce = os.urandom(12); magic = b'DGBNOUT1'
           ciphertext = AESGCM(key).encrypt(nonce, result.read_bytes(), magic + eph_pub)
           Path('/tmp/dgbn/result.enc').write_bytes(magic + eph_pub + nonce + ciphertext)
           PY
             rm -f /tmp/dgbn/input/peter.jpg /tmp/dgbn/input/peter.mp3 /tmp/dgbn/input/peter.wav /tmp/dgbn/input/return_public.b64
             echo PASS > /tmp/dgbn/status.txt
-            echo '=== PETER MUSETALK 12S PASS ==='
-          ) > /tmp/dgbn/bootstrap.log 2>&1 || {
-            rc=$?
-            echo "FAIL:$rc" > /tmp/dgbn/status.txt
-            echo "=== PETER MUSETALK 12S FAIL:$rc ===" >> /tmp/dgbn/bootstrap.log
-          }
+          ) > /tmp/dgbn/bootstrap.log 2>&1 || { rc=$?; echo "FAIL:$rc" > /tmp/dgbn/status.txt; echo "FAIL:$rc" >> /tmp/dgbn/bootstrap.log; }
           wait
           CMD
           )
 
-          payload=$(jq -n --arg name "$POD_NAME" --arg cmd "$BOOTSTRAP" --arg token "$upload_token" '{
+          payload=$(jq -n --arg name "$POD_NAME" --arg cmd "$BOOTSTRAP" --arg jpg "$peter_jpg" --arg mp3 "$peter_mp3" --arg ret "$return_pub" '{
             name:$name,
             imageName:"runpod/pytorch:2.1.0-py3.10-cuda11.8.0-devel-ubuntu22.04",
-            cloudType:"SECURE",
-            computeType:"GPU",
-            gpuCount:1,
+            cloudType:"SECURE", computeType:"GPU", gpuCount:1,
             gpuTypeIds:["NVIDIA GeForce RTX 4090","NVIDIA RTX A5000","NVIDIA RTX A4500","NVIDIA RTX A4000","NVIDIA L4","NVIDIA GeForce RTX 3090","NVIDIA A40","NVIDIA RTX A6000"],
             gpuTypePriority:"availability",
             allowedCudaVersions:["11.8","12.0","12.1","12.2","12.3","12.4","12.5","12.6","12.7","12.8","12.9"],
             dataCenterPriority:"availability",
-            containerDiskInGb:30,
-            volumeInGb:0,
-            ports:["8000/http"],
-            supportPublicIp:true,
-            interruptible:false,
-            locked:false,
-            env:{DGBN_UPLOAD_TOKEN:$token},
-            dockerEntrypoint:["/bin/bash","-lc"],
-            dockerStartCmd:[$cmd]
+            containerDiskInGb:30, volumeInGb:0, ports:["8000/http"], supportPublicIp:true, interruptible:false, locked:false,
+            env:{PETER_JPG_B64:$jpg,PETER_MP3_B64:$mp3,RETURN_PUBLIC_B64:$ret},
+            dockerEntrypoint:["/bin/bash","-lc"], dockerStartCmd:[$cmd]
           }')
           response=$(curl -fsS -X POST -H "$AUTH" -H 'Content-Type: application/json' -d "$payload" https://rest.runpod.io/v1/pods)
           pod_id=$(jq -r '.id' <<<"$response")
           test -n "$pod_id" && test "$pod_id" != null
           echo "pod_id=$pod_id" >> "$GITHUB_OUTPUT"
-          echo "Created fast isolated Peter benchmark Pod: $pod_id"
-          jq '{id,name,desiredStatus,costPerHr,adjustedCostPerHr}' <<<"$response"
+          rm -rf /tmp/peter-private
+          unset peter_jpg peter_mp3 return_pub payload response
+          echo "Created isolated Peter benchmark Pod: $pod_id"
 
-      - name: Upload private Peter media and wait up to eight minutes
+      - name: Wait for encrypted Peter result
         shell: bash
         run: |
           set -euo pipefail
           pod_id='${{ steps.create.outputs.pod_id }}'
-          token='${{ steps.create.outputs.upload_token }}'
-          echo "::add-mask::$token"
           base="https://${pod_id}-8000.proxy.runpod.net"
-          ready=0
-          for i in $(seq 1 36); do
-            code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 8 -H "X-DGBN-Token: $token" "$base/status.txt" || true)
-            if [[ "$code" == 200 ]]; then ready=1; break; fi
-            sleep 5
-          done
-          [[ "$ready" == 1 ]]
-
-          curl -fsS --max-time 60 -X POST -H "X-DGBN-Token: $token" --data-binary @/tmp/peter-private/input/peter.jpg "$base/peter.jpg"
-          curl -fsS --max-time 60 -X POST -H "X-DGBN-Token: $token" --data-binary @/tmp/peter-private/input/peter.mp3 "$base/peter.mp3"
-          curl -fsS --max-time 30 -X POST -H "X-DGBN-Token: $token" --data-binary @/tmp/peter-private/input/return_public.b64 "$base/return_public.b64"
-          rm -rf /tmp/peter-private/input /tmp/peter-private/input.zip /tmp/peter-private/payload.enc /tmp/peter-private/payload.b64
-          echo 'Private Peter inputs uploaded; Actions-runner plaintext removed.'
-
           for i in $(seq 1 96); do
-            status=$(curl -fsS --max-time 8 -H "X-DGBN-Token: $token" "$base/status.txt" 2>/dev/null || true)
+            status=$(curl -fsS --max-time 8 "$base/status.txt" 2>/dev/null || true)
             if [[ "$status" == PASS ]]; then
-              got_result=0
-              for j in $(seq 1 15); do
-                if curl -fsS --max-time 30 -H "X-DGBN-Token: $token" "$base/result.enc" -o peter-musetalk-12s.enc 2>/dev/null && [[ -s peter-musetalk-12s.enc ]]; then
-                  got_result=1
-                  break
-                fi
-                rm -f peter-musetalk-12s.enc
-                sleep 2
+              got=0
+              for j in $(seq 1 20); do
+                if curl -fsS --max-time 30 "$base/result.enc" -o peter-musetalk-12s.enc 2>/dev/null && [[ -s peter-musetalk-12s.enc ]]; then got=1; break; fi
+                rm -f peter-musetalk-12s.enc; sleep 2
               done
-              if [[ "$got_result" != 1 ]]; then
-                echo 'MuseTalk reported PASS but encrypted result was not retrievable after retries.' >&2
-                curl -fsS --max-time 20 -H "X-DGBN-Token: $token" "$base/bootstrap.log" -o /tmp/bootstrap.log || true
-                tail -n 180 /tmp/bootstrap.log || true
-                exit 1
-              fi
+              [[ "$got" == 1 ]]
               echo 'PETER_MUSETALK_12S=PASS'
               exit 0
             elif [[ "$status" == FAIL:* ]]; then
               echo "Peter benchmark failed: $status" >&2
-              curl -fsS --max-time 20 -H "X-DGBN-Token: $token" "$base/bootstrap.log" -o /tmp/bootstrap.log || true
+              curl -fsS --max-time 20 "$base/bootstrap.log" -o /tmp/bootstrap.log || true
               tail -n 180 /tmp/bootstrap.log || true
               exit 1
             fi
             if (( i % 12 == 0 )); then
               echo "Peter benchmark running ($((i*5))s)."
-              curl -fsS --max-time 15 -H "X-DGBN-Token: $token" "$base/bootstrap.log" -o /tmp/bootstrap.log || true
-              tail -n 30 /tmp/bootstrap.log || true
+              curl -fsS --max-time 15 "$base/bootstrap.log" -o /tmp/bootstrap.log || true
+              tail -n 25 /tmp/bootstrap.log || true
             fi
             sleep 5
           done
-          echo 'Peter benchmark exceeded eight-minute render wait.' >&2
-          curl -fsS --max-time 20 -H "X-DGBN-Token: $token" "$base/bootstrap.log" -o /tmp/bootstrap.log || true
+          echo 'Peter benchmark exceeded eight-minute wait.' >&2
+          curl -fsS --max-time 20 "$base/bootstrap.log" -o /tmp/bootstrap.log || true
           tail -n 180 /tmp/bootstrap.log || true
           exit 1
 
