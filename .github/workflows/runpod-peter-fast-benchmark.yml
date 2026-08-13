@@ -1,4 +1,5 @@
 name: DGBN Peter fast MuseTalk benchmark
+# Recovery run: new chat key 2026-08-13
 
 on:
   workflow_dispatch:
