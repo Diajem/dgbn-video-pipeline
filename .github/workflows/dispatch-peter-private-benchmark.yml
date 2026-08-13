@@ -1,0 +1,29 @@
+name: Dispatch Peter private benchmark
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/dispatch-peter-private-benchmark.yml'
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Dispatch robust Peter benchmark
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/runpod-peter-private-benchmark.yml/dispatches \
+            -d '{"ref":"main"}'
+          echo 'Peter benchmark dispatch accepted.'
