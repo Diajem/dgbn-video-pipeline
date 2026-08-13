@@ -1,0 +1,157 @@
+name: DGBN baked worker image Pod smoke
+
+on:
+  push:
+    paths:
+      - '.github/workflows/runpod-baked-image-smoke.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      RUNPOD_API_KEY_RAW: ${{ secrets.RUNPOD_API_KEY }}
+      POD_NAME: dgbn-baked-image-smoke
+    steps:
+      - name: Create DGBN baked-image smoke Pod
+        id: create
+        shell: bash
+        run: |
+          set -euo pipefail
+          key=$(python - <<'PY'
+          import os
+          print(os.environ.get('RUNPOD_API_KEY_RAW','').strip().strip('“”‘’\"\'`'))
+          PY
+          )
+          test -n "$key"
+          echo "::add-mask::$key"
+          AUTH="Authorization: Bearer $key"
+
+          endpoints=$(curl -fsS -H "$AUTH" https://rest.runpod.io/v1/endpoints)
+          endpoint_id=$(jq -r '.[] | select(.name=="dgbn-video-pipeline") | .id' <<<"$endpoints" | head -1)
+          template_id=$(jq -r '.[] | select(.name=="dgbn-video-pipeline") | (.template.id // .templateId)' <<<"$endpoints" | head -1)
+          test -n "$endpoint_id" && test "$endpoint_id" != null
+          test -n "$template_id" && test "$template_id" != null
+          curl -fsS -X POST -H "$AUTH" -H 'Content-Type: application/json' -d '{"workersMin":0,"workersMax":0}' "https://rest.runpod.io/v1/endpoints/$endpoint_id/update" >/dev/null
+
+          template=$(curl -fsS -H "$AUTH" "https://rest.runpod.io/v1/templates/$template_id?includeEndpointBoundTemplates=true")
+          image=$(jq -r '.imageName' <<<"$template")
+          test -n "$image" && test "$image" != null
+          echo "Testing current DGBN baked image: $image"
+
+          pods=$(curl -fsS -H "$AUTH" https://rest.runpod.io/v1/pods)
+          while IFS= read -r stale_id; do
+            [[ -z "$stale_id" ]] && continue
+            curl -fsS -X DELETE -H "$AUTH" "https://rest.runpod.io/v1/pods/$stale_id" >/dev/null || true
+          done < <(jq -r '.[] | select(.name=="dgbn-baked-image-smoke") | .id' <<<"$pods")
+
+          START_CMD=$(cat <<'CMD'
+          mkdir -p /tmp/dgbn
+          {
+            echo '=== DGBN BAKED IMAGE DIAGNOSTICS ==='
+            date -u
+            nvidia-smi
+            python - <<'PY'
+          import importlib
+          from pathlib import Path
+          import torch, cv2, numpy
+          print('torch', torch.__version__)
+          print('cuda_runtime', torch.version.cuda)
+          print('cuda_available', torch.cuda.is_available())
+          print('gpu', torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'NO_GPU')
+          print('opencv', cv2.__version__)
+          print('numpy', numpy.__version__)
+          for name in ['diffusers','transformers','mmcv','mmengine','mmdet','mmpose','omegaconf']:
+              try:
+                  mod=importlib.import_module(name)
+                  print('import', name, 'OK', getattr(mod,'__version__',''))
+              except Exception as e:
+                  print('import', name, 'FAIL', repr(e))
+          paths=[
+            '/opt/MuseTalk/models/sd-vae/diffusion_pytorch_model.bin',
+            '/opt/MuseTalk/models/whisper/pytorch_model.bin',
+            '/opt/MuseTalk/models/dwpose/dw-ll_ucoco_384.pth',
+            '/opt/MuseTalk/models/face-parse-bisent/79999_iter.pth',
+            '/opt/MuseTalk/models/face-parse-bisent/resnet18-5c106cde.pth',
+            '/root/.cache/torch/hub/checkpoints/s3fd-619a316812.pth',
+            '/opt/MuseTalk/models/musetalkV15/unet.pth',
+            '/opt/MuseTalk/models/musetalkV15/musetalk.json',
+            '/opt/MuseTalk/models/syncnet/latentsync_syncnet.pt',
+          ]
+          for p in paths:
+              x=Path(p)
+              print('asset', p, 'present' if x.exists() else 'MISSING', x.stat().st_size if x.exists() else 0)
+          PY
+          } > /tmp/dgbn/diagnostics.txt 2>&1
+          exec python -m http.server 8000 --bind 0.0.0.0 --directory /tmp/dgbn
+          CMD
+          )
+
+          payload=$(jq -n --arg name "$POD_NAME" --arg image "$image" --arg cmd "$START_CMD" '{
+            name:$name,
+            imageName:$image,
+            cloudType:"SECURE",
+            computeType:"GPU",
+            gpuCount:1,
+            gpuTypeIds:["NVIDIA GeForce RTX 4090","NVIDIA RTX A5000","NVIDIA RTX A4500","NVIDIA RTX A4000","NVIDIA L4","NVIDIA GeForce RTX 3090","NVIDIA A40","NVIDIA RTX A6000"],
+            gpuTypePriority:"availability",
+            allowedCudaVersions:["11.8","12.0","12.1","12.2","12.3","12.4","12.5","12.6","12.7","12.8","12.9"],
+            dataCenterPriority:"availability",
+            containerDiskInGb:12,
+            volumeInGb:0,
+            ports:["8000/http"],
+            supportPublicIp:true,
+            interruptible:false,
+            locked:false,
+            dockerEntrypoint:["/bin/bash","-lc"],
+            dockerStartCmd:[$cmd]
+          }')
+          response=$(curl -fsS -X POST -H "$AUTH" -H 'Content-Type: application/json' -d "$payload" https://rest.runpod.io/v1/pods)
+          pod_id=$(jq -r '.id' <<<"$response")
+          test -n "$pod_id" && test "$pod_id" != null
+          echo "pod_id=$pod_id" >> "$GITHUB_OUTPUT"
+          echo "Created DGBN baked-image smoke Pod: $pod_id"
+          jq '{id,name,desiredStatus,costPerHr,adjustedCostPerHr}' <<<"$response"
+
+      - name: Wait no more than two minutes for diagnostics
+        shell: bash
+        run: |
+          set -euo pipefail
+          pod_id='${{ steps.create.outputs.pod_id }}'
+          url="https://${pod_id}-8000.proxy.runpod.net/diagnostics.txt"
+          for i in $(seq 1 24); do
+            if curl -fsS --max-time 6 "$url" -o /tmp/diagnostics.txt 2>/dev/null; then
+              cat /tmp/diagnostics.txt
+              grep -q 'cuda_available True' /tmp/diagnostics.txt
+              grep -q 'import mmpose OK' /tmp/diagnostics.txt
+              echo 'DGBN_BAKED_IMAGE_SMOKE=PASS'
+              exit 0
+            fi
+            sleep 5
+          done
+          echo 'Baked DGBN image did not expose diagnostics within two minutes.' >&2
+          exit 1
+
+      - name: Delete only the DGBN baked-image smoke Pod
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          key=$(python - <<'PY'
+          import os
+          print(os.environ.get('RUNPOD_API_KEY_RAW','').strip().strip('“”‘’\"\'`'))
+          PY
+          )
+          [[ -z "$key" ]] && exit 0
+          echo "::add-mask::$key"
+          AUTH="Authorization: Bearer $key"
+          pods=$(curl -fsS -H "$AUTH" https://rest.runpod.io/v1/pods)
+          while IFS= read -r pod_id; do
+            [[ -z "$pod_id" ]] && continue
+            echo "Deleting DGBN baked-image smoke Pod: $pod_id"
+            curl -fsS -X DELETE -H "$AUTH" "https://rest.runpod.io/v1/pods/$pod_id" >/dev/null
+          done < <(jq -r '.[] | select(.name=="dgbn-baked-image-smoke") | .id' <<<"$pods")
+          echo 'DGBN baked-image smoke cleanup complete.'
