@@ -1,4 +1,4 @@
-name: Patch Peter benchmark runtime
+name: Patch Peter result cache race
 
 on:
   push:
@@ -17,7 +17,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: main
-      - name: Slim normal-Pod setup and extend render window
+      - name: Make Peter result retrieval cache-safe
         shell: bash
         run: |
           set -euo pipefail
@@ -25,25 +25,43 @@ jobs:
           from pathlib import Path
           p = Path('.github/workflows/peter-private-benchmark.yml')
           s = p.read_text()
-          replacements = [
-            ('    timeout-minutes: 12\n', '    timeout-minutes: 18\n'),
-            (
-              '            python -m pip install --no-cache-dir --disable-pip-version-check -r https://raw.githubusercontent.com/Diajem/dgbn-video-pipeline/main/runpod/requirements-worker.txt\n',
-              "            curl -fsSL https://raw.githubusercontent.com/Diajem/dgbn-video-pipeline/main/runpod/requirements-worker.txt | grep -v '^runpod$' > /tmp/peter-requirements.txt\n            python -m pip install --no-cache-dir --disable-pip-version-check -r /tmp/peter-requirements.txt\n"
-            ),
-            ("gdown 'cryptography>=42,<46' mmengine==0.10.7", "gdown 'cryptography>=50,<51' mmengine==0.10.7"),
-            ('          for i in $(seq 1 96); do\n', '          for i in $(seq 1 180); do\n'),
-            ("          echo 'Peter benchmark exceeded eight-minute wait.' >&2\n", "          echo 'Peter benchmark exceeded fifteen-minute wait.' >&2\n"),
-          ]
-          for old, new in replacements:
-              if old not in s:
-                  raise SystemExit(f'Expected benchmark text not found: {old[:80]!r}')
-              s = s.replace(old, new, 1)
+
+          old = "          from pathlib import Path\n          ROOT = Path('/tmp/dgbn')\n"
+          new = "          from pathlib import Path\n          from urllib.parse import urlparse\n          ROOT = Path('/tmp/dgbn')\n"
+          if old not in s:
+              raise SystemExit('Result server import block not found')
+          s = s.replace(old, new, 1)
+
+          old = "                  p = names.get(self.path)\n"
+          new = "                  p = names.get(urlparse(self.path).path)\n"
+          if old not in s:
+              raise SystemExit('Result server path lookup not found')
+          s = s.replace(old, new, 1)
+
+          old = """              curl -fsS --max-time 45 \"$base/bootstrap.log\" -o /tmp/bootstrap.log
+              python - <<'PY2'
+"""
+          new = """              got=0
+              for j in $(seq 1 30); do
+                nonce=$(date +%s%N)
+                curl -fsS --max-time 30 \"$base/bootstrap.log?nonce=$nonce\" -o /tmp/bootstrap.log 2>/dev/null || true
+                if grep -q 'DGBN_RESULT_B64_BEGIN' /tmp/bootstrap.log 2>/dev/null && grep -q 'DGBN_RESULT_B64_END' /tmp/bootstrap.log 2>/dev/null; then
+                  got=1
+                  break
+                fi
+                sleep 2
+              done
+              [[ \"$got\" == 1 ]]
+              python - <<'PY2'
+"""
+          if old not in s:
+              raise SystemExit('PASS result-fetch block not found')
+          s = s.replace(old, new, 1)
           p.write_text(s)
           PY
           git config user.name 'DGBN CI'
           git config user.email 'actions@users.noreply.github.com'
           git add .github/workflows/peter-private-benchmark.yml
           git diff --cached --check
-          git commit -m 'Slim Peter benchmark setup and extend render window'
+          git commit -m 'Make Peter encrypted-result retrieval cache-safe'
           git push origin HEAD:main
