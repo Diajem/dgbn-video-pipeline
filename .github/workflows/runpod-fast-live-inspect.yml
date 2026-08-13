@@ -1,0 +1,40 @@
+name: Inspect live fast DGBN MuseTalk Pod
+
+on:
+  push:
+    paths:
+      - '.github/workflows/runpod-fast-live-inspect.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    env:
+      RUNPOD_API_KEY_RAW: ${{ secrets.RUNPOD_API_KEY }}
+    steps:
+      - name: Read exact fast DGBN bootstrap log
+        shell: bash
+        run: |
+          set -euo pipefail
+          key=$(python - <<'PY'
+          import os
+          print(os.environ.get('RUNPOD_API_KEY_RAW','').strip().strip('“”‘’\"\'`'))
+          PY
+          )
+          test -n "$key"
+          echo "::add-mask::$key"
+          pods=$(curl -fsS -H "Authorization: Bearer $key" https://rest.runpod.io/v1/pods)
+          count=$(jq '[.[] | select(.name=="dgbn-musetalk-fast-e2e")] | length' <<<"$pods")
+          echo "Matching fast DGBN Pods: $count"
+          [[ "$count" == 1 ]] || exit 0
+          pod_id=$(jq -r '.[] | select(.name=="dgbn-musetalk-fast-e2e") | .id' <<<"$pods")
+          jq '.[] | select(.name=="dgbn-musetalk-fast-e2e") | {id,name,desiredStatus,costPerHr,gpu:(.gpu.displayName // null),lastStatusChange}' <<<"$pods"
+          base="https://${pod_id}-8000.proxy.runpod.net"
+          echo '--- STATUS ---'
+          curl -fsS --max-time 10 "$base/status.txt" || true
+          echo
+          echo '--- BOOTSTRAP TAIL ---'
+          curl -fsS --max-time 20 "$base/bootstrap.log" | tail -n 120 || true
