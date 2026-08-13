@@ -151,7 +151,6 @@ jobs:
           assert torch.cuda.is_available()
           PY
 
-            # Same trimmed stack that passed the generic DGBN E2E: no apt, no torch reinstall, no SyncNet.
             python -m pip install --no-cache-dir --disable-pip-version-check -r https://raw.githubusercontent.com/Diajem/dgbn-video-pipeline/main/runpod/requirements-worker.txt
             python -m pip install --no-cache-dir --disable-pip-version-check \
               gdown 'cryptography>=42,<46' mmengine==0.10.7 'mmdet==3.2.0' 'mmpose==1.2.0' \
@@ -190,7 +189,6 @@ jobs:
           urllib.request.urlretrieve('https://www.adrianbulat.com/downloads/python-fan/s3fd-619a316812.pth','/root/.cache/torch/hub/checkpoints/s3fd-619a316812.pth')
           PY
 
-            # Fix upstream image-input cleanup so the benchmark completes cleanly for a still presenter master.
             python - <<'PY'
           from pathlib import Path
           p=Path('scripts/inference.py')
@@ -317,8 +315,21 @@ jobs:
           for i in $(seq 1 96); do
             status=$(curl -fsS --max-time 8 -H "X-DGBN-Token: $token" "$base/status.txt" 2>/dev/null || true)
             if [[ "$status" == PASS ]]; then
-              curl -fsS --max-time 60 -H "X-DGBN-Token: $token" "$base/result.enc" -o peter-musetalk-12s.enc
-              test -s peter-musetalk-12s.enc
+              got_result=0
+              for j in $(seq 1 15); do
+                if curl -fsS --max-time 30 -H "X-DGBN-Token: $token" "$base/result.enc" -o peter-musetalk-12s.enc 2>/dev/null && [[ -s peter-musetalk-12s.enc ]]; then
+                  got_result=1
+                  break
+                fi
+                rm -f peter-musetalk-12s.enc
+                sleep 2
+              done
+              if [[ "$got_result" != 1 ]]; then
+                echo 'MuseTalk reported PASS but encrypted result was not retrievable after retries.' >&2
+                curl -fsS --max-time 20 -H "X-DGBN-Token: $token" "$base/bootstrap.log" -o /tmp/bootstrap.log || true
+                tail -n 180 /tmp/bootstrap.log || true
+                exit 1
+              fi
               echo 'PETER_MUSETALK_12S=PASS'
               exit 0
             elif [[ "$status" == FAIL:* ]]; then
