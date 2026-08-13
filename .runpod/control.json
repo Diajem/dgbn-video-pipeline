@@ -1,5 +1,5 @@
 {
-  "action": "inspect",
+  "action": "inspect_pods",
   "endpointName": "dgbn-video-pipeline",
-  "inspectNonce": "balance-check-20260813-0324"
+  "inspectNonce": "balance-check-pods-20260813-0326"
 }
