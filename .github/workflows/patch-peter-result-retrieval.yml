@@ -1,4 +1,4 @@
-name: Patch Peter encrypted-result retrieval
+name: Patch Peter benchmark runtime
 
 on:
   push:
@@ -17,7 +17,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: main
-      - name: Route encrypted Peter result through proven bootstrap log
+      - name: Slim normal-Pod setup and extend render window
         shell: bash
         run: |
           set -euo pipefail
@@ -25,52 +25,25 @@ jobs:
           from pathlib import Path
           p = Path('.github/workflows/peter-private-benchmark.yml')
           s = p.read_text()
-
-          old_encrypt = "          Path('/tmp/dgbn/result.enc').write_bytes(magic + eph_pub + nonce + ciphertext)\n          PY\n"
-          new_encrypt = "          encrypted = magic + eph_pub + nonce + ciphertext\n          Path('/tmp/dgbn/result.enc').write_bytes(encrypted)\n          print('DGBN_RESULT_B64_BEGIN')\n          print(base64.b64encode(encrypted).decode('ascii'))\n          print('DGBN_RESULT_B64_END')\n          PY\n"
-          if old_encrypt not in s:
-              raise SystemExit('Expected encryption block not found; refusing blind patch')
-          s = s.replace(old_encrypt, new_encrypt, 1)
-
-          old_return = (
-              '            if [[ "$status" == PASS ]]; then\n'
-              '              got=0\n'
-              '              for j in $(seq 1 20); do\n'
-              '                if curl -fsS --max-time 30 "$base/result.enc" -o peter-musetalk-12s.enc 2>/dev/null && [[ -s peter-musetalk-12s.enc ]]; then got=1; break; fi\n'
-              '                rm -f peter-musetalk-12s.enc; sleep 2\n'
-              '              done\n'
-              '              [[ "$got" == 1 ]]\n'
-              "              echo 'PETER_MUSETALK_12S=PASS'\n"
-              '              exit 0\n'
-          )
-          new_return = (
-              '            if [[ "$status" == PASS ]]; then\n'
-              '              curl -fsS --max-time 45 "$base/bootstrap.log" -o /tmp/bootstrap.log\n'
-              "              python - <<'PY2'\n"
-              '          import base64\n'
-              '          from pathlib import Path\n'
-              "          text = Path('/tmp/bootstrap.log').read_text(errors='replace')\n"
-              "          start = text.rfind('DGBN_RESULT_B64_BEGIN\\n')\n"
-              "          end = text.rfind('\\nDGBN_RESULT_B64_END')\n"
-              "          if start < 0 or end < 0 or end <= start: raise SystemExit('Encrypted Peter result marker missing from bootstrap log')\n"
-              "          payload = text[start + len('DGBN_RESULT_B64_BEGIN\\n'):end].strip()\n"
-              '          data = base64.b64decode(payload, validate=True)\n'
-              "          if len(data) < 10000: raise SystemExit('Encrypted Peter result unexpectedly small')\n"
-              "          Path('peter-musetalk-12s.enc').write_bytes(data)\n"
-              "          print('Recovered encrypted Peter result from bootstrap log:', len(data), 'bytes')\n"
-              '          PY2\n'
-              '              test -s peter-musetalk-12s.enc\n'
-              "              echo 'PETER_MUSETALK_12S=PASS'\n"
-              '              exit 0\n'
-          )
-          if old_return not in s:
-              raise SystemExit('Expected result return block not found; refusing blind patch')
-          s = s.replace(old_return, new_return, 1)
+          replacements = [
+            ('    timeout-minutes: 12\n', '    timeout-minutes: 18\n'),
+            (
+              '            python -m pip install --no-cache-dir --disable-pip-version-check -r https://raw.githubusercontent.com/Diajem/dgbn-video-pipeline/main/runpod/requirements-worker.txt\n',
+              "            curl -fsSL https://raw.githubusercontent.com/Diajem/dgbn-video-pipeline/main/runpod/requirements-worker.txt | grep -v '^runpod$' > /tmp/peter-requirements.txt\n            python -m pip install --no-cache-dir --disable-pip-version-check -r /tmp/peter-requirements.txt\n"
+            ),
+            ("gdown 'cryptography>=42,<46' mmengine==0.10.7", "gdown 'cryptography>=50,<51' mmengine==0.10.7"),
+            ('          for i in $(seq 1 96); do\n', '          for i in $(seq 1 180); do\n'),
+            ("          echo 'Peter benchmark exceeded eight-minute wait.' >&2\n", "          echo 'Peter benchmark exceeded fifteen-minute wait.' >&2\n"),
+          ]
+          for old, new in replacements:
+              if old not in s:
+                  raise SystemExit(f'Expected benchmark text not found: {old[:80]!r}')
+              s = s.replace(old, new, 1)
           p.write_text(s)
           PY
           git config user.name 'DGBN CI'
           git config user.email 'actions@users.noreply.github.com'
           git add .github/workflows/peter-private-benchmark.yml
           git diff --cached --check
-          git commit -m 'Return encrypted Peter result through bootstrap log'
+          git commit -m 'Slim Peter benchmark setup and extend render window'
           git push origin HEAD:main
