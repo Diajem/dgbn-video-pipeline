@@ -24,5 +24,5 @@ jobs:
           echo
           echo 'BOOTSTRAP TAIL:'
           curl -fsS --max-time 15 "$base/bootstrap.log" -o /tmp/peter-bootstrap.log || true
-          tail -n 120 /tmp/peter-bootstrap.log 2>/dev/null || true
-          echo 'PROBE_NONCE=20260813-0506'
+          tail -n 140 /tmp/peter-bootstrap.log 2>/dev/null || true
+          echo 'PROBE_NONCE=20260813-0508'
