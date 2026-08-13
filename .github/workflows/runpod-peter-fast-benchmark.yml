@@ -1,0 +1,230 @@
+name: DGBN Peter fast MuseTalk benchmark
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/runpod-peter-fast-benchmark.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    env:
+      RUNPOD_API_KEY_RAW: ${{ secrets.RUNPOD_API_KEY }}
+      POD_NAME: dgbn-peter-musetalk-fast
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Decrypt Peter benchmark inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/peter-private
+          python - <<'PY'
+          import os, hashlib, base64, zipfile
+          from pathlib import Path
+          from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey, X25519PublicKey
+          from cryptography.hazmat.primitives.kdf.hkdf import HKDF
+          from cryptography.hazmat.primitives import hashes
+          from cryptography.hazmat.primitives.ciphers.aead import ChaCha20Poly1305
+
+          raw = os.environ.get('RUNPOD_API_KEY_RAW','').strip().strip('“”‘’\"\'`')
+          if not raw:
+              raise SystemExit('RUNPOD_API_KEY missing')
+          seed = hashlib.sha256(b'DGBN-PETER-PRIVATE-TRANSFER-V1\0' + raw.encode()).digest()
+          priv = X25519PrivateKey.from_private_bytes(seed)
+          payload = base64.b64decode(Path('.runpod/private-transfer/peter-benchmark.enc.b64').read_text().strip())
+          if payload[:8] != b'DGBNPTR1':
+              raise SystemExit('Invalid encrypted benchmark payload')
+          eph_pub = X25519PublicKey.from_public_bytes(payload[8:40])
+          nonce = payload[40:52]
+          shared = priv.exchange(eph_pub)
+          key = HKDF(algorithm=hashes.SHA256(), length=32, salt=None, info=b'DGBN-PETER-PRIVATE-TRANSFER-V1').derive(shared)
+          plain = ChaCha20Poly1305(key).decrypt(nonce, payload[52:], b'DGBN-PETER-BENCHMARK')
+          zip_path = Path('/tmp/peter-private/input.zip')
+          zip_path.write_bytes(plain)
+          with zipfile.ZipFile(zip_path) as z:
+              allowed={'peter.jpg','peter.mp3'}
+              if set(z.namelist()) != allowed:
+                  raise SystemExit('Unexpected private payload contents')
+              z.extractall('/tmp/peter-private')
+          for name in allowed:
+              p=Path('/tmp/peter-private')/name
+              if not p.exists() or p.stat().st_size < 1000:
+                  raise SystemExit(f'Invalid {name}')
+          print('Peter benchmark inputs decrypted successfully.')
+          PY
+
+      - name: Create fast DGBN MuseTalk Pod
+        id: create
+        shell: bash
+        run: |
+          set -euo pipefail
+          key=$(python - <<'PY'
+          import os
+          print(os.environ.get('RUNPOD_API_KEY_RAW','').strip().strip('“”‘’\"\'`'))
+          PY
+          )
+          test -n "$key"
+          echo "::add-mask::$key"
+          AUTH="Authorization: Bearer $key"
+
+          endpoints=$(curl -fsS -H "$AUTH" https://rest.runpod.io/v1/endpoints)
+          endpoint_id=$(jq -r '.[] | select(.name=="dgbn-video-pipeline") | .id' <<<"$endpoints" | head -1)
+          if [[ -n "$endpoint_id" && "$endpoint_id" != "null" ]]; then
+            curl -fsS -X POST -H "$AUTH" -H 'Content-Type: application/json' \
+              -d '{"workersMin":0,"workersMax":0}' \
+              "https://rest.runpod.io/v1/endpoints/$endpoint_id/update" >/dev/null
+          fi
+
+          pods=$(curl -fsS -H "$AUTH" https://rest.runpod.io/v1/pods)
+          while IFS= read -r stale_id; do
+            [[ -z "$stale_id" ]] && continue
+            echo "Removing stale fast DGBN Peter Pod: $stale_id"
+            curl -fsS -X DELETE -H "$AUTH" "https://rest.runpod.io/v1/pods/$stale_id" >/dev/null || true
+          done < <(jq -r '.[] | select(.name=="dgbn-peter-musetalk-fast") | .id' <<<"$pods")
+
+          START_CMD=$(cat <<'CMD'
+          set -e
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get update
+          apt-get install -y --no-install-recommends git ffmpeg curl ca-certificates build-essential libsndfile1 libgl1 libglib2.0-0
+          rm -rf /var/lib/apt/lists/* /opt/dgbn-pipeline
+          git clone --depth 1 https://github.com/Diajem/dgbn-video-pipeline.git /opt/dgbn-pipeline
+          exec python /opt/dgbn-pipeline/runpod/peter_private_server_fast.py
+          CMD
+          )
+
+          payload=$(jq -n --arg name "$POD_NAME" --arg cmd "$START_CMD" '{
+            name:$name,
+            imageName:"runpod/pytorch:2.0.1-py3.10-cuda11.8.0-devel-ubuntu22.04",
+            cloudType:"SECURE",
+            computeType:"GPU",
+            gpuCount:1,
+            gpuTypeIds:["NVIDIA GeForce RTX 4090","NVIDIA RTX A5000","NVIDIA RTX A4500","NVIDIA RTX A4000","NVIDIA L4","NVIDIA GeForce RTX 3090","NVIDIA A40","NVIDIA RTX A6000","NVIDIA RTX 4000 Ada Generation"],
+            gpuTypePriority:"availability",
+            allowedCudaVersions:["11.8","12.0","12.1","12.2","12.3","12.4","12.5","12.6","12.7","12.8","12.9"],
+            dataCenterPriority:"availability",
+            containerDiskInGb:40,
+            volumeInGb:0,
+            ports:["8000/http"],
+            supportPublicIp:true,
+            interruptible:false,
+            locked:false,
+            dockerEntrypoint:["/bin/bash","-lc"],
+            dockerStartCmd:[$cmd]
+          }')
+
+          response=$(curl -fsS -X POST -H "$AUTH" -H 'Content-Type: application/json' -d "$payload" https://rest.runpod.io/v1/pods)
+          pod_id=$(jq -r '.id' <<<"$response")
+          test -n "$pod_id" && test "$pod_id" != null
+          echo "pod_id=$pod_id" >> "$GITHUB_OUTPUT"
+          echo "Created fast DGBN Peter Pod: $pod_id"
+          jq '{id,name,desiredStatus,costPerHr,adjustedCostPerHr}' <<<"$response"
+
+      - name: Run Peter 12 second MuseTalk benchmark
+        shell: bash
+        run: |
+          set -euo pipefail
+          pod_id='${{ steps.create.outputs.pod_id }}'
+          base="https://${pod_id}-8000.proxy.runpod.net"
+
+          ready=0
+          for i in $(seq 1 30); do
+            if curl -fsS --max-time 8 "$base/health" >/dev/null 2>&1; then
+              ready=1
+              break
+            fi
+            sleep 10
+          done
+          if [[ "$ready" != 1 ]]; then
+            echo 'Fast Peter Pod did not expose upload service within 5 minutes.' >&2
+            exit 1
+          fi
+
+          curl -fsS --max-time 60 -X PUT --data-binary @/tmp/peter-private/peter.jpg "$base/upload/peter.jpg"
+          curl -fsS --max-time 60 -X PUT --data-binary @/tmp/peter-private/peter.mp3 "$base/upload/peter.mp3"
+          curl -fsS --max-time 30 -X POST "$base/run"
+          echo 'Peter media uploaded; fast MuseTalk benchmark started.'
+
+          for i in $(seq 1 180); do
+            if (( i % 12 == 1 )); then
+              echo "--- Peter fast benchmark progress $(date -u +%H:%M:%S) ---"
+              curl -fsS --max-time 15 "$base/bootstrap.log" -o /tmp/peter-bootstrap.log 2>/dev/null || true
+              tail -n 30 /tmp/peter-bootstrap.log 2>/dev/null || true
+            fi
+            if status=$(curl -fsS --max-time 8 "$base/status.txt" 2>/dev/null); then
+              echo "Peter fast benchmark status: $status"
+              curl -fsS --max-time 15 "$base/bootstrap.log" -o /tmp/peter-bootstrap.log || true
+              tail -n 100 /tmp/peter-bootstrap.log || true
+              if [[ "$status" == PASS ]]; then
+                curl -fsS --max-time 120 "$base/result.mp4" -o /tmp/peter-result.mp4
+                bytes=$(stat -c%s /tmp/peter-result.mp4)
+                echo "Peter result captured: ${bytes} bytes"
+                [[ "$bytes" -gt 10000 ]]
+                exit 0
+              fi
+              exit 1
+            fi
+            sleep 10
+          done
+          echo 'Fast Peter benchmark exceeded 30 minutes.' >&2
+          exit 1
+
+      - name: Encrypt Peter result
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import os, base64
+          from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey, X25519PublicKey
+          from cryptography.hazmat.primitives.kdf.hkdf import HKDF
+          from cryptography.hazmat.primitives import hashes
+          from cryptography.hazmat.primitives.ciphers.aead import ChaCha20Poly1305
+          from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
+
+          recipient=X25519PublicKey.from_public_bytes(base64.b64decode(Path('.runpod/private-transfer/peter-result-fast-public.b64').read_text().strip()))
+          eph=X25519PrivateKey.generate()
+          eph_pub=eph.public_key().public_bytes(Encoding.Raw, PublicFormat.Raw)
+          shared=eph.exchange(recipient)
+          key=HKDF(algorithm=hashes.SHA256(), length=32, salt=None, info=b'DGBN-PETER-RESULT-FAST-V1').derive(shared)
+          nonce=os.urandom(12)
+          plain=Path('/tmp/peter-result.mp4').read_bytes()
+          ct=ChaCha20Poly1305(key).encrypt(nonce, plain, b'DGBN-PETER-RESULT')
+          Path('peter-result-fast.enc').write_bytes(b'DGBNRSF1'+eph_pub+nonce+ct)
+          print(f'Encrypted Peter result prepared: {len(plain)} plaintext bytes.')
+          PY
+
+      - name: Upload encrypted Peter sample
+        uses: actions/upload-artifact@v4
+        with:
+          name: peter-musetalk-fast-12s-encrypted
+          path: peter-result-fast.enc
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Delete only the fast DGBN Peter Pod
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          key=$(python - <<'PY'
+          import os
+          print(os.environ.get('RUNPOD_API_KEY_RAW','').strip().strip('“”‘’\"\'`'))
+          PY
+          )
+          [[ -z "$key" ]] && exit 0
+          echo "::add-mask::$key"
+          AUTH="Authorization: Bearer $key"
+          pods=$(curl -fsS -H "$AUTH" https://rest.runpod.io/v1/pods)
+          while IFS= read -r pod_id; do
+            [[ -z "$pod_id" ]] && continue
+            echo "Deleting fast DGBN Peter Pod: $pod_id"
+            curl -fsS -X DELETE -H "$AUTH" "https://rest.runpod.io/v1/pods/$pod_id" >/dev/null
+          done < <(jq -r '.[] | select(.name=="dgbn-peter-musetalk-fast") | .id' <<<"$pods")
+          echo 'Fast DGBN Peter Pod cleanup complete.'
