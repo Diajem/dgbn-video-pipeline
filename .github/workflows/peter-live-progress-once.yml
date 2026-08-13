@@ -1,0 +1,27 @@
+name: Peter live progress once
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/peter-live-progress-once.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - name: Read Peter benchmark progress
+        shell: bash
+        run: |
+          set +e
+          base='https://mdqal8ibfgay9u-8000.proxy.runpod.net'
+          echo 'STATUS:'
+          curl -fsS --max-time 10 "$base/status.txt" || true
+          echo
+          echo 'BOOTSTRAP TAIL:'
+          curl -fsS --max-time 15 "$base/bootstrap.log" -o /tmp/peter-bootstrap.log || true
+          tail -n 100 /tmp/peter-bootstrap.log 2>/dev/null || true
