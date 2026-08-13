@@ -38,22 +38,24 @@ jobs:
               raise SystemExit('Result server path lookup not found')
           s = s.replace(old, new, 1)
 
-          old = """              curl -fsS --max-time 45 \"$base/bootstrap.log\" -o /tmp/bootstrap.log
-              python - <<'PY2'
-"""
-          new = """              got=0
-              for j in $(seq 1 30); do
-                nonce=$(date +%s%N)
-                curl -fsS --max-time 30 \"$base/bootstrap.log?nonce=$nonce\" -o /tmp/bootstrap.log 2>/dev/null || true
-                if grep -q 'DGBN_RESULT_B64_BEGIN' /tmp/bootstrap.log 2>/dev/null && grep -q 'DGBN_RESULT_B64_END' /tmp/bootstrap.log 2>/dev/null; then
-                  got=1
-                  break
-                fi
-                sleep 2
-              done
-              [[ \"$got\" == 1 ]]
-              python - <<'PY2'
-"""
+          old = (
+              '              curl -fsS --max-time 45 "$base/bootstrap.log" -o /tmp/bootstrap.log\n'
+              "              python - <<'PY2'\n"
+          )
+          new = (
+              '              got=0\n'
+              '              for j in $(seq 1 30); do\n'
+              '                nonce=$(date +%s%N)\n'
+              '                curl -fsS --max-time 30 "$base/bootstrap.log?nonce=$nonce" -o /tmp/bootstrap.log 2>/dev/null || true\n'
+              "                if grep -q 'DGBN_RESULT_B64_BEGIN' /tmp/bootstrap.log 2>/dev/null && grep -q 'DGBN_RESULT_B64_END' /tmp/bootstrap.log 2>/dev/null; then\n"
+              '                  got=1\n'
+              '                  break\n'
+              '                fi\n'
+              '                sleep 2\n'
+              '              done\n'
+              '              [[ "$got" == 1 ]]\n'
+              "              python - <<'PY2'\n"
+          )
           if old not in s:
               raise SystemExit('PASS result-fetch block not found')
           s = s.replace(old, new, 1)
