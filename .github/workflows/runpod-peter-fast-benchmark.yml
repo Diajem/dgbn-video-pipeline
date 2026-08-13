@@ -12,7 +12,7 @@ permissions:
 jobs:
   benchmark:
     runs-on: ubuntu-24.04
-    timeout-minutes: 40
+    timeout-minutes: 50
     env:
       RUNPOD_API_KEY_RAW: ${{ secrets.RUNPOD_API_KEY }}
       POD_NAME: dgbn-peter-musetalk-fast
@@ -132,17 +132,34 @@ jobs:
           set -euo pipefail
           pod_id='${{ steps.create.outputs.pod_id }}'
           base="https://${pod_id}-8000.proxy.runpod.net"
+          key=$(python - <<'PY'
+          import os
+          print(os.environ.get('RUNPOD_API_KEY_RAW','').strip().strip('“”‘’\"\'`'))
+          PY
+          )
+          echo "::add-mask::$key"
+          AUTH="Authorization: Bearer $key"
 
           ready=0
-          for i in $(seq 1 30); do
+          for i in $(seq 1 72); do
             if curl -fsS --max-time 8 "$base/health" >/dev/null 2>&1; then
               ready=1
+              echo "Fast Peter Pod service reachable after readiness attempt $i."
               break
+            fi
+            if (( i % 6 == 0 )); then
+              pod_json=$(curl -fsS --max-time 15 -H "$AUTH" "https://rest.runpod.io/v1/pods/$pod_id" || true)
+              desired=$(jq -r '.desiredStatus // "UNKNOWN"' <<<"$pod_json" 2>/dev/null || echo UNKNOWN)
+              echo "Fast Peter Pod readiness: attempt $i/72, desiredStatus=$desired"
+              if [[ "$desired" == "EXITED" || "$desired" == "TERMINATED" ]]; then
+                echo "Fast Peter Pod stopped before its upload service became reachable." >&2
+                exit 1
+              fi
             fi
             sleep 10
           done
           if [[ "$ready" != 1 ]]; then
-            echo 'Fast Peter Pod did not expose upload service within 5 minutes.' >&2
+            echo 'Fast Peter Pod did not expose upload service within 12 minutes.' >&2
             exit 1
           fi
 
