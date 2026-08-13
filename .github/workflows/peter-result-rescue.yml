@@ -1,0 +1,114 @@
+name: Peter result rescue
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/peter-result-rescue.yml'
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  rescue:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 22
+    env:
+      RUNPOD_API_KEY_RAW: ${{ secrets.RUNPOD_API_KEY }}
+      POD_NAME: dgbn-peter-musetalk-benchmark
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Dispatch Peter benchmark and capture result before wrapper cleanup
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          key=$(python - <<'PY'
+          import os
+          print(os.environ.get('RUNPOD_API_KEY_RAW','').strip().strip('“”‘’\"\'`'))
+          PY
+          )
+          test -n "$key"
+          echo "::add-mask::$key"
+          AUTH="Authorization: Bearer $key"
+
+          curl -fsS -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/runpod-peter-private-benchmark.yml/dispatches" \
+            -d '{"ref":"main"}'
+          echo 'Peter benchmark dispatched; waiting for its DGBN Pod.'
+
+          pod_id=''
+          for i in $(seq 1 180); do
+            pods=$(curl -fsS -H "$AUTH" https://rest.runpod.io/v1/pods)
+            pod_id=$(jq -r --arg n "$POD_NAME" '.[] | select(.name==$n and .desiredStatus=="RUNNING") | .id' <<<"$pods" | head -1)
+            if [[ -n "$pod_id" ]]; then break; fi
+            sleep 1
+          done
+          test -n "$pod_id"
+          echo "Watching Peter DGBN Pod: $pod_id"
+          base="https://${pod_id}-8000.proxy.runpod.net"
+
+          for i in $(seq 1 1200); do
+            status=$(curl -fsS --max-time 3 "$base/status.txt" 2>/dev/null || true)
+            if [[ "$status" == PASS ]]; then
+              echo 'MuseTalk reported PASS; retrieving Peter MP4 immediately.'
+              for j in $(seq 1 20); do
+                if curl -fsS --max-time 10 "$base/result.mp4" -o /tmp/peter-result.mp4 2>/dev/null && [[ -s /tmp/peter-result.mp4 ]]; then
+                  bytes=$(stat -c%s /tmp/peter-result.mp4)
+                  if [[ "$bytes" -gt 10000 ]]; then
+                    echo "Peter result captured: ${bytes} bytes"
+                    exit 0
+                  fi
+                fi
+                sleep 0.2
+              done
+              echo 'PASS was seen but result retrieval lost the cleanup race.' >&2
+              exit 1
+            fi
+            if [[ "$status" == FAIL:* ]]; then
+              echo "MuseTalk reported $status" >&2
+              exit 1
+            fi
+            sleep 1
+          done
+          echo 'Timed out waiting for Peter benchmark result.' >&2
+          exit 1
+
+      - name: Encrypt captured Peter result
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --quiet 'cryptography>=42,<51'
+          python - <<'PY'
+          from pathlib import Path
+          import os, base64
+          from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey, X25519PublicKey
+          from cryptography.hazmat.primitives.kdf.hkdf import HKDF
+          from cryptography.hazmat.primitives import hashes
+          from cryptography.hazmat.primitives.ciphers.aead import ChaCha20Poly1305
+          from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
+          recipient=X25519PublicKey.from_public_bytes(base64.b64decode(Path('.runpod/private-transfer/peter-return-public.b64').read_text().strip()))
+          eph=X25519PrivateKey.generate()
+          eph_pub=eph.public_key().public_bytes(Encoding.Raw, PublicFormat.Raw)
+          shared=eph.exchange(recipient)
+          key=HKDF(algorithm=hashes.SHA256(), length=32, salt=None, info=b'DGBN-PETER-RESULT-RETURN-V1').derive(shared)
+          nonce=os.urandom(12)
+          plain=Path('/tmp/peter-result.mp4').read_bytes()
+          ct=ChaCha20Poly1305(key).encrypt(nonce, plain, b'DGBN-PETER-RESULT')
+          Path('peter-result.enc').write_bytes(b'DGBNRES1'+eph_pub+nonce+ct)
+          print('Peter result encrypted for private return.')
+          PY
+
+      - name: Upload encrypted Peter sample
+        uses: actions/upload-artifact@v4
+        with:
+          name: peter-musetalk-12s-encrypted-rescue
+          path: peter-result.enc
+          if-no-files-found: error
+          retention-days: 1
