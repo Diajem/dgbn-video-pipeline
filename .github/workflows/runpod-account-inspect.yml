@@ -1,0 +1,29 @@
+name: RunPod account inspect
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/runpod-account-inspect.yml'
+      - '.runpod/account-inspect-trigger.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    env:
+      RUNPOD_API_KEY: ${{ secrets.RUNPOD_API_KEY }}
+    steps:
+      - name: Read-only RunPod Pod inventory
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$RUNPOD_API_KEY"
+          echo "::add-mask::$RUNPOD_API_KEY"
+          pods=$(curl -fsS -H "Authorization: Bearer $RUNPOD_API_KEY" https://rest.runpod.io/v1/pods)
+          echo 'RUNPOD_PODS_BEGIN'
+          jq '[.[] | {id,name,desiredStatus,costPerHr,adjustedCostPerHr,gpu: (.machine.gpuDisplayName // .gpuTypeId // null)}]' <<<"$pods"
+          echo 'RUNPOD_PODS_END'
