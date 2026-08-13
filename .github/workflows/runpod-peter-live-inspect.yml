@@ -1,0 +1,47 @@
+name: Inspect live Peter benchmark Pod
+
+on:
+  push:
+    paths:
+      - '.github/workflows/runpod-peter-live-inspect.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    env:
+      RUNPOD_API_KEY_RAW: ${{ secrets.RUNPOD_API_KEY }}
+    steps:
+      - name: Read exact DGBN Peter bootstrap log
+        shell: bash
+        run: |
+          set -euo pipefail
+          key=$(python - <<'PY'
+          import os
+          raw=os.environ.get('RUNPOD_API_KEY_RAW','')
+          print(raw.strip().strip('“”‘’\"\'`'))
+          PY
+          )
+          test -n "$key"
+          echo "::add-mask::$key"
+          pods=$(curl -fsS -H "Authorization: Bearer $key" https://rest.runpod.io/v1/pods)
+          count=$(jq '[.[] | select(.name=="dgbn-peter-private-benchmark")] | length' <<<"$pods")
+          echo "Matching DGBN Peter Pods: $count"
+          [[ "$count" == 1 ]] || exit 0
+          pod_id=$(jq -r '.[] | select(.name=="dgbn-peter-private-benchmark") | .id' <<<"$pods")
+          token=$(jq -r '.[] | select(.name=="dgbn-peter-private-benchmark") | .env.DGBN_UPLOAD_TOKEN // empty' <<<"$pods")
+          status=$(jq -r '.[] | select(.name=="dgbn-peter-private-benchmark") | .desiredStatus' <<<"$pods")
+          cost=$(jq -r '.[] | select(.name=="dgbn-peter-private-benchmark") | .costPerHr' <<<"$pods")
+          gpu=$(jq -r '.[] | select(.name=="dgbn-peter-private-benchmark") | .gpu.displayName // "pending"' <<<"$pods")
+          echo "Pod: $pod_id status=$status gpu=$gpu costPerHr=$cost"
+          [[ -n "$token" ]] || { echo 'Upload token not present in Pod metadata'; exit 0; }
+          echo "::add-mask::$token"
+          base="https://${pod_id}-8000.proxy.runpod.net"
+          echo '--- STATUS ---'
+          curl -fsS --max-time 10 -H "X-DGBN-Token: $token" "$base/status.txt" || true
+          echo
+          echo '--- BOOTSTRAP TAIL ---'
+          curl -fsS --max-time 20 -H "X-DGBN-Token: $token" "$base/bootstrap.log" | tail -n 120 || true
