@@ -1,0 +1,143 @@
+{
+  "jobId": "dgbn-20260918-civ-gold-refinery",
+  "brand": "DGBN",
+  "channel": "Africa",
+  "jobType": "full-report",
+  "createdAt": "2026-09-18T19:15:00+01:00",
+  "title": "Côte d’Ivoire’s Next Big Bet: From Cocoa Powerhouse to Gold Refining Hub",
+  "tagline": "Our People. Our Story. Our Own Way.",
+  "approval": {
+    "mode": "human-required",
+    "status": "draft"
+  },
+  "presenter": {
+    "id": "peet",
+    "mode": "voiceover-only",
+    "avatarProfile": "peet-standard-news"
+  },
+  "opening": "Côte d’Ivoire is already the world’s cocoa powerhouse. Now it wants a much bigger place in Africa’s gold economy.",
+  "closing": "This is Diajem Global Black News. Our People. Our Story. Our Own Way.",
+  "stories": [
+    {
+      "storyId": "civ-gold-refinery-2027",
+      "desk": "Africa",
+      "grade": "A",
+      "headline": "Côte d’Ivoire’s Next Big Bet: From Cocoa Powerhouse to Gold Refining Hub",
+      "verification": {
+        "status": "verified",
+        "confidence": 0.97,
+        "sensitive": false,
+        "sources": [
+          {
+            "name": "Government of Côte d’Ivoire — SIMEP refinery announcement",
+            "url": "https://www.gouv.ci/actualite/operationnalisation-de-la-simep-mamadou-sangafowa-coulibaly-annonce-une-unite-daffinage-avec-une-capacite-de-traitement-de-cent-tonnes-dor-au-terme-du-premier-semestre-2027-5764",
+            "publishedAt": "2026-09-16T00:00:00+00:00",
+            "tier": 1
+          },
+          {
+            "name": "Côte d’Ivoire Ministry of Mines, Petroleum and Energy",
+            "url": "https://energie.gouv.ci/actualite/avec-sa-raffinerie-dor-et-son-comptoir-dachat-la-cote-divoire-veut-maitriser-toute-la-chaine-de-valeur-6aabe2be88832",
+            "publishedAt": "2026-09-16T00:00:00+00:00",
+            "tier": 1
+          },
+          {
+            "name": "Reuters via Mining Weekly — 2026 gold output projection",
+            "url": "https://www.miningweekly.com/article/gold-output-in-cte-divoire-set-to-climb-in-2026-as-mines-expand-2026-06-11",
+            "publishedAt": "2026-06-11T00:00:00+00:00",
+            "tier": 1
+          },
+          {
+            "name": "World Bank — artisanal gold formalisation",
+            "url": "https://www.worldbank.org/en/news/press-release/2025/07/11/cote-ivoire-moves-to-formalize-its-vast-informal-gold-mining-sector",
+            "publishedAt": "2025-07-11T00:00:00+00:00",
+            "tier": 1
+          }
+        ]
+      },
+      "narration": "Côte d’Ivoire is already the world’s cocoa powerhouse. Now it wants a much bigger place in Africa’s gold economy. The government says the country’s first national gold-refining unit, in Abidjan, is expected to begin operations by the end of the first half of 2027. The refinery, developed through SIMEP, is designed to process up to one hundred tonnes of gold a year. But that number needs context. One hundred tonnes is refining capacity, not Côte d’Ivoire’s current mine output. The country produced 59.33 tonnes of gold in 2025, and officials projected about 62 tonnes for 2026. The ambition is much larger. By 2035, the government says it wants Côte d’Ivoire to become Africa’s largest gold producer. And this project is about more than one refinery. SIMEP is intended to connect semi-industrial mining, a national gold-buying desk, processing, international marketing and the creation of a state gold stock. The government says national investors will hold seventy percent of the company, with the state and SODEMI together holding forty-nine percent. StoneX is expected to support international marketing, while the buying system is also intended to improve traceability and bring more artisanal and small-scale gold into formal channels. That may be the bigger story. Côte d’Ivoire is not only trying to extract more gold. It is trying to control more of the value chain — from the mine, to the refinery, to the global market. For a country known worldwide for cocoa, gold could become the next major test of how much value can be processed and retained at home. This is Diajem Global Black News. Our People. Our Story. Our Own Way.",
+      "lowerThird": "CÔTE D’IVOIRE BUILDS 100-TONNE GOLD REFINING CAPACITY",
+      "callout": "Refinery target: operational by the end of H1 2027 • 2035 ambition: Africa’s largest gold producer",
+      "visuals": {
+        "brollQueries": [
+          "Côte d’Ivoire cocoa plantation ripe cocoa pods",
+          "Côte d’Ivoire gold mine aerial",
+          "Abidjan industrial refinery gold bars",
+          "Abidjan skyline Côte d’Ivoire",
+          "artisanal gold mining Côte d’Ivoire",
+          "gold refinery process molten gold bars"
+        ],
+        "assetPaths": [],
+        "rightsStatus": "editorial-review"
+      },
+      "productionScenes": [
+        {
+          "seconds": 9,
+          "eyebrow": "CÔTE D’IVOIRE",
+          "title": "FROM COCOA POWERHOUSE…",
+          "body": "The world’s biggest cocoa producer is making a much bigger play in gold.",
+          "imageUrl": "https://media-files.abidjan.net/photo/cabosses-de-cacao-dans-une-plantation-pres-d-abengourou-dans-l-est-de-cote-_gzdetrumro.jpg"
+        },
+        {
+          "seconds": 10,
+          "eyebrow": "NEW INDUSTRIAL BET",
+          "title": "…TO GOLD REFINING HUB",
+          "body": "A national gold refinery in Abidjan is expected to start operating by the end of the first half of 2027.",
+          "metric": "H1 2027"
+        },
+        {
+          "seconds": 11,
+          "eyebrow": "THE CAPACITY",
+          "title": "100 TONNES A YEAR",
+          "body": "That is planned refining capacity — not current mine output.",
+          "metric": "100t"
+        },
+        {
+          "seconds": 11,
+          "eyebrow": "CURRENT OUTPUT",
+          "title": "59.33t → ~62t",
+          "body": "Côte d’Ivoire produced 59.33 tonnes in 2025. Officials projected about 62 tonnes for 2026.",
+          "imageUrl": "https://prod.cdn-medias.theafricareport.com/cdn-cgi/image/q%3Dauto%2Cf%3Dauto%2Cmetadata%3Dnone%2Cfit%3Dcover/https%3A/prod.cdn-medias.theafricareport.com/medias/2024/11/29/siss.jpg"
+        },
+        {
+          "seconds": 10,
+          "eyebrow": "THE AMBITION",
+          "title": "AFRICA’S #1 BY 2035?",
+          "body": "The government says it wants Côte d’Ivoire to become Africa’s largest gold producer by 2035.",
+          "metric": "2035"
+        },
+        {
+          "seconds": 12,
+          "eyebrow": "SIMEP",
+          "title": "MORE THAN A REFINERY",
+          "body": "Mining • national buying desk • refining • international marketing • state gold stock",
+          "metric": "70% national capital"
+        },
+        {
+          "seconds": 11,
+          "eyebrow": "FORMALISING GOLD",
+          "title": "TRACE IT. REFINE IT. MARKET IT.",
+          "body": "The buying system is designed to improve traceability and bring more artisanal and small-scale gold into formal channels."
+        },
+        {
+          "seconds": 11,
+          "eyebrow": "THE BIGGER STORY",
+          "title": "CONTROL MORE OF THE VALUE CHAIN",
+          "body": "From mine → buying → refinery → global market. The objective is to process and retain more value at home."
+        },
+        {
+          "seconds": 10,
+          "eyebrow": "DGBN • AFRICA",
+          "title": "COCOA BUILT THE BRAND. CAN GOLD DEEPEN THE VALUE?",
+          "body": "Diajem Global Black News • Our People. Our Story. Our Own Way.",
+          "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/5/55/Abidjan.JPG"
+        }
+      ]
+    }
+  ],
+  "editorialNotes": {
+    "delivery": "Authoritative African business-news feature. Keep pace measured, confident and explanatory.",
+    "accuracyGuardrail": "Never describe 100 tonnes as Côte d’Ivoire’s 2027 mine production. It is the announced annual refining capacity.",
+    "rightsGuardrail": "Remote web images are draft/editorial references only. Replace or clear rights before publication.",
+    "renderPolicy": "Draft production render permitted; publication requires human approval and rights clearance."
+  }
+}
