@@ -4,6 +4,7 @@ import sampleJob from '../../../jobs/samples/dgbn-2026-08-05-evening.json';
 import {DgbnBulletin} from './compositions/DgbnBulletin.jsx';
 import {DgbnNewsFlash} from './compositions/DgbnNewsFlash.jsx';
 import {DgbnNewsCard} from './compositions/DgbnNewsCard.jsx';
+import {DgbnFeatureReport} from './compositions/DgbnFeatureReport.jsx';
 
 const FPS = 30;
 
@@ -35,6 +36,15 @@ export const DgbnRoot = () => (
       fps={FPS}
       durationInFrames={FPS * 12}
       defaultProps={{job: sampleJob, storyIndex: 0}}
+    />
+    <Composition
+      id="DGBNFeatureReport16x9"
+      component={DgbnFeatureReport}
+      width={1920}
+      height={1080}
+      fps={FPS}
+      durationInFrames={FPS * 95}
+      defaultProps={{job: sampleJob}}
     />
   </>
 );
