@@ -1,5 +1,6 @@
 import React from 'react';
 import {AbsoluteFill, Img, Sequence, interpolate, useCurrentFrame} from 'remotion';
+import {Audio} from '@remotion/media';
 
 const GOLD = '#d7a62a';
 const IVORY = '#f6f0e4';
@@ -8,10 +9,11 @@ const Scene = ({scene, sceneNumber, totalScenes}) => {
   const frame = useCurrentFrame();
   const fadeIn = interpolate(frame, [0, 14], [0, 1], {extrapolateRight: 'clamp'});
   const rise = interpolate(frame, [0, 22], [42, 0], {extrapolateRight: 'clamp'});
-  const zoom = interpolate(frame, [0, 300], [1.02, 1.08], {extrapolateRight: 'clamp'});
+  const zoom = interpolate(frame, [0, 660], [1.02, 1.08], {extrapolateRight: 'clamp'});
 
   return (
     <AbsoluteFill style={{background: '#050505', color: 'white', fontFamily: 'Arial, Helvetica, sans-serif'}}>
+      {scene.audioUrl ? <Audio src={scene.audioUrl} /> : null}
       {scene.imageUrl ? (
         <AbsoluteFill>
           <Img
