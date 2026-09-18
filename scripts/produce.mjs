@@ -19,7 +19,7 @@ if (manifest.approval?.status === 'blocked') {
 
 const compositionByType = {
   'bulletin': 'DGBNBulletin16x9',
-  'full-report': 'DGBNBulletin16x9',
+  'full-report': 'DGBNFeatureReport16x9',
   'documentary': 'DGBNBulletin16x9',
   'podcast': 'DGBNBulletin16x9',
   'breaking-news': 'DGBNNewsFlash9x16',
