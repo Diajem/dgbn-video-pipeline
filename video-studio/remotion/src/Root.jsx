@@ -43,7 +43,7 @@ export const DgbnRoot = () => (
       width={1920}
       height={1080}
       fps={FPS}
-      durationInFrames={FPS * 95}
+      durationInFrames={FPS * 125}
       defaultProps={{job: sampleJob}}
     />
   </>
