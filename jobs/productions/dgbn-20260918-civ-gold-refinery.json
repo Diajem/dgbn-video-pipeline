@@ -75,61 +75,70 @@
           "eyebrow": "CÔTE D’IVOIRE",
           "title": "FROM COCOA POWERHOUSE…",
           "body": "The world’s biggest cocoa producer is making a much bigger play in gold.",
-          "imageUrl": "https://media-files.abidjan.net/photo/cabosses-de-cacao-dans-une-plantation-pres-d-abengourou-dans-l-est-de-cote-_gzdetrumro.jpg"
+          "imageUrl": "https://media-files.abidjan.net/photo/cabosses-de-cacao-dans-une-plantation-pres-d-abengourou-dans-l-est-de-cote-_gzdetrumro.jpg",
+          "audioUrl": "https://resource2.heygen.ai/text_to_speech/348ba8efd3f1430992d31a5afab57fc4/594f2747e9c14a18a8eb8754b0b4ff0c/id=0b0f308e-3446-431d-91aa-d655e47c921b.wav"
         },
         {
-          "seconds": 10,
+          "seconds": 12,
           "eyebrow": "NEW INDUSTRIAL BET",
           "title": "…TO GOLD REFINING HUB",
           "body": "A national gold refinery in Abidjan is expected to start operating by the end of the first half of 2027.",
-          "metric": "H1 2027"
+          "metric": "H1 2027",
+          "audioUrl": "https://resource2.heygen.ai/text_to_speech/348ba8efd3f1430992d31a5afab57fc4/594f2747e9c14a18a8eb8754b0b4ff0c/id=bb4812e3-8284-4876-b1b0-2f02c7aadcd8.wav"
         },
         {
-          "seconds": 11,
+          "seconds": 17,
           "eyebrow": "THE CAPACITY",
           "title": "100 TONNES A YEAR",
           "body": "That is planned refining capacity — not current mine output.",
-          "metric": "100t"
+          "metric": "100t",
+          "audioUrl": "https://resource2.heygen.ai/text_to_speech/348ba8efd3f1430992d31a5afab57fc4/594f2747e9c14a18a8eb8754b0b4ff0c/id=882c24d6-11df-4b5a-8556-c643711d4432.wav"
         },
         {
           "seconds": 11,
           "eyebrow": "CURRENT OUTPUT",
           "title": "59.33t → ~62t",
           "body": "Côte d’Ivoire produced 59.33 tonnes in 2025. Officials projected about 62 tonnes for 2026.",
-          "imageUrl": "https://prod.cdn-medias.theafricareport.com/cdn-cgi/image/q%3Dauto%2Cf%3Dauto%2Cmetadata%3Dnone%2Cfit%3Dcover/https%3A/prod.cdn-medias.theafricareport.com/medias/2024/11/29/siss.jpg"
+          "imageUrl": "https://prod.cdn-medias.theafricareport.com/cdn-cgi/image/q%3Dauto%2Cf%3Dauto%2Cmetadata%3Dnone%2Cfit%3Dcover/https%3A/prod.cdn-medias.theafricareport.com/medias/2024/11/29/siss.jpg",
+          "audioUrl": "https://resource2.heygen.ai/text_to_speech/348ba8efd3f1430992d31a5afab57fc4/594f2747e9c14a18a8eb8754b0b4ff0c/id=e8e37e64-20c1-46f1-8e06-97d8b5fbe8f2.wav"
         },
         {
           "seconds": 10,
           "eyebrow": "THE AMBITION",
           "title": "AFRICA’S #1 BY 2035?",
           "body": "The government says it wants Côte d’Ivoire to become Africa’s largest gold producer by 2035.",
-          "metric": "2035"
+          "metric": "2035",
+          "audioUrl": "https://resource2.heygen.ai/text_to_speech/348ba8efd3f1430992d31a5afab57fc4/594f2747e9c14a18a8eb8754b0b4ff0c/id=6f9d9944-ad90-48f0-ade0-c628ea68f71d.wav"
         },
         {
-          "seconds": 12,
+          "seconds": 22,
           "eyebrow": "SIMEP",
           "title": "MORE THAN A REFINERY",
           "body": "Mining • national buying desk • refining • international marketing • state gold stock",
-          "metric": "70% national capital"
+          "metric": "70% national capital",
+          "audioUrl": "https://resource2.heygen.ai/text_to_speech/348ba8efd3f1430992d31a5afab57fc4/594f2747e9c14a18a8eb8754b0b4ff0c/id=b504f7cb-b9e4-4613-b4fc-4be840af2845.wav"
         },
         {
-          "seconds": 11,
+          "seconds": 14,
           "eyebrow": "FORMALISING GOLD",
           "title": "TRACE IT. REFINE IT. MARKET IT.",
-          "body": "The buying system is designed to improve traceability and bring more artisanal and small-scale gold into formal channels."
+          "body": "The buying system is designed to improve traceability and bring more artisanal and small-scale gold into formal channels.",
+          "audioUrl": "https://resource2.heygen.ai/text_to_speech/348ba8efd3f1430992d31a5afab57fc4/594f2747e9c14a18a8eb8754b0b4ff0c/id=3e5c91f2-ac9d-4ed0-8d69-5a572e0860c7.wav"
         },
         {
-          "seconds": 11,
+          "seconds": 15,
           "eyebrow": "THE BIGGER STORY",
           "title": "CONTROL MORE OF THE VALUE CHAIN",
-          "body": "From mine → buying → refinery → global market. The objective is to process and retain more value at home."
+          "body": "From mine → buying → refinery → global market. The objective is to process and retain more value at home.",
+          "audioUrl": "https://resource2.heygen.ai/text_to_speech/348ba8efd3f1430992d31a5afab57fc4/594f2747e9c14a18a8eb8754b0b4ff0c/id=ae679b98-ea84-44ef-baa3-6480a52b283f.wav"
         },
         {
-          "seconds": 10,
+          "seconds": 15,
           "eyebrow": "DGBN • AFRICA",
           "title": "COCOA BUILT THE BRAND. CAN GOLD DEEPEN THE VALUE?",
           "body": "Diajem Global Black News • Our People. Our Story. Our Own Way.",
-          "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/5/55/Abidjan.JPG"
+          "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/5/55/Abidjan.JPG",
+          "audioUrl": "https://resource2.heygen.ai/text_to_speech/348ba8efd3f1430992d31a5afab57fc4/594f2747e9c14a18a8eb8754b0b4ff0c/id=f3a9390f-a3e7-4e7a-846f-850ee8cb7835.wav"
         }
       ]
     }
