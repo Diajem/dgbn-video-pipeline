@@ -137,7 +137,6 @@
           "eyebrow": "DGBN • AFRICA",
           "title": "COCOA BUILT THE BRAND. CAN GOLD DEEPEN THE VALUE?",
           "body": "Diajem Global Black News • Our People. Our Story. Our Own Way.",
-          "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/5/55/Abidjan.JPG",
           "audioUrl": "https://resource2.heygen.ai/text_to_speech/348ba8efd3f1430992d31a5afab57fc4/594f2747e9c14a18a8eb8754b0b4ff0c/id=f3a9390f-a3e7-4e7a-846f-850ee8cb7835.wav"
         }
       ]
@@ -146,7 +145,7 @@
   "editorialNotes": {
     "delivery": "Authoritative African business-news feature. Keep pace measured, confident and explanatory.",
     "accuracyGuardrail": "Never describe 100 tonnes as Côte d’Ivoire’s 2027 mine production. It is the announced annual refining capacity.",
-    "rightsGuardrail": "Remote web images are draft/editorial references only. Replace or clear rights before publication.",
+    "rightsGuardrail": "Remote web images are draft/editorial references only. Scene 9 uses an internal DGBN motion background to avoid unreliable third-party loading. Replace or clear all external images before publication.",
     "renderPolicy": "Draft production render permitted; publication requires human approval and rights clearance."
   }
 }
