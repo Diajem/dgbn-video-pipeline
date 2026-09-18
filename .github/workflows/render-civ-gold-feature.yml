@@ -1,0 +1,41 @@
+name: Render Côte d’Ivoire gold feature
+
+on:
+  push:
+    branches:
+      - agent/civ-gold-refinery-20260918
+    paths:
+      - 'jobs/productions/dgbn-20260918-civ-gold-refinery.json'
+      - 'video-studio/remotion/**'
+      - 'scripts/produce.mjs'
+      - '.github/workflows/render-civ-gold-feature.yml'
+  workflow_dispatch:
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Validate production manifest
+        run: node scripts/validate-manifest.mjs jobs/productions/dgbn-20260918-civ-gold-refinery.json
+
+      - name: Render DGBN feature
+        run: node scripts/produce.mjs jobs/productions/dgbn-20260918-civ-gold-refinery.json --render
+
+      - name: Upload MP4
+        uses: actions/upload-artifact@v4
+        with:
+          name: dgbn-civ-gold-feature
+          path: renders/dgbn-20260918-civ-gold-refinery.mp4
+          if-no-files-found: error
