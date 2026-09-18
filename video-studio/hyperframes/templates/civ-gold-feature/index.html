@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=1920,height=1080,initial-scale=1" />
+<title>DGBN Hyperframes — Côte d’Ivoire Gold Feature</title>
+<style>
+  :root{--gold:#d7a62a;--ink:#050505;--ivory:#f6f0e4}
+  *{box-sizing:border-box}
+  html,body{margin:0;width:1920px;height:1080px;overflow:hidden;background:var(--ink);color:white;font-family:Arial,Helvetica,sans-serif}
+  body{background:radial-gradient(circle at 78% 30%,#563a00 0,#17120a 28%,#050505 68%);border-top:12px solid var(--gold)}
+  .brand{position:absolute;top:48px;left:72px;font-size:28px;letter-spacing:5px;font-weight:900}
+  .kicker{position:absolute;top:48px;right:72px;color:var(--gold);font-size:22px;font-weight:900;letter-spacing:3px}
+  .stage{position:absolute;inset:170px 90px 110px;display:flex;flex-direction:column;justify-content:center}
+  .eyebrow{color:var(--gold);font-size:30px;font-weight:900;letter-spacing:5px;animation:rise .7s ease-out both}
+  h1{font-size:82px;line-height:1.01;margin:22px 0 34px;max-width:1500px;animation:rise .8s .08s ease-out both}
+  .metrics{display:flex;gap:24px;margin-top:20px}
+  .metric{width:280px;padding:26px 26px 22px;border:2px solid rgba(215,166,42,.5);border-radius:22px;background:rgba(0,0,0,.42);animation:rise .8s ease-out both}
+  .metric:nth-child(2){animation-delay:.12s}.metric:nth-child(3){animation-delay:.24s}
+  .number{font-size:54px;font-weight:950;color:var(--gold)} .label{margin-top:8px;font-size:20px;line-height:1.25;opacity:.8}
+  .flow{display:flex;align-items:center;gap:16px;margin-top:46px;flex-wrap:wrap}
+  .node{padding:18px 24px;border-radius:14px;background:var(--gold);color:#050505;font-weight:900;font-size:24px;animation:pop .45s ease-out both}
+  .node:nth-child(3){animation-delay:.1s}.node:nth-child(5){animation-delay:.2s}.node:nth-child(7){animation-delay:.3s}.node:nth-child(9){animation-delay:.4s}.node:nth-child(11){animation-delay:.5s}
+  .arrow{font-size:34px;color:var(--ivory);opacity:.6}
+  .footer{position:absolute;left:90px;right:90px;bottom:55px;border-top:2px solid rgba(215,166,42,.45);padding-top:18px;font-weight:800;letter-spacing:2px}
+  @keyframes rise{from{opacity:0;transform:translateY(38px)}to{opacity:1;transform:none}}
+  @keyframes pop{from{opacity:0;transform:scale(.8)}to{opacity:1;transform:scale(1)}}
+</style>
+</head>
+<body>
+<div class="brand">DGBN • AFRICA</div>
+<div class="kicker">CÔTE D’IVOIRE • GOLD VALUE CHAIN</div>
+<div class="stage">
+  <div class="eyebrow">THE NUMBERS NEED CONTEXT</div>
+  <h1>FROM GOLD OUTPUT TO GOLD REFINING CAPACITY</h1>
+  <div class="metrics">
+    <div class="metric"><div class="number">59.33t</div><div class="label">Gold produced in 2025</div></div>
+    <div class="metric"><div class="number">~62t</div><div class="label">Official 2026 projection reported by Reuters</div></div>
+    <div class="metric"><div class="number">100t</div><div class="label">Planned annual refining capacity — not mine output</div></div>
+  </div>
+  <div class="flow">
+    <div class="node">MINE</div><div class="arrow">→</div>
+    <div class="node">BUY</div><div class="arrow">→</div>
+    <div class="node">TRACE</div><div class="arrow">→</div>
+    <div class="node">REFINE</div><div class="arrow">→</div>
+    <div class="node">STORE</div><div class="arrow">→</div>
+    <div class="node">MARKET</div>
+  </div>
+</div>
+<div class="footer">OUR PEOPLE. OUR STORY. OUR OWN WAY.</div>
+</body>
+</html>
