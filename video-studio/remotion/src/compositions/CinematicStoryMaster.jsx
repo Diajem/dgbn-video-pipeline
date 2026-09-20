@@ -1,12 +1,12 @@
 import React from 'react';
-import {AbsoluteFill, Audio, OffthreadVideo, Sequence, interpolate, useCurrentFrame} from 'remotion';
+import {AbsoluteFill, Audio, OffthreadVideo, Sequence, interpolate, staticFile, useCurrentFrame} from 'remotion';
 
 const FONT = 'Arial, Helvetica, sans-serif';
 
-const Shot = ({shot, disclosure}) => {
+const resolveMediaSrc = (src) => {\n  if (!src) return null;\n  if (/^https?:\\/\\//i.test(src)) return src;\n  const marker='video-studio/remotion/public/';\n  const relative=src.includes(marker)?src.split(marker)[1]:src.replace(/^public\\//,'');\n  return staticFile(relative);\n};\n\nconst Shot = ({shot, disclosure}) => {
   const frame = useCurrentFrame();
   const fade = interpolate(frame, [0, 6], [0, 1], {extrapolateRight: 'clamp'});
-  const src = shot.renderSrc || shot.outputPath;
+  const src = resolveMediaSrc(shot.renderSrc || shot.outputPath);
   return (
     <AbsoluteFill style={{backgroundColor:'#08090b', opacity:fade}}>
       {src ? <OffthreadVideo src={src} style={{width:'100%',height:'100%',objectFit:'cover'}} /> : (
@@ -57,8 +57,8 @@ export const CinematicStoryMaster = ({config}) => {
           <Caption caption={caption}/>
         </Sequence>
       ))}
-      {config.audio?.narrationSrc ? <Audio src={config.audio.narrationSrc} volume={config.audio.narrationVolume ?? 1}/> : null}
-      {config.audio?.musicSrc ? <Audio src={config.audio.musicSrc} volume={config.audio.musicVolume ?? .18}/> : null}
+      {config.audio?.narrationSrc ? <Audio src={resolveMediaSrc(config.audio.narrationSrc)} volume={config.audio.narrationVolume ?? 1}/> : null}
+      {config.audio?.musicSrc ? <Audio src={resolveMediaSrc(config.audio.musicSrc)} volume={config.audio.musicVolume ?? .18}/> : null}
     </AbsoluteFill>
   );
 };
