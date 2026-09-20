@@ -1,0 +1,55 @@
+name: Render DSN Brighton Arsenal preview
+
+on:
+  push:
+    branches:
+      - feature/dsn-short-master-v1
+    paths:
+      - jobs/renders/brighton-arsenal-production-v1.json
+
+permissions:
+  contents: read
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Validate production job
+        run: node scripts/validate-dsn-short.mjs jobs/renders/brighton-arsenal-production-v1.json
+
+      - name: Render DSN short
+        run: |
+          mkdir -p renders
+          cd video-studio/remotion
+          npx remotion render src/index.jsx DSNShortMaster9x16 ../../renders/brighton-arsenal-v2-raw.mp4 \
+            --props=../../jobs/renders/brighton-arsenal-production-v1.json
+
+      - name: Mix restrained sports-news bed
+        run: |
+          ffmpeg -y -i renders/brighton-arsenal-v2-raw.mp4 \
+            -f lavfi -i "sine=frequency=58:duration=75,volume=0.012" \
+            -f lavfi -i "anoisesrc=color=pink:duration=75:amplitude=0.004" \
+            -filter_complex "[1:a][2:a]amix=inputs=2:normalize=0[bed];[0:a][bed]amix=inputs=2:duration=first:weights='1 0.55':normalize=0[a]" \
+            -map 0:v -map "[a]" -c:v copy -c:a aac -b:a 192k -shortest \
+            renders/brighton-arsenal-v2.mp4
+
+      - name: Upload preview
+        uses: actions/upload-artifact@v4
+        with:
+          name: dsn-brighton-arsenal-v2
+          path: |
+            renders/brighton-arsenal-v2.mp4
+            renders/brighton-arsenal-v2-raw.mp4
+          if-no-files-found: error
