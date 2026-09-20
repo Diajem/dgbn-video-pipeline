@@ -114,7 +114,7 @@ async function main() {
   const submitted = await submitWan3Shot({job, shot});
   console.log(JSON.stringify({event: 'submitted', shotId, taskId: submitted.taskId, requestId: submitted.requestId}));
   const completed = await pollWan3Task(submitted);
-  const outputPath = shot.outputPath || `renders/cinematic/${job.storyId}/${shotId}.mp4`;
+  const outputPath = shot.outputPath || `video-studio/remotion/public/cinematic/${job.storyId}/${shotId}.mp4`;
   const saved = await downloadVideo(completed.videoUrl, outputPath);
   console.log(JSON.stringify({event: 'saved', shotId, taskId: submitted.taskId, ...saved}));
 }
