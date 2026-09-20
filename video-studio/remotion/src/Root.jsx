@@ -37,6 +37,11 @@ export const DgbnRoot = () => (
       fps={dsnShortConfig.fps || FPS}
       durationInFrames={(dsnShortConfig.fps || FPS) * dsnShortConfig.durationSec}
       defaultProps={{config: dsnShortConfig}}
+      calculateMetadata={({props}) => {
+        const fps = props?.config?.fps || FPS;
+        const durationSec = props?.config?.durationSec || dsnShortConfig.durationSec;
+        return {durationInFrames: Math.max(1, Math.round(fps * durationSec)), fps};
+      }}
     />
     <Composition
       id="DGBNNewsCard9x16"
