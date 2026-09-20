@@ -201,6 +201,8 @@ const Scene = ({scene, presenters, presentationMode, qualityPolicy}) => {
   if (scene.type === 'stats') {
     return (
       <AbsoluteFill style={common}>
+        {scene.media ? <AbsoluteFill><div style={{position:'absolute',inset:0,filter:'brightness(.42) saturate(.85)',transform:'scale(1.035)'}}>{mediaNode(scene.media, qualityPolicy)}</div></AbsoluteFill> : null}
+        <div style={{position:'absolute',inset:0,background:'linear-gradient(180deg,rgba(5,7,12,.26),rgba(5,7,12,.90))'}} />
         <Presenter scene={scene} presenters={presenters} presentationMode={presentationMode} qualityPolicy={qualityPolicy} />
         <div style={{position: 'absolute', top: 195, left: 70, fontSize: 24, fontWeight: 850, letterSpacing: '.08em'}}>{scene.kicker || 'THE NUMBERS'}</div>
         <div style={{position: 'absolute', left: 70, right: 70, top: 380, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 26}}>
@@ -340,6 +342,8 @@ const Scene = ({scene, presenters, presentationMode, qualityPolicy}) => {
 const Caption = ({caption}) => {
   const frame = useCurrentFrame();
   const pop = interpolate(frame, [0, 5], [.92, 1], {extrapolateRight: 'clamp'});
+  const emphasis = new Set((caption.emphasis || []).map((x) => String(x).toUpperCase()));
+  const parts = String(caption.text || '').split(/(\s+)/);
   return (
     <div style={{
       position: 'absolute',
@@ -353,8 +357,11 @@ const Caption = ({caption}) => {
       justifyContent: 'center',
       transform: 'scale(' + pop + ')',
     }}>
-      <div style={{maxWidth: 930, padding: '17px 24px 19px', borderRadius: 20, background: 'rgba(6,7,9,.80)', textAlign: 'center', fontSize: 46, fontWeight: 950, lineHeight: 1.05, textTransform: 'uppercase'}}>
-        {caption.text}
+      <div style={{maxWidth: 930, padding: '17px 24px 19px', borderRadius: 20, background: 'rgba(6,7,9,.80)', textAlign: 'center', fontSize: 46, fontWeight: 950, lineHeight: 1.05, textTransform: 'uppercase', boxShadow:'0 14px 42px rgba(0,0,0,.40)'}}>
+        {parts.map((part,i) => {
+          const token = part.replace(/[^A-Za-z0-9'-]/g,'').toUpperCase();
+          return <span key={i} style={emphasis.has(token) ? {color:'#ff2633'} : undefined}>{part}</span>;
+        })}
       </div>
     </div>
   );
