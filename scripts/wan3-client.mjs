@@ -40,7 +40,13 @@ export async function submitWan3Shot({job, shot}) {
   const baseUrl = buildBaseUrl();
   const model = shot.model || process.env.WAN_3_MODEL || 'wan3.0-video';
   const ratio = job.aspectRatio || '9:16';
-  const media = (shot.media || []).filter((item) => item?.type && item?.url && !item.url.includes('example.invalid'));
+  const characterMedia = (shot.characterIds || []).flatMap((characterId) => {
+    const character = (job.characters || []).find((item) => item.characterId === characterId);
+    if (!character) throw new Error(`Unknown characterId on shot ${shot.shotId}: ${characterId}`);
+    return character.referenceMedia || [];
+  });
+  const media = [...characterMedia, ...(shot.media || [])]
+    .filter((item) => item?.type && item?.url && !item.url.includes('example.invalid'));
 
   const payload = {
     model,
@@ -102,14 +108,17 @@ export async function downloadVideo(url, outputPath) {
 }
 
 async function main() {
-  const [jobPath, shotId] = process.argv.slice(2);
-  if (!jobPath || !shotId) {
-    throw new Error('Usage: node scripts/wan3-client.mjs <job.json> <shot-id>');
+  const [jobPath, shotId, confirmation] = process.argv.slice(2);
+  if (!jobPath || !shotId || confirmation !== '--confirm-paid') {
+    throw new Error('Usage: node scripts/wan3-client.mjs <job.json> <shot-id> --confirm-paid');
   }
   const job = JSON.parse(await fs.readFile(jobPath, 'utf8'));
   const shot = (job.shots || []).find((item) => item.shotId === shotId);
   if (!shot) throw new Error(`Shot not found: ${shotId}`);
   if (shot.provider && shot.provider !== 'WAN_3') throw new Error(`Shot provider is ${shot.provider}, not WAN_3`);
+  if (shot.status !== 'APPROVED') {
+    throw new Error(`Shot ${shotId} is ${shot.status || 'UNSPECIFIED'}; paid generation requires status APPROVED`);
+  }
 
   const submitted = await submitWan3Shot({job, shot});
   console.log(JSON.stringify({event: 'submitted', shotId, taskId: submitted.taskId, requestId: submitted.requestId}));
