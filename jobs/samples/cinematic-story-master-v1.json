@@ -24,7 +24,7 @@
       "model": "wan3.0-video",
       "resolution": "720P",
       "media": [],
-      "outputPath": "renders/cinematic/dgbn-cinematic-demo/shot-01.mp4",
+      "outputPath": "video-studio/remotion/public/cinematic/dgbn-cinematic-demo/shot-01.mp4",
       "status": "PLANNED"
     },
     {
@@ -38,7 +38,7 @@
       "model": "wan3.0-video",
       "resolution": "720P",
       "media": [],
-      "outputPath": "renders/cinematic/dgbn-cinematic-demo/shot-02.mp4",
+      "outputPath": "video-studio/remotion/public/cinematic/dgbn-cinematic-demo/shot-02.mp4",
       "status": "PLANNED"
     },
     {
@@ -52,7 +52,7 @@
       "model": "wan3.0-video",
       "resolution": "720P",
       "media": [],
-      "outputPath": "renders/cinematic/dgbn-cinematic-demo/shot-03.mp4",
+      "outputPath": "video-studio/remotion/public/cinematic/dgbn-cinematic-demo/shot-03.mp4",
       "status": "PLANNED"
     }
   ],
