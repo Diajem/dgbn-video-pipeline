@@ -1,0 +1,208 @@
+{
+  "storyId": "dsn-template-demo",
+  "version": "DSN_SHORT_MASTER_V1",
+  "durationSec": 58,
+  "fps": 30,
+  "presenters": {
+    "peter": {
+      "name": "Peter",
+      "role": "DSN PRESENTER"
+    },
+    "denise": {
+      "name": "Denise",
+      "role": "DSN PRESENTER"
+    },
+    "david": {
+      "name": "David",
+      "role": "DSN PRESENTER"
+    }
+  },
+  "scenes": [
+    {
+      "id": "hook",
+      "type": "hook",
+      "start": 0,
+      "duration": 4,
+      "presenter": {
+        "id": "denise",
+        "mode": "full"
+      },
+      "headline": "A MAJOR FOOTBALL STORY JUST CHANGED",
+      "accent": "CHANGED",
+      "subhead": "DSN explains what happened — and why it matters."
+    },
+    {
+      "id": "what-happened",
+      "type": "presenter_split",
+      "start": 4,
+      "duration": 8,
+      "presenter": {
+        "id": "denise",
+        "mode": "left"
+      },
+      "kicker": "WHAT HAPPENED",
+      "headline": "THE KEY DEVELOPMENT",
+      "accent": "KEY",
+      "body": "Replace this copy with the verified core fact from the newsroom."
+    },
+    {
+      "id": "broll",
+      "type": "media",
+      "start": 12,
+      "duration": 7,
+      "presenter": {
+        "mode": "off"
+      },
+      "kicker": "THE CONTEXT",
+      "headline": "THIS IS WHY THE STORY MATTERS",
+      "accent": "MATTERS"
+    },
+    {
+      "id": "stats",
+      "type": "stats",
+      "start": 19,
+      "duration": 8,
+      "presenter": {
+        "id": "david",
+        "mode": "lower-third"
+      },
+      "kicker": "THE NUMBERS",
+      "stats": [
+        {
+          "value": "00",
+          "label": "Verified stat one",
+          "source": "Competition · season · source"
+        },
+        {
+          "value": "00%",
+          "label": "Verified stat two",
+          "source": "Competition · season · source"
+        },
+        {
+          "value": "00",
+          "label": "Verified stat three",
+          "source": "Competition · season · source"
+        },
+        {
+          "value": "00",
+          "label": "Verified stat four",
+          "source": "Competition · season · source"
+        }
+      ]
+    },
+    {
+      "id": "timeline",
+      "type": "timeline",
+      "start": 27,
+      "duration": 9,
+      "presenter": {
+        "mode": "off"
+      },
+      "kicker": "HOW WE GOT HERE",
+      "items": [
+        {
+          "title": "Step one",
+          "detail": "First verified event in the timeline."
+        },
+        {
+          "title": "Step two",
+          "detail": "Second verified event in the timeline."
+        },
+        {
+          "title": "Now",
+          "detail": "The development that makes the story newsworthy today."
+        }
+      ]
+    },
+    {
+      "id": "analysis",
+      "type": "presenter_split",
+      "start": 36,
+      "duration": 10,
+      "presenter": {
+        "id": "peter",
+        "mode": "right"
+      },
+      "kicker": "DSN ANALYSIS",
+      "headline": "THE BIG QUESTION",
+      "accent": "QUESTION",
+      "body": "Use this section for concise analysis clearly distinguished from verified fact."
+    },
+    {
+      "id": "quote",
+      "type": "quote",
+      "start": 46,
+      "duration": 7,
+      "presenter": {
+        "mode": "off"
+      },
+      "kicker": "WHAT WAS SAID",
+      "quote": "Insert a short, rights-cleared quotation or remove this scene.",
+      "attribution": "Name · role · source"
+    },
+    {
+      "id": "cta",
+      "type": "cta",
+      "start": 53,
+      "duration": 5,
+      "presenter": {
+        "id": "denise",
+        "mode": "lower-third",
+        "nameplate": false
+      },
+      "headline": "WHAT DO YOU THINK?",
+      "accent": "THINK?",
+      "body": "Follow Diajem Sports Network for the next update."
+    }
+  ],
+  "captions": [
+    {
+      "start": 0.2,
+      "end": 2.2,
+      "text": "A MAJOR FOOTBALL STORY JUST CHANGED",
+      "emphasis": [
+        "CHANGED"
+      ]
+    },
+    {
+      "start": 4.3,
+      "end": 6.4,
+      "text": "HERE IS WHAT HAPPENED",
+      "emphasis": [
+        "HAPPENED"
+      ]
+    },
+    {
+      "start": 12.3,
+      "end": 14.9,
+      "text": "BUT THE CONTEXT MATTERS",
+      "emphasis": [
+        "MATTERS"
+      ]
+    },
+    {
+      "start": 19.2,
+      "end": 21.5,
+      "text": "LOOK AT THE NUMBERS",
+      "emphasis": [
+        "NUMBERS"
+      ]
+    },
+    {
+      "start": 36.3,
+      "end": 39,
+      "text": "NOW HERE IS THE BIG QUESTION",
+      "emphasis": [
+        "BIG QUESTION"
+      ]
+    },
+    {
+      "start": 53.2,
+      "end": 56.2,
+      "text": "WHAT DO YOU THINK?",
+      "emphasis": [
+        "THINK?"
+      ]
+    }
+  ]
+}
