@@ -1,0 +1,77 @@
+{
+  "version": "CINEMATIC_STORY_MASTER_V1",
+  "storyId": "dgbn-cinematic-demo",
+  "brand": "DGBN",
+  "outputMode": "STANDALONE_SHORT",
+  "theme": "UNDER_ESTIMATED",
+  "aspectRatio": "9:16",
+  "targetDurationSec": 18,
+  "disclosure": {
+    "aiGenerated": true,
+    "reconstructionLabel": "AI-generated dramatic reconstruction",
+    "historicalUncertaintyNotes": []
+  },
+  "characters": [],
+  "shots": [
+    {
+      "shotId": "shot-01",
+      "purpose": "HOOK",
+      "start": 0,
+      "durationSec": 5,
+      "prompt": "Vertical cinematic tracking shot in a formal corridor. A calm middle-aged Black woman in understated clothing walks past a younger official who dismisses her presence. Natural acting, realistic lighting, shallow depth of field, no text in scene.",
+      "dialogue": null,
+      "provider": "WAN_3",
+      "model": "wan3.0-video",
+      "resolution": "720P",
+      "media": [],
+      "outputPath": "renders/cinematic/dgbn-cinematic-demo/shot-01.mp4",
+      "status": "PLANNED"
+    },
+    {
+      "shotId": "shot-02",
+      "purpose": "ESCALATION",
+      "start": 5,
+      "durationSec": 5,
+      "prompt": "Shot-reverse-shot close-ups. The younger official makes a patronising remark; the woman remains composed and holds eye contact. Restrained facial acting, same people and wardrobe, no text in scene.",
+      "dialogue": "You may be in the wrong place.",
+      "provider": "WAN_3",
+      "model": "wan3.0-video",
+      "resolution": "720P",
+      "media": [],
+      "outputPath": "renders/cinematic/dgbn-cinematic-demo/shot-02.mp4",
+      "status": "PLANNED"
+    },
+    {
+      "shotId": "shot-03",
+      "purpose": "REVEAL",
+      "start": 10,
+      "durationSec": 8,
+      "prompt": "The woman calmly reveals credentials showing she is the senior authority expected at the meeting. Tight reaction shot on the younger official, then composed close-up on the woman. Realistic, understated, cinematic, no on-screen text.",
+      "dialogue": null,
+      "provider": "WAN_3",
+      "model": "wan3.0-video",
+      "resolution": "720P",
+      "media": [],
+      "outputPath": "renders/cinematic/dgbn-cinematic-demo/shot-03.mp4",
+      "status": "PLANNED"
+    }
+  ],
+  "captions": [
+    {
+      "start": 0.5,
+      "end": 1.7,
+      "text": "THEY ASSUMED",
+      "emphasis": [
+        "ASSUMED"
+      ]
+    },
+    {
+      "start": 11,
+      "end": 12.5,
+      "text": "THEY WERE WRONG",
+      "emphasis": [
+        "WRONG"
+      ]
+    }
+  ]
+}
