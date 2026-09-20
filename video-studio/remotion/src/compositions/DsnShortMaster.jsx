@@ -1,6 +1,7 @@
 import React from 'react';
 import {
   AbsoluteFill,
+  Audio,
   Img,
   OffthreadVideo,
   Sequence,
@@ -13,8 +14,11 @@ const WHITE = '#ffffff';
 const MUTED = '#b8bcc5';
 const BG = '#0b0b0d';
 
-const mediaNode = (media) => {
+const mediaNode = (media, qualityPolicy = 'DEMO') => {
   if (!media?.src) {
+    if (qualityPolicy === 'PRODUCTION') {
+      throw new Error('DSN production render blocked: required media asset is missing');
+    }
     return (
       <div style={{
         width: '100%',
@@ -27,7 +31,7 @@ const mediaNode = (media) => {
         textAlign: 'center',
         padding: 40,
       }}>
-        Rights-cleared media slot
+        DEMO ONLY · media not supplied
       </div>
     );
   }
@@ -37,12 +41,17 @@ const mediaNode = (media) => {
   return <Img src={media.src} style={{width: '100%', height: '100%', objectFit: 'cover'}} />;
 };
 
-const Presenter = ({scene, presenters}) => {
+const Presenter = ({scene, presenters, presentationMode = 'AVATAR', qualityPolicy = 'DEMO'}) => {
   const pRef = scene.presenter;
+  if (presentationMode === 'VOICEOVER_BROLL') return null;
+  if (presentationMode === 'PETER_REAL' && pRef?.id && pRef.id !== 'peter') return null;
   if (!pRef || pRef.mode === 'off') return null;
   const profile = presenters?.[pRef.id] || {};
   const src = pRef.src || profile.src;
   const mode = pRef.mode || 'lower-third';
+  if (!src && qualityPolicy === 'PRODUCTION') {
+    throw new Error('DSN production render blocked: presenter asset is missing for ' + (pRef.id || 'presenter'));
+  }
 
   const layouts = {
     full: {left: 0, top: 0, width: 1080, height: 1920, borderRadius: 0},
@@ -138,7 +147,7 @@ const Kicker = ({children}) => (
   </div>
 );
 
-const Scene = ({scene, presenters}) => {
+const Scene = ({scene, presenters, presentationMode, qualityPolicy}) => {
   const frame = useCurrentFrame();
   const intro = interpolate(frame, [0, 7], [0, 1], {extrapolateRight: 'clamp'});
   const lift = interpolate(frame, [0, 10], [34, 0], {extrapolateRight: 'clamp'});
@@ -147,8 +156,8 @@ const Scene = ({scene, presenters}) => {
   if (scene.type === 'hook') {
     return (
       <AbsoluteFill style={common}>
-        {scene.media ? <AbsoluteFill>{mediaNode(scene.media)}</AbsoluteFill> : null}
-        <Presenter scene={scene} presenters={presenters} />
+        {scene.media ? <AbsoluteFill>{mediaNode(scene.media, qualityPolicy)}</AbsoluteFill> : null}
+        <Presenter scene={scene} presenters={presenters} presentationMode={presentationMode} qualityPolicy={qualityPolicy} />
         <Headline text={scene.headline} accent={scene.accent} />
         <div style={{position: 'absolute', left: 70, right: 70, bottom: 245, zIndex: 12, fontSize: 36, lineHeight: 1.18, fontWeight: 720}}>
           {scene.subhead}
@@ -163,10 +172,10 @@ const Scene = ({scene, presenters}) => {
       <AbsoluteFill style={common}>
         {scene.media ? (
           <div style={{position: 'absolute', left: 70, right: 70, top: 180, height: 880, borderRadius: 30, overflow: 'hidden', border: '1px solid rgba(255,255,255,.14)'}}>
-            {mediaNode(scene.media)}
+            {mediaNode(scene.media, qualityPolicy)}
           </div>
         ) : null}
-        <Presenter scene={scene} presenters={presenters} />
+        <Presenter scene={scene} presenters={presenters} presentationMode={presentationMode} qualityPolicy={qualityPolicy} />
         <div style={{position: 'absolute', top: 300, width: 480, zIndex: 8, ...(copyOnRight ? {right: 70} : {left: 70})}}>
           {scene.kicker ? <Kicker>{scene.kicker}</Kicker> : null}
           <div style={{fontSize: 66, lineHeight: .98, textTransform: 'uppercase', letterSpacing: '-.035em', fontWeight: 1000, marginTop: 18}}>
@@ -181,8 +190,8 @@ const Scene = ({scene, presenters}) => {
   if (scene.type === 'media') {
     return (
       <AbsoluteFill style={common}>
-        <AbsoluteFill>{mediaNode(scene.media)}</AbsoluteFill>
-        <Presenter scene={scene} presenters={presenters} />
+        <AbsoluteFill>{mediaNode(scene.media, qualityPolicy)}</AbsoluteFill>
+        <Presenter scene={scene} presenters={presenters} presentationMode={presentationMode} qualityPolicy={qualityPolicy} />
         {scene.kicker ? <div style={{position: 'absolute', top: 195, left: 70, zIndex: 12, fontSize: 24, fontWeight: 850, letterSpacing: '.08em'}}>{scene.kicker}</div> : null}
         <Headline text={scene.headline} accent={scene.accent} />
       </AbsoluteFill>
@@ -192,7 +201,7 @@ const Scene = ({scene, presenters}) => {
   if (scene.type === 'stats') {
     return (
       <AbsoluteFill style={common}>
-        <Presenter scene={scene} presenters={presenters} />
+        <Presenter scene={scene} presenters={presenters} presentationMode={presentationMode} qualityPolicy={qualityPolicy} />
         <div style={{position: 'absolute', top: 195, left: 70, fontSize: 24, fontWeight: 850, letterSpacing: '.08em'}}>{scene.kicker || 'THE NUMBERS'}</div>
         <div style={{position: 'absolute', left: 70, right: 70, top: 380, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 26}}>
           {(scene.stats || []).slice(0, 4).map((s, i) => (
@@ -210,7 +219,7 @@ const Scene = ({scene, presenters}) => {
   if (scene.type === 'timeline') {
     return (
       <AbsoluteFill style={common}>
-        <Presenter scene={scene} presenters={presenters} />
+        <Presenter scene={scene} presenters={presenters} presentationMode={presentationMode} qualityPolicy={qualityPolicy} />
         <div style={{position: 'absolute', top: 195, left: 70, fontSize: 24, fontWeight: 850, letterSpacing: '.08em'}}>{scene.kicker || 'HOW WE GOT HERE'}</div>
         <div style={{position: 'absolute', left: 115, right: 80, top: 350}}>
           {(scene.items || []).map((item, i) => (
@@ -228,8 +237,8 @@ const Scene = ({scene, presenters}) => {
   if (scene.type === 'quote') {
     return (
       <AbsoluteFill style={common}>
-        {scene.media ? <AbsoluteFill>{mediaNode(scene.media)}</AbsoluteFill> : null}
-        <Presenter scene={scene} presenters={presenters} />
+        {scene.media ? <AbsoluteFill>{mediaNode(scene.media, qualityPolicy)}</AbsoluteFill> : null}
+        <Presenter scene={scene} presenters={presenters} presentationMode={presentationMode} qualityPolicy={qualityPolicy} />
         <div style={{position: 'absolute', top: 195, left: 70, fontSize: 24, fontWeight: 850, letterSpacing: '.08em'}}>{scene.kicker || 'THE QUOTE'}</div>
         <div style={{position: 'absolute', left: 70, right: 70, top: 430, padding: '52px 48px', borderRadius: 34, background: 'rgba(16,17,20,.94)', borderLeft: '10px solid ' + RED}}>
           <div style={{fontSize: 54, fontWeight: 900, lineHeight: 1.08}}>“{scene.quote}”</div>
@@ -241,7 +250,7 @@ const Scene = ({scene, presenters}) => {
 
   return (
     <AbsoluteFill style={{...common, display: 'grid', placeItems: 'center', textAlign: 'center', padding: '170px 85px'}}>
-      <Presenter scene={scene} presenters={presenters} />
+      <Presenter scene={scene} presenters={presenters} presentationMode={presentationMode} qualityPolicy={qualityPolicy} />
       <div style={{zIndex: 10}}>
         <div style={{fontSize: 84, lineHeight: .96, textTransform: 'uppercase', fontWeight: 1000, letterSpacing: '-.04em'}}>
           {scene.headline || 'WHAT DO YOU THINK?'}
@@ -282,6 +291,15 @@ const Caption = ({caption}) => {
 
 export const DsnShortMaster = ({config}) => {
   const fps = config.fps || 30;
+  const qualityPolicy = config.qualityPolicy || 'DEMO';
+  const presentationMode = config.presentationMode || 'AVATAR';
+
+  if (qualityPolicy === 'PRODUCTION' && presentationMode === 'VOICEOVER_BROLL' && !config.audio?.voiceoverSrc) {
+    throw new Error('DSN production render blocked: VOICEOVER_BROLL requires an approved voiceoverSrc');
+  }
+  if (qualityPolicy === 'PRODUCTION' && presentationMode === 'PETER_REAL' && !config.presenters?.peter?.src) {
+    throw new Error('DSN production render blocked: PETER_REAL requires Peter real-camera footage');
+  }
   return (
     <AbsoluteFill style={{background: BG, color: WHITE, fontFamily: 'Arial, Helvetica, sans-serif', overflow: 'hidden'}}>
       <div style={{position: 'absolute', inset: 0, background: 'radial-gradient(circle at 80% 8%, rgba(215,25,32,.22), transparent 30%), linear-gradient(160deg,#15161a 0%,#08090b 58%,#111216 100%)'}} />
@@ -296,7 +314,12 @@ export const DsnShortMaster = ({config}) => {
           from={Math.round(scene.start * fps)}
           durationInFrames={Math.round(scene.duration * fps)}
         >
-          <Scene scene={scene} presenters={config.presenters} />
+          <Scene
+            scene={scene}
+            presenters={config.presenters}
+            presentationMode={presentationMode}
+            qualityPolicy={qualityPolicy}
+          />
         </Sequence>
       ))}
 
@@ -309,6 +332,13 @@ export const DsnShortMaster = ({config}) => {
           <Caption caption={caption} />
         </Sequence>
       ))}
+
+      {config.audio?.voiceoverSrc ? (
+        <Audio src={config.audio.voiceoverSrc} volume={config.audio.voiceoverVolume ?? 1} />
+      ) : null}
+      {config.audio?.musicSrc ? (
+        <Audio src={config.audio.musicSrc} volume={config.audio.musicVolume ?? 0.10} />
+      ) : null}
 
       <div style={{position: 'absolute', left: 0, right: 0, bottom: 0, height: 10, background: 'rgba(255,255,255,.09)', zIndex: 90}}>
         <div style={{height: '100%', width: '100%', background: RED}} />
