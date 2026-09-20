@@ -234,6 +234,77 @@ const Scene = ({scene, presenters, presentationMode, qualityPolicy}) => {
     );
   }
 
+  if (scene.type === 'scoreboard') {
+    const home = scene.home || {name: 'BRIGHTON', score: 3};
+    const away = scene.away || {name: 'ARSENAL', score: 0};
+    return (
+      <AbsoluteFill style={common}>
+        {scene.media ? <AbsoluteFill>{mediaNode(scene.media, qualityPolicy)}</AbsoluteFill> : null}
+        <div style={{position:'absolute', inset:0, background:'linear-gradient(180deg,rgba(2,10,26,.30),rgba(5,7,12,.90))'}} />
+        <div style={{position:'absolute', top:185, left:70, fontSize:24, fontWeight:900, letterSpacing:'.10em'}}>PREMIER LEAGUE · FULL-TIME</div>
+        <div style={{position:'absolute', top:350, left:70, right:70, padding:'42px 34px', borderRadius:34, background:'rgba(8,10,16,.88)', border:'1px solid rgba(255,255,255,.16)'}}>
+          <div style={{display:'grid', gridTemplateColumns:'1fr 180px 1fr', alignItems:'center', gap:22}}>
+            <div style={{textAlign:'right'}}>
+              <div style={{fontSize:48,fontWeight:1000}}>{home.name}</div>
+              <div style={{fontSize:20,color:MUTED,marginTop:8}}>{home.short || 'BHA'}</div>
+            </div>
+            <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:18}}>
+              <span style={{fontSize:112,fontWeight:1000,color:'#6fd3ff'}}>{home.score}</span>
+              <span style={{fontSize:50,fontWeight:900,color:MUTED}}>–</span>
+              <span style={{fontSize:112,fontWeight:1000,color:'#ff4350'}}>{away.score}</span>
+            </div>
+            <div>
+              <div style={{fontSize:48,fontWeight:1000}}>{away.name}</div>
+              <div style={{fontSize:20,color:MUTED,marginTop:8}}>{away.short || 'ARS'}</div>
+            </div>
+          </div>
+          <div style={{height:1,background:'rgba(255,255,255,.14)',margin:'34px 0 24px'}} />
+          {(scene.scorers || []).map((s,i)=>(
+            <div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'13px 6px',fontSize:30,fontWeight:800}}>
+              <span>{s.name}</span><span style={{color:'#6fd3ff'}}>{s.minute}</span>
+            </div>
+          ))}
+        </div>
+        <Headline text={scene.headline} accent={scene.accent} bottom={255} />
+      </AbsoluteFill>
+    );
+  }
+
+  if (scene.type === 'tactics') {
+    const labels = scene.labels || ['PRESS HIGH','WIN DUELS','FORCE ERRORS','ATTACK SET PIECES'];
+    return (
+      <AbsoluteFill style={common}>
+        <div style={{position:'absolute',top:210,left:70,right:70,fontSize:24,fontWeight:900,letterSpacing:'.10em'}}>HOW BRIGHTON BROKE THE DEFENCE</div>
+        <div style={{position:'absolute',top:330,left:90,right:90,height:890,border:'6px solid rgba(255,255,255,.78)',borderRadius:24,background:'linear-gradient(180deg,#126838,#0e4e2d)',boxShadow:'0 30px 80px rgba(0,0,0,.35)'}}>
+          <div style={{position:'absolute',left:'50%',top:0,bottom:0,width:4,background:'rgba(255,255,255,.65)'}} />
+          <div style={{position:'absolute',left:'50%',top:'50%',width:180,height:180,transform:'translate(-50%,-50%)',border:'4px solid rgba(255,255,255,.65)',borderRadius:'50%'}} />
+          <div style={{position:'absolute',left:0,right:0,top:'50%',height:4,background:'rgba(255,255,255,.65)'}} />
+          {[0,1,2,3].map((i)=>(
+            <div key={i} style={{
+              position:'absolute',
+              left: 150 + (i%2)*430,
+              top: 170 + Math.floor(i/2)*420,
+              width:260,
+              padding:'20px 18px',
+              borderRadius:18,
+              background:'rgba(6,8,12,.84)',
+              borderLeft:'7px solid '+(i<3?'#5be5ff':'#ff4350'),
+              fontSize:27,
+              fontWeight:950,
+              textAlign:'center'
+            }}>{labels[i]}</div>
+          ))}
+          {[{l:385,t:240,r:-25},{l:385,t:660,r:25},{l:620,t:455,r:0}].map((a,i)=>(
+            <div key={'a'+i} style={{position:'absolute',left:a.l,top:a.t,width:210,height:14,background:'#ff4350',borderRadius:8,transform:'rotate('+a.r+'deg)',transformOrigin:'left center',boxShadow:'0 0 18px rgba(255,67,80,.55)'}}>
+              <div style={{position:'absolute',right:-4,top:-13,width:0,height:0,borderTop:'20px solid transparent',borderBottom:'20px solid transparent',borderLeft:'30px solid #ff4350'}} />
+            </div>
+          ))}
+        </div>
+        <div style={{position:'absolute',left:70,right:70,bottom:240,fontSize:36,fontWeight:900,lineHeight:1.08,textAlign:'center'}}>{scene.body || ''}</div>
+      </AbsoluteFill>
+    );
+  }
+
   if (scene.type === 'quote') {
     return (
       <AbsoluteFill style={common}>
