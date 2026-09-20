@@ -5,7 +5,9 @@ import {DgbnBulletin} from './compositions/DgbnBulletin.jsx';
 import {DgbnNewsFlash} from './compositions/DgbnNewsFlash.jsx';
 import {DgbnNewsCard} from './compositions/DgbnNewsCard.jsx';
 import {DsnShortMaster} from './compositions/DsnShortMaster.jsx';
+import {CinematicStoryMaster} from './compositions/CinematicStoryMaster.jsx';
 import dsnShortConfig from '../../../jobs/samples/dsn-short-master-v1.json';
+import cinematicConfig from '../../../jobs/samples/cinematic-story-master-v1.json';
 
 const FPS = 30;
 
@@ -37,6 +39,24 @@ export const DgbnRoot = () => (
       fps={dsnShortConfig.fps || FPS}
       durationInFrames={(dsnShortConfig.fps || FPS) * dsnShortConfig.durationSec}
       defaultProps={{config: dsnShortConfig}}
+    />
+    <Composition
+      id="CinematicStoryMaster9x16"
+      component={CinematicStoryMaster}
+      width={1080}
+      height={1920}
+      fps={30}
+      durationInFrames={30 * Math.ceil(cinematicConfig.targetDurationSec || 30)}
+      defaultProps={{config: cinematicConfig}}
+    />
+    <Composition
+      id="CinematicStoryMaster16x9"
+      component={CinematicStoryMaster}
+      width={1920}
+      height={1080}
+      fps={30}
+      durationInFrames={30 * Math.ceil(cinematicConfig.targetDurationSec || 30)}
+      defaultProps={{config: {...cinematicConfig, aspectRatio: '16:9'}}}
     />
     <Composition
       id="DGBNNewsCard9x16"
