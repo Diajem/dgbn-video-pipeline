@@ -19,6 +19,23 @@ jobs:
         with:
           node-version: '22'
 
+      - name: Install renderer dependencies
+        run: npm install
+
+      - name: Check new video pipeline scripts
+        run: |
+          node --check scripts/wan3-client.mjs
+          node --check scripts/stage-dsn-job.mjs
+
+      - name: Validate DSN short contract
+        run: node scripts/validate-dsn-short.mjs jobs/samples/dsn-short-master-v1.json
+
+      - name: Parse cinematic sample
+        run: node -e "JSON.parse(require('fs').readFileSync('jobs/samples/cinematic-story-master-v1.json','utf8')); console.log('cinematic JSON valid')"
+
+      - name: Bundle Remotion compositions
+        run: npm --workspace @dgbn/remotion-studio exec -- remotion compositions src/index.jsx
+
       - name: Validate scheduled bulletin fixture
         run: node scripts/validate-manifest.mjs jobs/samples/dgbn-2026-08-05-evening.json
 
