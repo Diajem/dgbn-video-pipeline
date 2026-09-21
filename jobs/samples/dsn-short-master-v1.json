@@ -204,5 +204,8 @@
         "THINK?"
       ]
     }
-  ]
+  ],
+  "presentationMode": "AVATAR",
+  "qualityPolicy": "DEMO",
+  "outroHoldSec": 1.5
 }
