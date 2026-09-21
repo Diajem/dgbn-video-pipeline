@@ -457,6 +457,8 @@ const Caption = ({caption}) => {
 export const DsnShortMaster = ({config}) => {
   const fps = config.fps || 30;
   const qualityPolicy = config.qualityPolicy || 'DEMO';
+  const outroHoldSec = config.outroHoldSec ?? 1.5;
+  const storyDurationSec = config.durationSec || 0;
   const presentationMode = config.presentationMode || 'AVATAR';
 
   if (qualityPolicy === 'PRODUCTION' && presentationMode === 'AVATAR' && config.presenterSpine?.required && !config.presenterSpine?.src) {
@@ -529,6 +531,24 @@ export const DsnShortMaster = ({config}) => {
       ) : null}
       {config.audio?.musicSrc ? (
         <Audio src={config.audio.musicSrc} volume={config.audio.musicVolume ?? 0.10} />
+      ) : null}
+
+      {outroHoldSec > 0 ? (
+        <Sequence from={Math.max(0, Math.round(storyDurationSec * fps))} durationInFrames={Math.max(1, Math.round(outroHoldSec * fps))}>
+          <AbsoluteFill style={{
+            zIndex:120,
+            background:'linear-gradient(160deg,#090a0d 0%,#16181d 100%)',
+            display:'flex',
+            alignItems:'center',
+            justifyContent:'center',
+            flexDirection:'column',
+            textAlign:'center'
+          }}>
+            <div style={{fontSize:92,fontWeight:1000,letterSpacing:'-.03em'}}>DSN</div>
+            <div style={{marginTop:10,fontSize:26,fontWeight:800,letterSpacing:'.12em',color:'#ff2633'}}>DIAJEM SPORTS NETWORK</div>
+            <div style={{marginTop:42,fontSize:34,fontWeight:850}}>FOOTBALL TALKS BIGGER</div>
+          </AbsoluteFill>
+        </Sequence>
       ) : null}
 
       <div style={{position: 'absolute', left: 0, right: 0, bottom: 0, height: 10, background: 'rgba(255,255,255,.09)', zIndex: 90}}>
