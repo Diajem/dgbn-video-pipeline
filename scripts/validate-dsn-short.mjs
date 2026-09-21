@@ -2,6 +2,7 @@ import fs from 'node:fs';
 
 const file = process.argv[2] || 'jobs/samples/dsn-short-master-v1.json';
 const cfg = JSON.parse(fs.readFileSync(file, 'utf8'));
+const officialDsnLogo = 'video-studio/remotion/public/brand/dsn-logo-official.jpg';
 const fail = (msg) => { throw new Error('DSN short validation failed: ' + msg); };
 
 if (cfg.version !== 'DSN_SHORT_MASTER_V1') fail('wrong or missing version');
@@ -14,6 +15,9 @@ if (cfg.outroHoldSec !== undefined && cfg.outroHoldSec < 0.75) {
 }
 
 const production = cfg.qualityPolicy === 'PRODUCTION';
+if (production && !fs.existsSync(officialDsnLogo)) {
+  fail('official DSN logo asset is missing: ' + officialDsnLogo);
+}
 if (production && cfg.presentationMode === 'AVATAR' && cfg.presenterSpine?.required && !cfg.presenterSpine?.src) {
   fail('AVATAR requires presenterSpine.src when presenter spine is required');
 }
