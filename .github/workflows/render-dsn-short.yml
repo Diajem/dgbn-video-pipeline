@@ -6,11 +6,13 @@ on:
       job_path:
         description: Repository path to an approved DSN_SHORT_MASTER_V1 job JSON
         required: true
-        default: jobs/renders/brighton-arsenal-production-v1.json
+        default: jobs/samples/dsn-short-master-v1.json
       artifact_name:
         description: Output artifact name
         required: false
         default: dsn-short-render
+  repository_dispatch:
+    types: [dsn_short_render]
 
 permissions:
   contents: read
@@ -19,6 +21,13 @@ jobs:
   render:
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    env:
+      EVENT_NAME: ${{ github.event_name }}
+      DISPATCH_JOB_JSON: ${{ toJson(github.event.client_payload.job) }}
+      DISPATCH_STORY_ID: ${{ github.event.client_payload.story_id }}
+      DISPATCH_ARTIFACT_NAME: ${{ github.event.client_payload.artifact_name }}
+      CALLBACK_URL: ${{ github.event.client_payload.callback_url }}
+
     steps:
       - uses: actions/checkout@v4
 
@@ -29,11 +38,32 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Validate DSN job
-        run: node scripts/validate-dsn-short.mjs "${{ inputs.job_path }}"
+      - name: Resolve render job
+        id: resolve
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "$EVENT_NAME" = "repository_dispatch" ]; then
+            mkdir -p jobs/renders
+            node - <<'NODE'
+          const fs = require('fs');
+          const raw = process.env.DISPATCH_JOB_JSON;
+          if (!raw || raw === 'null') throw new Error('repository_dispatch contained no DSN render job');
+          const job = JSON.parse(raw);
+          fs.writeFileSync('jobs/renders/dispatched-dsn-short.json', JSON.stringify(job, null, 2) + '\n');
+          NODE
+            echo "job_path=jobs/renders/dispatched-dsn-short.json" >> "$GITHUB_OUTPUT"
+            echo "artifact_name=${DISPATCH_ARTIFACT_NAME:-dsn-short-render}" >> "$GITHUB_OUTPUT"
+          else
+            echo "job_path=${{ inputs.job_path }}" >> "$GITHUB_OUTPUT"
+            echo "artifact_name=${{ inputs.artifact_name }}" >> "$GITHUB_OUTPUT"
+          fi
 
-      - name: Stage remote presenter assets
-        run: node scripts/stage-dsn-job.mjs "${{ inputs.job_path }}"
+      - name: Validate DSN job
+        run: node scripts/validate-dsn-short.mjs "${{ steps.resolve.outputs.job_path }}"
+
+      - name: Stage remote production assets
+        run: node scripts/stage-dsn-job.mjs "${{ steps.resolve.outputs.job_path }}"
 
       - name: Render production MP4
         run: |
@@ -44,6 +74,43 @@ jobs:
       - name: Upload production artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ inputs.artifact_name }}
+          name: ${{ steps.resolve.outputs.artifact_name }}
           path: renders/dsn-short.mp4
           if-no-files-found: error
+
+      - name: Report renderer result to newsroom
+        if: always() && github.event_name == 'repository_dispatch' && env.CALLBACK_URL != ''
+        env:
+          CALLBACK_TOKEN: ${{ secrets.VIDEO_RENDER_CALLBACK_TOKEN }}
+          RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          RUN_ID: ${{ github.run_id }}
+          JOB_STATUS: ${{ job.status }}
+          ARTIFACT_NAME: ${{ steps.resolve.outputs.artifact_name }}
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const status = process.env.JOB_STATUS === 'success' ? 'RENDERED' : 'FAILED';
+          const body = {
+            story_id: process.env.DISPATCH_STORY_ID,
+            status,
+            artifact_name: process.env.ARTIFACT_NAME || null,
+            actions_url: process.env.RUN_URL,
+            run_id: process.env.RUN_ID,
+            error: status === 'FAILED' ? 'DSN renderer workflow failed; inspect the Actions run.' : null,
+            metadata: {
+              repository: process.env.GITHUB_REPOSITORY,
+              workflow: process.env.GITHUB_WORKFLOW,
+              commit: process.env.GITHUB_SHA
+            }
+          };
+          fs.writeFileSync('/tmp/dsn-render-callback.json', JSON.stringify(body));
+          NODE
+          if [ -z "$CALLBACK_TOKEN" ]; then
+            echo "VIDEO_RENDER_CALLBACK_TOKEN secret is not configured" >&2
+            exit 1
+          fi
+          curl --fail --silent --show-error --location \
+            -X POST "$CALLBACK_URL" \
+            -H "Authorization: Bearer $CALLBACK_TOKEN" \
+            -H "Content-Type: application/json" \
+            --data-binary @/tmp/dsn-render-callback.json
