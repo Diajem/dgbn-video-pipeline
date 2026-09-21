@@ -499,7 +499,7 @@ export const DsnShortMaster = ({config}) => {
         filter:'drop-shadow(0 10px 24px rgba(0,0,0,.48))'
       }}>
         <Img
-          src={staticFile('brand/dsn-official-logo.png')}
+          src={staticFile('brand/dsn-logo-official.jpg')}
           style={{width:'100%',height:'100%',objectFit:'contain'}}
         />
       </div>
