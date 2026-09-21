@@ -21,6 +21,8 @@
     "avatar:musetalk:source:peet": "node scripts/prepare-musetalk-source.mjs peet",
     "avatar:musetalk:preflight": "node scripts/musetalk-preflight.mjs",
     "avatar:musetalk:benchmark:peet": "node scripts/run-musetalk-benchmark.mjs peet",
-    "avatar:runpod:peet": "node scripts/runpod-musetalk-client.mjs peet"
+    "avatar:runpod:peet": "node scripts/runpod-musetalk-client.mjs peet",
+    "render:dsn-short": "npm run validate:dsn-short && npm --workspace @dgbn/remotion-studio run render:dsn-short",
+    "validate:dsn-short": "node scripts/validate-dsn-short.mjs"
   }
 }

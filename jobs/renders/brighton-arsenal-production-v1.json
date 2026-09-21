@@ -1,0 +1,300 @@
+{
+  "storyId": "dsn-brighton-arsenal-2026-09-19-continuous-v3",
+  "version": "DSN_SHORT_MASTER_V1",
+  "qualityPolicy": "PRODUCTION",
+  "presentationMode": "AVATAR",
+  "durationSec": 40.88,
+  "fps": 30,
+  "presenterSpine": {
+    "src": "https://files2.heygen.ai/aws_pacific/avatar_tmp/348ba8efd3f1430992d31a5afab57fc4/de1d2759ff3670abc4419cc6fbdea437.mp4?Expires=1790555301&Signature=NqCTOeilEzl~9KR2enb2g4virN4mQgAFNkDJmJ6uPz3nboK-FZZSTpe-XWiR9k0UaCI3WdpB82KAgNFbkuqByXp8M52zZJoiFfxa1t0GtfqbEQMVsazXW9nb~lX1fW0QDvGdOPiV8at1QxiCQR3fPJ8y66tVSXvSMEIYY1R-1HwqElvKfxRlYfALKsoE6vu9E0E80WqZyVnOWOyeig3kN9ooG7~eMJvNIOiA5YFnW1tT2JfytTRudMH9xBWH19UnxdmGnmn14pRs3HYQt77TP9zQF3zontrkZPhSkzR1dRAQUofb6ycCYVR1BM9545pQl2okRIyEuxq5DWWoFP7jpA__&Key-Pair-Id=K38HBHX5LX3X2H",
+    "required": true,
+    "continuousAudio": true,
+    "continuousVisual": true,
+    "volume": 1,
+    "provider": "HEYGEN",
+    "voiceLocale": "en-GB",
+    "videoId": "de1d2759ff3670abc4419cc6fbdea437"
+  },
+  "presenters": {
+    "dsn_primary": {
+      "name": "DSN Presenter",
+      "role": "DIAJEM SPORTS NETWORK"
+    }
+  },
+  "scenes": [
+    {
+      "id": "hook",
+      "type": "hook",
+      "start": 0,
+      "duration": 3.9,
+      "presenter": {
+        "id": "dsn_primary",
+        "mode": "off"
+      },
+      "headline": "EUROPE'S BEST DEFENCE?",
+      "accent": "DEFENCE?",
+      "subhead": "Arsenal arrived with one of the strongest defensive records in the league."
+    },
+    {
+      "id": "defensive-record",
+      "type": "stats",
+      "start": 3.9,
+      "duration": 4.4,
+      "presenter": {
+        "mode": "off"
+      },
+      "kicker": "BEFORE KICK-OFF",
+      "media": {
+        "kind": "image",
+        "src": "https://images.unsplash.com/photo-1577223585130-9f6a12075ef8?auto=format&fit=crop&w=1080&h=1920&q=85"
+      },
+      "stats": [
+        {
+          "value": "4",
+          "label": "WINS FROM FOUR",
+          "source": "Premier League · first four matches"
+        },
+        {
+          "value": "1",
+          "label": "GOAL CONCEDED",
+          "source": "Premier League · before Brighton"
+        },
+        {
+          "value": "3",
+          "label": "CLEAN SHEETS",
+          "source": "Premier League · first four matches"
+        },
+        {
+          "value": "#1",
+          "label": "DEFENSIVE RECORD",
+          "source": "Premier League · before kick-off"
+        }
+      ]
+    },
+    {
+      "id": "script-torn-up",
+      "type": "hook",
+      "start": 8.3,
+      "duration": 2,
+      "presenter": {
+        "id": "dsn_primary",
+        "mode": "off"
+      },
+      "headline": "THEN BRIGHTON TORE IT UP",
+      "accent": "BRIGHTON",
+      "subhead": "One afternoon changed the entire conversation."
+    },
+    {
+      "id": "scorers-overlay",
+      "type": "broll_overlay",
+      "start": 10.3,
+      "duration": 9.2,
+      "presenter": {
+        "id": "dsn_primary",
+        "mode": "off"
+      },
+      "kicker": "BRIGHTON 3–0 ARSENAL",
+      "media": {
+        "kind": "image",
+        "src": "https://images.unsplash.com/photo-1764703666646-acc2f7d48857?auto=format&fit=crop&w=1080&h=1920&q=85"
+      },
+      "overlayText": "Groß 31′ · Kostoulas 45′ · Chema Andrés 57′"
+    },
+    {
+      "id": "score",
+      "type": "scoreboard",
+      "start": 19.5,
+      "duration": 3.2,
+      "presenter": {
+        "mode": "off"
+      },
+      "media": {
+        "kind": "image",
+        "src": "https://images.unsplash.com/photo-1764703666646-acc2f7d48857?auto=format&fit=crop&w=1080&h=1920&q=85"
+      },
+      "home": {
+        "name": "BRIGHTON",
+        "short": "BHA",
+        "score": 3
+      },
+      "away": {
+        "name": "ARSENAL",
+        "short": "ARS",
+        "score": 0
+      },
+      "scorers": [
+        {
+          "name": "Pascal Groß",
+          "minute": "31′"
+        },
+        {
+          "name": "Babis Kostoulas",
+          "minute": "45′"
+        },
+        {
+          "name": "Chema Andrés",
+          "minute": "57′"
+        }
+      ],
+      "headline": "PERFECT START: OVER",
+      "accent": "OVER"
+    },
+    {
+      "id": "tactical-press",
+      "type": "tactics",
+      "start": 22.7,
+      "duration": 7.9,
+      "presenter": {
+        "mode": "off"
+      },
+      "labels": [
+        "PRESS HIGH",
+        "WIN DUELS",
+        "FORCE ERRORS",
+        "BLOCK THE BUILD-UP"
+      ],
+      "body": "Brighton's aggression without the ball stopped Arsenal from playing through them."
+    },
+    {
+      "id": "arteta-reaction",
+      "type": "quote",
+      "start": 30.6,
+      "duration": 4.1,
+      "presenter": {
+        "mode": "off"
+      },
+      "kicker": "ARTETA'S REACTION",
+      "quote": "They deserved to win.",
+      "attribution": "Mikel Arteta · post-match reaction"
+    },
+    {
+      "id": "conclusion",
+      "type": "hook",
+      "start": 34.7,
+      "duration": 6.18,
+      "presenter": {
+        "id": "dsn_primary",
+        "mode": "off"
+      },
+      "headline": "ONE BAD DAY — OR A BLUEPRINT?",
+      "accent": "BLUEPRINT?",
+      "subhead": "Did Brighton expose something other teams can copy?"
+    }
+  ],
+  "captions": [
+    {
+      "start": 0.2,
+      "end": 3.7,
+      "text": "ONE OF THE STRONGEST DEFENSIVE RECORDS",
+      "emphasis": [
+        "STRONGEST",
+        "DEFENSIVE"
+      ]
+    },
+    {
+      "start": 4.2,
+      "end": 8.1,
+      "text": "FOUR WINS. ONE CONCEDED. THREE CLEAN SHEETS.",
+      "emphasis": [
+        "ONE",
+        "THREE"
+      ]
+    },
+    {
+      "start": 8.6,
+      "end": 10.1,
+      "text": "THEN BRIGHTON TORE IT UP",
+      "emphasis": [
+        "BRIGHTON"
+      ]
+    },
+    {
+      "start": 10.6,
+      "end": 13,
+      "text": "GROSS OPENED THE SCORING",
+      "emphasis": [
+        "GROSS"
+      ]
+    },
+    {
+      "start": 13.2,
+      "end": 16.3,
+      "text": "KOSTOULAS DOUBLED THE LEAD",
+      "emphasis": [
+        "KOSTOULAS"
+      ]
+    },
+    {
+      "start": 16.5,
+      "end": 19.3,
+      "text": "CHEMA ANDRES MADE IT THREE",
+      "emphasis": [
+        "THREE"
+      ]
+    },
+    {
+      "start": 19.8,
+      "end": 22.4,
+      "text": "THREE-NIL. PERFECT START OVER.",
+      "emphasis": [
+        "THREE-NIL",
+        "OVER"
+      ]
+    },
+    {
+      "start": 23,
+      "end": 26.1,
+      "text": "BRIGHTON PRESSED AGGRESSIVELY",
+      "emphasis": [
+        "PRESSED"
+      ]
+    },
+    {
+      "start": 26.2,
+      "end": 30.2,
+      "text": "DUELS. ERRORS. ARSENAL COULDN'T PLAY THROUGH.",
+      "emphasis": [
+        "ERRORS"
+      ]
+    },
+    {
+      "start": 30.9,
+      "end": 34.3,
+      "text": "ARTETA CALLED IT A BIG LESSON",
+      "emphasis": [
+        "BIG",
+        "LESSON"
+      ]
+    },
+    {
+      "start": 35,
+      "end": 40.4,
+      "text": "ONE BAD DAY — OR A BLUEPRINT?",
+      "emphasis": [
+        "BLUEPRINT"
+      ]
+    }
+  ],
+  "sourceNotes": [
+    "Brighton 3-0 Arsenal, Premier League, 19 September 2026.",
+    "Scorers: Pascal Groß 31', Babis Kostoulas 45', Chema Andrés 57'.",
+    "Arsenal entered after four league wins, one goal conceded and three clean sheets."
+  ],
+  "rightsNotes": [
+    "Continuous presenter master generated in authenticated HeyGen workspace.",
+    "British voice clone pinned explicitly with en-GB locale.",
+    "No broadcast match footage is used.",
+    "Illustrative football imagery is rights-safe and graphics are original DSN compositions."
+  ],
+  "productionMetadata": {
+    "renderAttempt": 4,
+    "architecture": "CONTINUOUS_PRESENTER_SPINE",
+    "heygenVideoId": "de1d2759ff3670abc4419cc6fbdea437",
+    "voice": {
+      "id": "741a3bbf17194f44982a2ac1b28e0443",
+      "locale": "en-GB",
+      "policy": "EXPLICIT_CLONE"
+    },
+    "editorialRule": "Narration must remain continuous while B-roll/graphics cover or resize presenter."
+  }
+}

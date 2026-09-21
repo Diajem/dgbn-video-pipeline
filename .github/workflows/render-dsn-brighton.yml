@@ -1,0 +1,70 @@
+name: Render DSN Brighton Arsenal preview
+
+on:
+  push:
+    branches:
+      - feature/dsn-short-master-v1
+    paths:
+      - jobs/renders/brighton-arsenal-production-v1.json
+
+permissions:
+  contents: read
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Install FFmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+
+      - name: Validate production job
+        run: node scripts/validate-dsn-short.mjs jobs/renders/brighton-arsenal-production-v1.json
+
+      - name: Stage production config
+        run: cp jobs/renders/brighton-arsenal-production-v1.json jobs/samples/dsn-short-master-v1.json
+
+      - name: Stage presenter master
+        run: |
+          mkdir -p video-studio/remotion/public/assets
+          PRESENTER_URL="$(node -e "const fs=require('fs'); const j=JSON.parse(fs.readFileSync('jobs/renders/brighton-arsenal-production-v1.json','utf8')); process.stdout.write(j.presenterSpine.downloadUrl || '')")"
+          test -n "$PRESENTER_URL"
+          curl --fail --location --retry 3 "$PRESENTER_URL" -o video-studio/remotion/public/assets/brighton-presenter-master.mp4
+          test -s video-studio/remotion/public/assets/brighton-presenter-master.mp4
+
+      - name: Render DSN short
+        run: |
+          mkdir -p renders
+          cd video-studio/remotion
+          npx remotion render src/index.jsx DSNShortMaster9x16 ../../renders/brighton-arsenal-v2-raw.mp4
+
+      - name: Mix restrained sports-news bed
+        run: |
+          ffmpeg -y -i renders/brighton-arsenal-v2-raw.mp4 \
+            -f lavfi -i "sine=frequency=58:duration=75,volume=0.012" \
+            -f lavfi -i "anoisesrc=color=pink:duration=75:amplitude=0.004" \
+            -filter_complex "[1:a][2:a]amix=inputs=2:normalize=0[bed];[0:a][bed]amix=inputs=2:duration=first:weights='1 0.55':normalize=0[a]" \
+            -map 0:v -map "[a]" -c:v copy -c:a aac -b:a 192k -shortest \
+            renders/brighton-arsenal-v2.mp4
+
+      - name: Upload preview
+        uses: actions/upload-artifact@v4
+        with:
+          name: dsn-brighton-arsenal-v2
+          path: |
+            renders/brighton-arsenal-v2.mp4
+            renders/brighton-arsenal-v2-raw.mp4
+          if-no-files-found: error

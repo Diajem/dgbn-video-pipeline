@@ -1,0 +1,312 @@
+{
+  "storyId": "dsn-brighton-arsenal-2026-09-19",
+  "version": "DSN_SHORT_MASTER_V1",
+  "qualityPolicy": "PRODUCTION",
+  "presentationMode": "AVATAR",
+  "durationSec": 60,
+  "fps": 30,
+  "sourceNotes": [
+    "Premier League: Arsenal entered with the league's strongest defence and had conceded once before kick-off.",
+    "Brighton official match report: Gross 31, Kostoulas 45, Chema Andres 57; Brighton won 3-0.",
+    "Premier League: first Arsenal three-goal league defeat since Brighton 3-0 Arsenal in May 2023."
+  ],
+  "rightsNotes": [
+    "Presenter clips generated in authenticated HeyGen workspace.",
+    "Stadium photographs are free-to-use Unsplash assets; photographer/source credits retained in production metadata.",
+    "No broadcast match footage is used."
+  ],
+  "presenters": {
+    "dsn_primary": {
+      "name": "DSN Presenter",
+      "role": "DIAJEM SPORTS NETWORK",
+      "src": "__HOOK_UK_URL__"
+    }
+  },
+  "scenes": [
+    {
+      "id": "hook",
+      "type": "hook",
+      "start": 0,
+      "duration": 9.2,
+      "presenter": {
+        "id": "dsn_primary",
+        "mode": "full",
+        "src": "__HOOK_UK_URL__",
+        "nameplate": false
+      },
+      "headline": "EUROPE'S BEST DEFENCE?",
+      "accent": "DEFENCE?",
+      "subhead": "Brighton just handed Arsenal a brutal reality check."
+    },
+    {
+      "id": "defensive-record",
+      "type": "stats",
+      "start": 9.2,
+      "duration": 5.8,
+      "presenter": {
+        "mode": "off"
+      },
+      "kicker": "BEFORE KICK-OFF",
+      "media": {
+        "kind": "image",
+        "src": "https://images.unsplash.com/photo-1577223585130-9f6a12075ef8?auto=format&fit=crop&w=1080&h=1920&q=85"
+      },
+      "stats": [
+        {
+          "value": "4",
+          "label": "LEAGUE WINS",
+          "source": "Premier League · 2026/27 · after MW4"
+        },
+        {
+          "value": "1",
+          "label": "GOAL CONCEDED",
+          "source": "Premier League · before Brighton"
+        },
+        {
+          "value": "3",
+          "label": "CLEAN SHEETS",
+          "source": "Premier League · first four matches"
+        },
+        {
+          "value": "#1",
+          "label": "DEFENSIVE RECORD",
+          "source": "Premier League · before kick-off"
+        }
+      ]
+    },
+    {
+      "id": "goal-facts",
+      "type": "presenter_split",
+      "start": 15,
+      "duration": 9.7,
+      "presenter": {
+        "id": "dsn_primary",
+        "mode": "left",
+        "src": "__FACTS_UK_URL__"
+      },
+      "media": {
+        "kind": "image",
+        "src": "https://images.unsplash.com/photo-1764703666646-acc2f7d48857?auto=format&fit=crop&w=1080&h=1920&q=85"
+      },
+      "kicker": "THEN BRIGHTON STRUCK",
+      "headline": "THREE GOALS. THREE DIFFERENT BLOWS.",
+      "accent": "THREE",
+      "body": "Groß 31′ · Kostoulas 45′ · Chema Andrés 57′"
+    },
+    {
+      "id": "score",
+      "type": "scoreboard",
+      "start": 24.7,
+      "duration": 5.3,
+      "presenter": {
+        "mode": "off"
+      },
+      "media": {
+        "kind": "image",
+        "src": "https://images.unsplash.com/photo-1764703666646-acc2f7d48857?auto=format&fit=crop&w=1080&h=1920&q=85"
+      },
+      "home": {
+        "name": "BRIGHTON",
+        "short": "BHA",
+        "score": 3
+      },
+      "away": {
+        "name": "ARSENAL",
+        "short": "ARS",
+        "score": 0
+      },
+      "scorers": [
+        {
+          "name": "Pascal Groß",
+          "minute": "31′"
+        },
+        {
+          "name": "Babis Kostoulas",
+          "minute": "45′"
+        },
+        {
+          "name": "Chema Andrés",
+          "minute": "57′"
+        }
+      ],
+      "headline": "PERFECT START: OVER",
+      "accent": "OVER"
+    },
+    {
+      "id": "analysis",
+      "type": "presenter_split",
+      "start": 30,
+      "duration": 11.4,
+      "presenter": {
+        "id": "dsn_primary",
+        "mode": "right",
+        "src": "__ANALYSIS_UK_URL__"
+      },
+      "media": {
+        "kind": "image",
+        "src": "https://images.unsplash.com/photo-1676729880091-4c6a7e36e9f0?auto=format&fit=crop&w=1080&h=1920&q=85"
+      },
+      "kicker": "HOW IT HAPPENED",
+      "headline": "BRIGHTON MADE ARSENAL UNCOMFORTABLE",
+      "accent": "UNCOMFORTABLE",
+      "body": "Pressure, duels and technical mistakes changed the game."
+    },
+    {
+      "id": "tactical-press",
+      "type": "tactics",
+      "start": 41.4,
+      "duration": 5.5,
+      "presenter": {
+        "mode": "off"
+      },
+      "labels": [
+        "PRESS HIGH",
+        "WIN DUELS",
+        "FORCE ERRORS",
+        "ATTACK SET PIECES"
+      ],
+      "body": "Brighton's aggression without the ball disrupted Arsenal's control."
+    },
+    {
+      "id": "payoff",
+      "type": "hook",
+      "start": 46.9,
+      "duration": 13.1,
+      "presenter": {
+        "id": "dsn_primary",
+        "mode": "full",
+        "src": "__PAYOFF_UK_URL__",
+        "nameplate": false
+      },
+      "headline": "ONE BAD DAY — OR A BLUEPRINT?",
+      "accent": "BLUEPRINT?",
+      "subhead": "Follow DSN for football analysis, not just the score."
+    }
+  ],
+  "captions": [
+    {
+      "start": 0.4,
+      "end": 2.8,
+      "text": "ONE OF THE STRONGEST DEFENCES",
+      "emphasis": [
+        "STRONGEST",
+        "DEFENCES"
+      ]
+    },
+    {
+      "start": 4.2,
+      "end": 7.4,
+      "text": "THEN BRIGHTON TORE IT UP",
+      "emphasis": [
+        "BRIGHTON"
+      ]
+    },
+    {
+      "start": 9.5,
+      "end": 12.6,
+      "text": "ONLY ONE GOAL CONCEDED",
+      "emphasis": [
+        "ONE"
+      ]
+    },
+    {
+      "start": 15.4,
+      "end": 18.1,
+      "text": "GROSS OPENED THE SCORING",
+      "emphasis": [
+        "GROSS"
+      ]
+    },
+    {
+      "start": 18.2,
+      "end": 21,
+      "text": "KOSTOULAS MADE IT TWO",
+      "emphasis": [
+        "KOSTOULAS",
+        "TWO"
+      ]
+    },
+    {
+      "start": 21.1,
+      "end": 24.2,
+      "text": "CHEMA ANDRES MADE IT THREE",
+      "emphasis": [
+        "THREE"
+      ]
+    },
+    {
+      "start": 30.4,
+      "end": 33.4,
+      "text": "BRIGHTON PRESSED AGGRESSIVELY",
+      "emphasis": [
+        "PRESSED"
+      ]
+    },
+    {
+      "start": 34,
+      "end": 37,
+      "text": "DUELS. ERRORS. PRESSURE.",
+      "emphasis": [
+        "ERRORS",
+        "PRESSURE"
+      ]
+    },
+    {
+      "start": 41.8,
+      "end": 44.8,
+      "text": "THIS IS HOW THEY BROKE THE RHYTHM",
+      "emphasis": [
+        "BROKE"
+      ]
+    },
+    {
+      "start": 47.3,
+      "end": 50.5,
+      "text": "ONE BAD AFTERNOON?",
+      "emphasis": [
+        "BAD"
+      ]
+    },
+    {
+      "start": 53,
+      "end": 57.8,
+      "text": "OR DID BRIGHTON FIND A BLUEPRINT?",
+      "emphasis": [
+        "BLUEPRINT"
+      ]
+    }
+  ],
+  "productionMetadata": {
+    "brollCredits": [
+      {
+        "asset": "Emirates Stadium photograph",
+        "creator": "Nelson Ndongala",
+        "source": "Unsplash",
+        "license": "Unsplash License"
+      },
+      {
+        "asset": "Empty football stadium with floodlights",
+        "creator": "David Bayliss",
+        "source": "Unsplash",
+        "license": "Unsplash License"
+      },
+      {
+        "asset": "Football stadium with blue seating",
+        "creator": "Chris Kursikowski",
+        "source": "Unsplash",
+        "license": "Unsplash License"
+      }
+    ],
+    "heygenVideoIds": {
+      "hook": "ca35eb643d379c218667d0a51ac8a256",
+      "facts": "633d4b64a974653fe3de7ab4a784e86f",
+      "analysis": "79314ee06adf95b4fe66718d5e6fead2",
+      "payoff": "b4cf873e40c6c57630578322d030ffc6"
+    },
+    "voice": {
+      "id": "741a3bbf17194f44982a2ac1b28e0443",
+      "locale": "en-GB",
+      "policy": "EXPLICIT_CLONE"
+    }
+  }
+}

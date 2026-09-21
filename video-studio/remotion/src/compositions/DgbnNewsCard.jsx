@@ -1,9 +1,12 @@
 import React from 'react';
-import {interpolate, useCurrentFrame} from 'remotion';
+import {interpolate, Sequence, useCurrentFrame, useVideoConfig} from 'remotion';
 import {BrandFrame} from '../components/BrandFrame.jsx';
+import {BrandedEndCard} from '../components/BrandedEndCard.jsx';
 
 export const DgbnNewsCard = ({job, storyIndex = 0}) => {
   const frame = useCurrentFrame();
+  const {durationInFrames, fps} = useVideoConfig();
+  const outroFrames = Math.max(1, Math.round(fps * 1.5));
   const story = job.stories[storyIndex];
   const scale = interpolate(frame, [0, 20], [.93, 1], {extrapolateRight: 'clamp'});
   return (
@@ -14,6 +17,9 @@ export const DgbnNewsCard = ({job, storyIndex = 0}) => {
         <div style={{height: 620, marginTop: 60, borderRadius: 32, background: 'linear-gradient(145deg,#272727,#0b0b0b)', border: '2px solid rgba(215,166,42,.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 60, textAlign: 'center', fontSize: 30, opacity: .65}}>Visual / image / map / motion-graphic slot</div>
         <div style={{fontSize: 36, fontWeight: 700, lineHeight: 1.35, marginTop: 54}}>{story.callout}</div>
       </div>
+      <Sequence from={Math.max(0, durationInFrames - outroFrames)} durationInFrames={outroFrames}>
+        <BrandedEndCard brand="DGBN" />
+      </Sequence>
     </BrandFrame>
   );
 };

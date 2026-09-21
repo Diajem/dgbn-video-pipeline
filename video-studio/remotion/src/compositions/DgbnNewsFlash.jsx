@@ -1,9 +1,12 @@
 import React from 'react';
-import {interpolate, useCurrentFrame} from 'remotion';
+import {interpolate, Sequence, useCurrentFrame, useVideoConfig} from 'remotion';
 import {BrandFrame} from '../components/BrandFrame.jsx';
+import {BrandedEndCard} from '../components/BrandedEndCard.jsx';
 
 export const DgbnNewsFlash = ({job, storyIndex = 0}) => {
   const frame = useCurrentFrame();
+  const {durationInFrames, fps} = useVideoConfig();
+  const outroFrames = Math.max(1, Math.round(fps * 1.5));
   const story = job.stories[storyIndex];
   const y = interpolate(frame, [0, 18], [90, 0], {extrapolateRight: 'clamp'});
   return (
@@ -17,6 +20,9 @@ export const DgbnNewsFlash = ({job, storyIndex = 0}) => {
         </div>
       </div>
       <div style={{position: 'absolute', bottom: 70, left: 64, right: 64, fontSize: 27, fontWeight: 800, borderTop: '2px solid rgba(215,166,42,.5)', paddingTop: 22}}>Our People. Our Story. Our Own Way.</div>
+      <Sequence from={Math.max(0, durationInFrames - outroFrames)} durationInFrames={outroFrames}>
+        <BrandedEndCard brand="DGBN" />
+      </Sequence>
     </BrandFrame>
   );
 };
