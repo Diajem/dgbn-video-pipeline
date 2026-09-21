@@ -489,9 +489,19 @@ export const DsnShortMaster = ({config}) => {
           }}
         />
       ) : null}
-      <div style={{position: 'absolute', top: 110, left: 70, zIndex: 80, display: 'flex', alignItems: 'center', gap: 13, fontWeight: 900, letterSpacing: '.08em', fontSize: 24}}>
-        <div style={{width: 58, height: 58, borderRadius: 16, background: RED, display: 'grid', placeItems: 'center', fontSize: 27}}>DSN</div>
-        DIAJEM SPORTS NETWORK
+      <div style={{
+        position:'absolute',
+        top:58,
+        left:46,
+        zIndex:80,
+        width:150,
+        height:158,
+        filter:'drop-shadow(0 10px 24px rgba(0,0,0,.48))'
+      }}>
+        <Img
+          src={staticFile('brand/dsn-official-logo.png')}
+          style={{width:'100%',height:'100%',objectFit:'contain'}}
+        />
       </div>
 
       {(config.scenes || []).map((scene) => (
