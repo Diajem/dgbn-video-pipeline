@@ -9,6 +9,7 @@ import {
   staticFile,
   useCurrentFrame,
 } from 'remotion';
+import {BrandedEndCard} from '../components/BrandedEndCard.jsx';
 
 const RED = '#d71920';
 const WHITE = '#ffffff';
@@ -535,20 +536,7 @@ export const DsnShortMaster = ({config}) => {
 
       {outroHoldSec > 0 ? (
         <Sequence from={Math.max(0, Math.round(storyDurationSec * fps))} durationInFrames={Math.max(1, Math.round(outroHoldSec * fps))}>
-          <AbsoluteFill style={{
-            zIndex:120,
-            background:'linear-gradient(160deg,#090a0d 0%,#16181d 100%)',
-            display:'flex',
-            alignItems:'center',
-            justifyContent:'center',
-            flexDirection:'column',
-            textAlign:'center'
-          }}>
-            <div style={{fontSize:92,fontWeight:1000,letterSpacing:'-.03em'}}>DSN</div>
-            <div style={{marginTop:10,fontSize:26,fontWeight:800,letterSpacing:'.12em',color:'#ff2633'}}>DIAJEM SPORTS NETWORK</div>
-            <div style={{marginTop:34,fontSize:42,fontWeight:1000,letterSpacing:'.02em'}}>THANKS FOR WATCHING</div>
-            <div style={{marginTop:18,fontSize:30,fontWeight:850}}>FOOTBALL TALKS BIGGER</div>
-          </AbsoluteFill>
+          <BrandedEndCard brand="DSN" />
         </Sequence>
       ) : null}
 
