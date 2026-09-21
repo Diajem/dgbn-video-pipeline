@@ -11,6 +11,12 @@ if (!['AVATAR','VOICEOVER_BROLL','PETER_REAL'].includes(cfg.presentationMode)) {
 if (!Array.isArray(cfg.scenes) || cfg.scenes.length < 3) fail('at least three scenes are required');
 
 const production = cfg.qualityPolicy === 'PRODUCTION';
+if (production && cfg.presentationMode === 'AVATAR' && cfg.presenterSpine?.required && !cfg.presenterSpine?.src) {
+  fail('AVATAR requires presenterSpine.src when presenter spine is required');
+}
+if (production && cfg.presentationMode === 'AVATAR' && cfg.presenterSpine?.required && cfg.presenterSpine?.continuousAudio !== true) {
+  fail('AVATAR presenter spine must keep continuousAudio=true');
+}
 if (production && cfg.presentationMode === 'VOICEOVER_BROLL' && !cfg.audio?.voiceoverSrc) {
   fail('VOICEOVER_BROLL requires approved audio.voiceoverSrc');
 }
@@ -20,6 +26,9 @@ if (production && cfg.presentationMode === 'PETER_REAL' && !cfg.presenters?.pete
 
 for (const scene of cfg.scenes) {
   const presenter = scene.presenter || {};
+  if (cfg.presentationMode === 'AVATAR' && cfg.presenterSpine?.continuousAudio && presenter.src && presenter.src !== cfg.presenterSpine.src) {
+    fail('AVATAR scene ' + scene.id + ' must use the continuous presenter spine rather than a separate presenter clip');
+  }
   if (cfg.presentationMode === 'VOICEOVER_BROLL' && presenter.mode && presenter.mode !== 'off') {
     fail('VOICEOVER_BROLL cannot show presenter in scene ' + scene.id);
   }
