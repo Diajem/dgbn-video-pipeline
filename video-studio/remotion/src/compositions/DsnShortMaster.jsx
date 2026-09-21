@@ -36,19 +36,22 @@ const mediaNode = (media, qualityPolicy = 'DEMO') => {
     );
   }
   if (media.kind === 'video' || /\.(mp4|webm|mov)$/i.test(media.src)) {
-    return <OffthreadVideo src={media.src} style={{width: '100%', height: '100%', objectFit: 'cover'}} />;
+    return <OffthreadVideo src={media.src} volume={media.volume ?? 0} style={{width: '100%', height: '100%', objectFit: 'cover'}} />;
   }
   return <Img src={media.src} style={{width: '100%', height: '100%', objectFit: 'cover'}} />;
 };
 
-const Presenter = ({scene, presenters, presentationMode = 'AVATAR', qualityPolicy = 'DEMO'}) => {
+const Presenter = ({scene, presenters, presenterSpine, fps = 30, presentationMode = 'AVATAR', qualityPolicy = 'DEMO'}) => {
   const pRef = scene.presenter;
   if (presentationMode === 'VOICEOVER_BROLL') return null;
   if (presentationMode === 'PETER_REAL' && pRef?.id && pRef.id !== 'peter') return null;
   if (!pRef || pRef.mode === 'off') return null;
   const profile = presenters?.[pRef.id] || {};
-  const src = pRef.src || profile.src;
+  const spineSrc = presenterSpine?.src || null;
+  const src = spineSrc || pRef.src || profile.src;
   const mode = pRef.mode || 'lower-third';
+  const sourceStart = spineSrc ? Math.max(0, Math.round((pRef.sourceStart ?? scene.start ?? 0) * fps)) : 0;
+  const mutePresenterVisual = Boolean(presenterSpine?.continuousAudio);
   if (!src && qualityPolicy === 'PRODUCTION') {
     throw new Error('DSN production render blocked: presenter asset is missing for ' + (pRef.id || 'presenter'));
   }
@@ -76,7 +79,7 @@ const Presenter = ({scene, presenters, presentationMode = 'AVATAR', qualityPolic
         {src ? (
           /\.(png|jpg|jpeg|webp)$/i.test(src)
             ? <Img src={src} style={{width: '100%', height: '100%', objectFit: 'cover'}} />
-            : <OffthreadVideo src={src} style={{width: '100%', height: '100%', objectFit: 'cover'}} />
+            : <OffthreadVideo src={src} startFrom={sourceStart} volume={mutePresenterVisual ? 0 : 1} style={{width: '100%', height: '100%', objectFit: 'cover'}} />
         ) : (
           <div style={{width: '100%', height: '100%', display: 'grid', placeItems: 'center', textAlign: 'center'}}>
             <div>
@@ -147,7 +150,7 @@ const Kicker = ({children}) => (
   </div>
 );
 
-const Scene = ({scene, presenters, presentationMode, qualityPolicy}) => {
+const Scene = ({scene, presenters, presenterSpine, fps, presentationMode, qualityPolicy}) => {
   const frame = useCurrentFrame();
   const intro = interpolate(frame, [0, 7], [0, 1], {extrapolateRight: 'clamp'});
   const lift = interpolate(frame, [0, 10], [34, 0], {extrapolateRight: 'clamp'});
@@ -157,7 +160,7 @@ const Scene = ({scene, presenters, presentationMode, qualityPolicy}) => {
     return (
       <AbsoluteFill style={common}>
         {scene.media ? <AbsoluteFill>{mediaNode(scene.media, qualityPolicy)}</AbsoluteFill> : null}
-        <Presenter scene={scene} presenters={presenters} presentationMode={presentationMode} qualityPolicy={qualityPolicy} />
+        <Presenter scene={scene} presenters={presenters} presenterSpine={presenterSpine} fps={fps} presentationMode={presentationMode} qualityPolicy={qualityPolicy} />
         <Headline text={scene.headline} accent={scene.accent} />
         <div style={{position: 'absolute', left: 70, right: 70, bottom: 245, zIndex: 12, fontSize: 36, lineHeight: 1.18, fontWeight: 720}}>
           {scene.subhead}
@@ -175,7 +178,7 @@ const Scene = ({scene, presenters, presentationMode, qualityPolicy}) => {
             {mediaNode(scene.media, qualityPolicy)}
           </div>
         ) : null}
-        <Presenter scene={scene} presenters={presenters} presentationMode={presentationMode} qualityPolicy={qualityPolicy} />
+        <Presenter scene={scene} presenters={presenters} presenterSpine={presenterSpine} fps={fps} presentationMode={presentationMode} qualityPolicy={qualityPolicy} />
         <div style={{position: 'absolute', top: 300, width: 480, zIndex: 8, ...(copyOnRight ? {right: 70} : {left: 70})}}>
           {scene.kicker ? <Kicker>{scene.kicker}</Kicker> : null}
           <div style={{fontSize: 66, lineHeight: .98, textTransform: 'uppercase', letterSpacing: '-.035em', fontWeight: 1000, marginTop: 18}}>
@@ -191,7 +194,7 @@ const Scene = ({scene, presenters, presentationMode, qualityPolicy}) => {
     return (
       <AbsoluteFill style={common}>
         <AbsoluteFill>{mediaNode(scene.media, qualityPolicy)}</AbsoluteFill>
-        <Presenter scene={scene} presenters={presenters} presentationMode={presentationMode} qualityPolicy={qualityPolicy} />
+        <Presenter scene={scene} presenters={presenters} presenterSpine={presenterSpine} fps={fps} presentationMode={presentationMode} qualityPolicy={qualityPolicy} />
         {scene.kicker ? <div style={{position: 'absolute', top: 195, left: 70, zIndex: 12, fontSize: 24, fontWeight: 850, letterSpacing: '.08em'}}>{scene.kicker}</div> : null}
         <Headline text={scene.headline} accent={scene.accent} />
       </AbsoluteFill>
@@ -203,7 +206,7 @@ const Scene = ({scene, presenters, presentationMode, qualityPolicy}) => {
       <AbsoluteFill style={common}>
         {scene.media ? <AbsoluteFill><div style={{position:'absolute',inset:0,filter:'brightness(.42) saturate(.85)',transform:'scale(1.035)'}}>{mediaNode(scene.media, qualityPolicy)}</div></AbsoluteFill> : null}
         <div style={{position:'absolute',inset:0,background:'linear-gradient(180deg,rgba(5,7,12,.26),rgba(5,7,12,.90))'}} />
-        <Presenter scene={scene} presenters={presenters} presentationMode={presentationMode} qualityPolicy={qualityPolicy} />
+        <Presenter scene={scene} presenters={presenters} presenterSpine={presenterSpine} fps={fps} presentationMode={presentationMode} qualityPolicy={qualityPolicy} />
         <div style={{position: 'absolute', top: 195, left: 70, fontSize: 24, fontWeight: 850, letterSpacing: '.08em'}}>{scene.kicker || 'THE NUMBERS'}</div>
         <div style={{position: 'absolute', left: 70, right: 70, top: 380, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 26}}>
           {(scene.stats || []).slice(0, 4).map((s, i) => (
@@ -221,7 +224,7 @@ const Scene = ({scene, presenters, presentationMode, qualityPolicy}) => {
   if (scene.type === 'timeline') {
     return (
       <AbsoluteFill style={common}>
-        <Presenter scene={scene} presenters={presenters} presentationMode={presentationMode} qualityPolicy={qualityPolicy} />
+        <Presenter scene={scene} presenters={presenters} presenterSpine={presenterSpine} fps={fps} presentationMode={presentationMode} qualityPolicy={qualityPolicy} />
         <div style={{position: 'absolute', top: 195, left: 70, fontSize: 24, fontWeight: 850, letterSpacing: '.08em'}}>{scene.kicker || 'HOW WE GOT HERE'}</div>
         <div style={{position: 'absolute', left: 115, right: 80, top: 350}}>
           {(scene.items || []).map((item, i) => (
@@ -276,33 +279,68 @@ const Scene = ({scene, presenters, presentationMode, qualityPolicy}) => {
     const labels = scene.labels || ['PRESS HIGH','WIN DUELS','FORCE ERRORS','ATTACK SET PIECES'];
     return (
       <AbsoluteFill style={common}>
-        <div style={{position:'absolute',top:210,left:70,right:70,fontSize:24,fontWeight:900,letterSpacing:'.10em'}}>HOW BRIGHTON BROKE THE DEFENCE</div>
-        <div style={{position:'absolute',top:330,left:90,right:90,height:890,border:'6px solid rgba(255,255,255,.78)',borderRadius:24,background:'linear-gradient(180deg,#126838,#0e4e2d)',boxShadow:'0 30px 80px rgba(0,0,0,.35)'}}>
-          <div style={{position:'absolute',left:'50%',top:0,bottom:0,width:4,background:'rgba(255,255,255,.65)'}} />
-          <div style={{position:'absolute',left:'50%',top:'50%',width:180,height:180,transform:'translate(-50%,-50%)',border:'4px solid rgba(255,255,255,.65)',borderRadius:'50%'}} />
-          <div style={{position:'absolute',left:0,right:0,top:'50%',height:4,background:'rgba(255,255,255,.65)'}} />
-          {[0,1,2,3].map((i)=>(
-            <div key={i} style={{
-              position:'absolute',
-              left: 150 + (i%2)*430,
-              top: 170 + Math.floor(i/2)*420,
-              width:260,
-              padding:'20px 18px',
-              borderRadius:18,
-              background:'rgba(6,8,12,.84)',
-              borderLeft:'7px solid '+(i<3?'#5be5ff':'#ff4350'),
-              fontSize:27,
-              fontWeight:950,
-              textAlign:'center'
-            }}>{labels[i]}</div>
-          ))}
-          {[{l:385,t:240,r:-25},{l:385,t:660,r:25},{l:620,t:455,r:0}].map((a,i)=>(
-            <div key={'a'+i} style={{position:'absolute',left:a.l,top:a.t,width:210,height:14,background:'#ff4350',borderRadius:8,transform:'rotate('+a.r+'deg)',transformOrigin:'left center',boxShadow:'0 0 18px rgba(255,67,80,.55)'}}>
-              <div style={{position:'absolute',right:-4,top:-13,width:0,height:0,borderTop:'20px solid transparent',borderBottom:'20px solid transparent',borderLeft:'30px solid #ff4350'}} />
+        <div style={{position:'absolute',top:190,left:70,right:70,fontSize:24,fontWeight:900,letterSpacing:'.10em'}}>HOW BRIGHTON BROKE THE DEFENCE</div>
+        <div style={{
+          position:'absolute',
+          top:300,
+          left:165,
+          width:750,
+          height:1110,
+          border:'6px solid rgba(255,255,255,.86)',
+          borderRadius:26,
+          background:'linear-gradient(180deg,#177a43,#105d35)',
+          boxShadow:'0 30px 80px rgba(0,0,0,.38)',
+          overflow:'hidden'
+        }}>
+          {/* halfway line */}
+          <div style={{position:'absolute',left:0,right:0,top:'50%',height:5,background:'rgba(255,255,255,.78)'}} />
+          {/* centre circle */}
+          <div style={{position:'absolute',left:'50%',top:'50%',width:190,height:190,transform:'translate(-50%,-50%)',border:'5px solid rgba(255,255,255,.78)',borderRadius:'50%'}} />
+          <div style={{position:'absolute',left:'50%',top:'50%',width:12,height:12,transform:'translate(-50%,-50%)',background:'rgba(255,255,255,.88)',borderRadius:'50%'}} />
+          {/* top penalty area + six-yard box + goal */}
+          <div style={{position:'absolute',left:'50%',top:0,width:430,height:185,transform:'translateX(-50%)',border:'5px solid rgba(255,255,255,.78)',borderTop:'none'}} />
+          <div style={{position:'absolute',left:'50%',top:0,width:220,height:82,transform:'translateX(-50%)',border:'5px solid rgba(255,255,255,.78)',borderTop:'none'}} />
+          <div style={{position:'absolute',left:'50%',top:-17,width:150,height:22,transform:'translateX(-50%)',border:'5px solid rgba(255,255,255,.88)',background:'rgba(255,255,255,.06)'}} />
+          {/* bottom penalty area + six-yard box + goal */}
+          <div style={{position:'absolute',left:'50%',bottom:0,width:430,height:185,transform:'translateX(-50%)',border:'5px solid rgba(255,255,255,.78)',borderBottom:'none'}} />
+          <div style={{position:'absolute',left:'50%',bottom:0,width:220,height:82,transform:'translateX(-50%)',border:'5px solid rgba(255,255,255,.78)',borderBottom:'none'}} />
+          <div style={{position:'absolute',left:'50%',bottom:-17,width:150,height:22,transform:'translateX(-50%)',border:'5px solid rgba(255,255,255,.88)',background:'rgba(255,255,255,.06)'}} />
+
+          {/* attacking lanes / pressing arrows */}
+          {[
+            {l:145,t:790,w:220,r:-68},
+            {l:360,t:805,w:220,r:-90},
+            {l:575,t:790,w:220,r:-112},
+          ].map((a,i)=>(
+            <div key={'a'+i} style={{
+              position:'absolute',left:a.l,top:a.t,width:a.w,height:13,
+              background:'#ff4350',borderRadius:8,
+              transform:'rotate('+a.r+'deg)',transformOrigin:'left center',
+              boxShadow:'0 0 18px rgba(255,67,80,.5)'
+            }}>
+              <div style={{position:'absolute',right:-3,top:-12,width:0,height:0,borderTop:'18px solid transparent',borderBottom:'18px solid transparent',borderLeft:'28px solid #ff4350'}} />
             </div>
           ))}
+
+          {labels.map((label,i)=> {
+            const positions=[
+              {left:40,top:700},{right:40,top:700},{left:40,top:420},{right:40,top:420}
+            ];
+            return <div key={label} style={{
+              position:'absolute',
+              ...positions[i],
+              width:245,
+              padding:'17px 14px',
+              borderRadius:16,
+              background:'rgba(6,8,12,.86)',
+              borderLeft:'7px solid '+(i<3?'#5be5ff':'#ff4350'),
+              fontSize:24,
+              fontWeight:950,
+              textAlign:'center'
+            }}>{label}</div>;
+          })}
         </div>
-        <div style={{position:'absolute',left:70,right:70,bottom:240,fontSize:36,fontWeight:900,lineHeight:1.08,textAlign:'center'}}>{scene.body || ''}</div>
+        <div style={{position:'absolute',left:90,right:90,bottom:165,fontSize:32,fontWeight:900,lineHeight:1.12,textAlign:'center'}}>{scene.body || ''}</div>
       </AbsoluteFill>
     );
   }
@@ -311,7 +349,7 @@ const Scene = ({scene, presenters, presentationMode, qualityPolicy}) => {
     return (
       <AbsoluteFill style={common}>
         {scene.media ? <AbsoluteFill>{mediaNode(scene.media, qualityPolicy)}</AbsoluteFill> : null}
-        <Presenter scene={scene} presenters={presenters} presentationMode={presentationMode} qualityPolicy={qualityPolicy} />
+        <Presenter scene={scene} presenters={presenters} presenterSpine={presenterSpine} fps={fps} presentationMode={presentationMode} qualityPolicy={qualityPolicy} />
         <div style={{position: 'absolute', top: 195, left: 70, fontSize: 24, fontWeight: 850, letterSpacing: '.08em'}}>{scene.kicker || 'THE QUOTE'}</div>
         <div style={{position: 'absolute', left: 70, right: 70, top: 430, padding: '52px 48px', borderRadius: 34, background: 'rgba(16,17,20,.94)', borderLeft: '10px solid ' + RED}}>
           <div style={{fontSize: 54, fontWeight: 900, lineHeight: 1.08}}>“{scene.quote}”</div>
@@ -323,7 +361,7 @@ const Scene = ({scene, presenters, presentationMode, qualityPolicy}) => {
 
   return (
     <AbsoluteFill style={{...common, display: 'grid', placeItems: 'center', textAlign: 'center', padding: '170px 85px'}}>
-      <Presenter scene={scene} presenters={presenters} presentationMode={presentationMode} qualityPolicy={qualityPolicy} />
+      <Presenter scene={scene} presenters={presenters} presenterSpine={presenterSpine} fps={fps} presentationMode={presentationMode} qualityPolicy={qualityPolicy} />
       <div style={{zIndex: 10}}>
         <div style={{fontSize: 84, lineHeight: .96, textTransform: 'uppercase', fontWeight: 1000, letterSpacing: '-.04em'}}>
           {scene.headline || 'WHAT DO YOU THINK?'}
@@ -372,6 +410,9 @@ export const DsnShortMaster = ({config}) => {
   const qualityPolicy = config.qualityPolicy || 'DEMO';
   const presentationMode = config.presentationMode || 'AVATAR';
 
+  if (qualityPolicy === 'PRODUCTION' && presentationMode === 'AVATAR' && config.presenterSpine?.required && !config.presenterSpine?.src) {
+    throw new Error('DSN production render blocked: AVATAR presenter spine is required but missing');
+  }
   if (qualityPolicy === 'PRODUCTION' && presentationMode === 'VOICEOVER_BROLL' && !config.audio?.voiceoverSrc) {
     throw new Error('DSN production render blocked: VOICEOVER_BROLL requires an approved voiceoverSrc');
   }
@@ -395,6 +436,8 @@ export const DsnShortMaster = ({config}) => {
           <Scene
             scene={scene}
             presenters={config.presenters}
+            presenterSpine={config.presenterSpine}
+            fps={fps}
             presentationMode={presentationMode}
             qualityPolicy={qualityPolicy}
           />
@@ -411,6 +454,12 @@ export const DsnShortMaster = ({config}) => {
         </Sequence>
       ))}
 
+      {config.presenterSpine?.continuousAudio && config.presenterSpine?.src ? (
+        <Audio
+          src={config.presenterSpine.audioSrc || config.presenterSpine.src}
+          volume={config.presenterSpine.volume ?? 1}
+        />
+      ) : null}
       {config.audio?.voiceoverSrc ? (
         <Audio src={config.audio.voiceoverSrc} volume={config.audio.voiceoverVolume ?? 1} />
       ) : null}
