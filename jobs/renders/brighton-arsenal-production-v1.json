@@ -307,7 +307,7 @@
       "locale": "en-GB",
       "policy": "EXPLICIT_CLONE"
     },
-    "renderAttempt": 2,
-    "renderNote": "FFmpeg explicitly installed in CI before post-render audio mix."
+    "renderAttempt": 3,
+    "renderNote": "Production job staged into DSN sample config before Remotion bundling so duration, presenter media and audio are guaranteed to match the job."
   }
 }
