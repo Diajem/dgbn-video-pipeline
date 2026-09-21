@@ -422,6 +422,21 @@ export const DsnShortMaster = ({config}) => {
   return (
     <AbsoluteFill style={{background: BG, color: WHITE, fontFamily: 'Arial, Helvetica, sans-serif', overflow: 'hidden'}}>
       <div style={{position: 'absolute', inset: 0, background: 'radial-gradient(circle at 80% 8%, rgba(215,25,32,.22), transparent 30%), linear-gradient(160deg,#15161a 0%,#08090b 58%,#111216 100%)'}} />
+
+      {presentationMode === 'AVATAR' && config.presenterSpine?.continuousVisual && config.presenterSpine?.src ? (
+        <OffthreadVideo
+          src={config.presenterSpine.src}
+          volume={0}
+          style={{
+            position:'absolute',
+            inset:0,
+            width:'100%',
+            height:'100%',
+            objectFit:'cover',
+            zIndex:1
+          }}
+        />
+      ) : null}
       <div style={{position: 'absolute', top: 110, left: 70, zIndex: 80, display: 'flex', alignItems: 'center', gap: 13, fontWeight: 900, letterSpacing: '.08em', fontSize: 24}}>
         <div style={{width: 58, height: 58, borderRadius: 16, background: RED, display: 'grid', placeItems: 'center', fontSize: 27}}>DSN</div>
         DIAJEM SPORTS NETWORK
