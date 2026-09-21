@@ -34,12 +34,14 @@ jobs:
       - name: Validate production job
         run: node scripts/validate-dsn-short.mjs jobs/renders/brighton-arsenal-production-v1.json
 
+      - name: Stage production config
+        run: cp jobs/renders/brighton-arsenal-production-v1.json jobs/samples/dsn-short-master-v1.json
+
       - name: Render DSN short
         run: |
           mkdir -p renders
           cd video-studio/remotion
-          npx remotion render src/index.jsx DSNShortMaster9x16 ../../renders/brighton-arsenal-v2-raw.mp4 \
-            --props=../../jobs/renders/brighton-arsenal-production-v1.json
+          npx remotion render src/index.jsx DSNShortMaster9x16 ../../renders/brighton-arsenal-v2-raw.mp4
 
       - name: Mix restrained sports-news bed
         run: |
