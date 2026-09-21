@@ -1,5 +1,5 @@
 import React from 'react';
-import {AbsoluteFill} from 'remotion';
+import {AbsoluteFill, Img, staticFile} from 'remotion';
 
 export const BrandedEndCard = ({brand = 'DGBN'}) => {
   const isDSN = brand === 'DSN';
@@ -22,8 +22,17 @@ export const BrandedEndCard = ({brand = 'DGBN'}) => {
       fontFamily:'Arial, Helvetica, sans-serif',
       padding:'0 70px'
     }}>
-      <div style={{fontSize:88,fontWeight:1000,letterSpacing:'-.03em'}}>{brand}</div>
-      <div style={{marginTop:10,fontSize:24,fontWeight:850,letterSpacing:'.12em',color:accent}}>{network}</div>
+      {isDSN ? (
+        <Img
+          src={staticFile('brand/dsn-official-logo.png')}
+          style={{width:240,height:252,objectFit:'contain',filter:'drop-shadow(0 14px 32px rgba(0,0,0,.5))'}}
+        />
+      ) : (
+        <>
+          <div style={{fontSize:88,fontWeight:1000,letterSpacing:'-.03em'}}>{brand}</div>
+          <div style={{marginTop:10,fontSize:24,fontWeight:850,letterSpacing:'.12em',color:accent}}>{network}</div>
+        </>
+      )}
       <div style={{marginTop:42,fontSize:46,fontWeight:1000,lineHeight:1.05}}>
         THANKS FOR WATCHING {brand}
       </div>
