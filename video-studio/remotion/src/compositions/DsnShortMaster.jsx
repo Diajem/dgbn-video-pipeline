@@ -190,6 +190,48 @@ const Scene = ({scene, presenters, presenterSpine, fps, presentationMode, qualit
     );
   }
 
+  if (scene.type === 'broll_overlay') {
+    return (
+      <AbsoluteFill style={common}>
+        <Presenter
+          scene={{...scene, presenter: {...(scene.presenter || {}), mode: scene.presenter?.mode || 'full'}}}
+          presenters={presenters}
+          presenterSpine={presenterSpine}
+          fps={fps}
+          presentationMode={presentationMode}
+          qualityPolicy={qualityPolicy}
+        />
+        {scene.kicker ? (
+          <div style={{
+            position:'absolute', top:170, left:70, zIndex:20,
+            padding:'10px 16px', borderRadius:999,
+            background:'rgba(7,8,10,.82)', border:'1px solid rgba(255,255,255,.15)',
+            fontSize:21, fontWeight:900, letterSpacing:'.08em'
+          }}>{scene.kicker}</div>
+        ) : null}
+        <div style={{
+          position:'absolute',
+          left:52,right:52,bottom:285,
+          height:610,
+          borderRadius:32,
+          overflow:'hidden',
+          zIndex:18,
+          border:'2px solid rgba(255,255,255,.22)',
+          boxShadow:'0 28px 90px rgba(0,0,0,.55)',
+          background:'#0b0b0d'
+        }}>
+          {mediaNode(scene.media, qualityPolicy)}
+          <div style={{position:'absolute',inset:0,background:'linear-gradient(180deg,transparent 50%,rgba(5,6,9,.74) 100%)'}} />
+          {scene.overlayText ? (
+            <div style={{position:'absolute',left:28,right:28,bottom:26,fontSize:34,fontWeight:950,lineHeight:1.05,textTransform:'uppercase'}}>
+              {scene.overlayText}
+            </div>
+          ) : null}
+        </div>
+      </AbsoluteFill>
+    );
+  }
+
   if (scene.type === 'media') {
     return (
       <AbsoluteFill style={common}>
