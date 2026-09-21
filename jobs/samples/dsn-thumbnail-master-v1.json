@@ -1,0 +1,19 @@
+{
+  "version": "DSN_THUMBNAIL_MASTER_V1",
+  "aspectRatio": "9:16",
+  "backgroundSrc": null,
+  "kicker": "MATCH ANALYSIS",
+  "headline": "HOW BRIGHTON BROKE ARSENAL",
+  "subhead": "DSN",
+  "score": "3–0",
+  "home": {
+    "name": "Brighton",
+    "crestSrc": null
+  },
+  "away": {
+    "name": "Arsenal",
+    "crestSrc": null
+  },
+  "brandLogo": "brand/dsn-official-logo.png",
+  "brandLogoPolicy": "PROTECTED_MASTER_ONLY"
+}

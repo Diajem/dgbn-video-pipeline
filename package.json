@@ -23,6 +23,9 @@
     "avatar:musetalk:benchmark:peet": "node scripts/run-musetalk-benchmark.mjs peet",
     "avatar:runpod:peet": "node scripts/runpod-musetalk-client.mjs peet",
     "render:dsn-short": "npm run validate:dsn-short && npm --workspace @dgbn/remotion-studio run render:dsn-short",
-    "validate:dsn-short": "node scripts/validate-dsn-short.mjs"
+    "validate:dsn-short": "node scripts/validate-dsn-short.mjs",
+    "wan3:shot": "node scripts/wan3-client.mjs",
+    "render:cinematic-short": "npm --workspace @dgbn/remotion-studio run render:cinematic-short",
+    "render:cinematic-wide": "npm --workspace @dgbn/remotion-studio run render:cinematic-wide"
   }
 }
