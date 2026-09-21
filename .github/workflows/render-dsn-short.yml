@@ -1,0 +1,49 @@
+name: Render approved DSN short
+
+on:
+  workflow_dispatch:
+    inputs:
+      job_path:
+        description: Repository path to an approved DSN_SHORT_MASTER_V1 job JSON
+        required: true
+        default: jobs/renders/brighton-arsenal-production-v1.json
+      artifact_name:
+        description: Output artifact name
+        required: false
+        default: dsn-short-render
+
+permissions:
+  contents: read
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Validate DSN job
+        run: node scripts/validate-dsn-short.mjs "${{ inputs.job_path }}"
+
+      - name: Stage remote presenter assets
+        run: node scripts/stage-dsn-job.mjs "${{ inputs.job_path }}"
+
+      - name: Render production MP4
+        run: |
+          mkdir -p renders
+          cd video-studio/remotion
+          npx remotion render src/index.jsx DSNShortMaster9x16 ../../renders/dsn-short.mp4
+
+      - name: Upload production artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact_name }}
+          path: renders/dsn-short.mp4
+          if-no-files-found: error
