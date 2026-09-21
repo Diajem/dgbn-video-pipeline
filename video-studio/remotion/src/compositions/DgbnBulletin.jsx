@@ -1,8 +1,9 @@
 import React from 'react';
-import {AbsoluteFill, Sequence, useCurrentFrame} from 'remotion';
+import {AbsoluteFill, Sequence, useCurrentFrame, useVideoConfig} from 'remotion';
 import {BrandFrame} from '../components/BrandFrame.jsx';
 import {LowerThird} from '../components/LowerThird.jsx';
 import {PresenterSlot} from '../components/PresenterSlot.jsx';
+import {BrandedEndCard} from '../components/BrandedEndCard.jsx';
 
 const StoryPanel = ({story, presenter}) => (
   <BrandFrame>
@@ -19,7 +20,9 @@ const StoryPanel = ({story, presenter}) => (
 
 export const DgbnBulletin = ({job}) => {
   const frame = useCurrentFrame();
+  const {durationInFrames, fps} = useVideoConfig();
   const storyFrames = 600;
+  const outroFrames = Math.max(1, Math.round(fps * 1.5));
   const index = Math.min(Math.floor(frame / storyFrames), job.stories.length - 1);
   return (
     <AbsoluteFill>
@@ -31,6 +34,9 @@ export const DgbnBulletin = ({job}) => {
       <div style={{position: 'absolute', top: 38, left: 70, color: '#d7a62a', fontWeight: 900, fontSize: 22, letterSpacing: 2}}>
         EVENING BULLETIN • STORY {index + 1}/{job.stories.length}
       </div>
+      <Sequence from={Math.max(0, durationInFrames - outroFrames)} durationInFrames={outroFrames}>
+        <BrandedEndCard brand="DGBN" />
+      </Sequence>
     </AbsoluteFill>
   );
 };
