@@ -1,15 +1,20 @@
 name: Render approved DSN short
+run-name: Render DSN ${{ inputs.artifact_name }}
 
 on:
   workflow_dispatch:
     inputs:
       job_path:
-        description: Repository path to an approved DSN_SHORT_MASTER_V1 job JSON
-        required: true
-        default: jobs/renders/brighton-arsenal-production-v1.json
-      artifact_name:
-        description: Output artifact name
+        description: Optional repository path to an approved DSN_SHORT_MASTER_V1 job JSON
         required: false
+        default: ''
+      job_json_b64:
+        description: Optional base64-encoded approved DSN job supplied by the newsroom
+        required: false
+        default: ''
+      artifact_name:
+        description: Unique output artifact name
+        required: true
         default: dsn-short-render
 
 permissions:
@@ -29,11 +34,27 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Resolve render job
+        env:
+          JOB_JSON_B64: ${{ inputs.job_json_b64 }}
+          JOB_PATH: ${{ inputs.job_path }}
+        run: |
+          mkdir -p .render-input
+          if [ -n "$JOB_JSON_B64" ]; then
+            printf '%s' "$JOB_JSON_B64" | base64 --decode > .render-input/dsn-job.json
+          elif [ -n "$JOB_PATH" ]; then
+            cp "$JOB_PATH" .render-input/dsn-job.json
+          else
+            echo "Either job_json_b64 or job_path is required" >&2
+            exit 1
+          fi
+          test -s .render-input/dsn-job.json
+
       - name: Validate DSN job
-        run: node scripts/validate-dsn-short.mjs "${{ inputs.job_path }}"
+        run: node scripts/validate-dsn-short.mjs .render-input/dsn-job.json
 
       - name: Stage remote presenter assets
-        run: node scripts/stage-dsn-job.mjs "${{ inputs.job_path }}"
+        run: node scripts/stage-dsn-job.mjs .render-input/dsn-job.json
 
       - name: Render production MP4
         run: |
@@ -41,9 +62,15 @@ jobs:
           cd video-studio/remotion
           npx remotion render src/index.jsx DSNShortMaster9x16 ../../renders/dsn-short.mp4
 
+      - name: Preserve render manifest
+        run: cp .render-input/dsn-job.json renders/render-manifest.json
+
       - name: Upload production artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ inputs.artifact_name }}
-          path: renders/dsn-short.mp4
+          path: |
+            renders/dsn-short.mp4
+            renders/render-manifest.json
           if-no-files-found: error
+          retention-days: 30
