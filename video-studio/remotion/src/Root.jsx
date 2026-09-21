@@ -17,7 +17,7 @@ export const DgbnRoot = () => (
       width={1920}
       height={1080}
       fps={FPS}
-      durationInFrames={FPS * 150}
+      durationInFrames={FPS * 151.5}
       defaultProps={{job: sampleJob}}
     />
     <Composition
@@ -26,7 +26,7 @@ export const DgbnRoot = () => (
       width={1080}
       height={1920}
       fps={FPS}
-      durationInFrames={FPS * 45}
+      durationInFrames={FPS * 46.5}
       defaultProps={{job: sampleJob, storyIndex: 0}}
     />
     <Composition
@@ -50,7 +50,7 @@ export const DgbnRoot = () => (
       width={1080}
       height={1920}
       fps={FPS}
-      durationInFrames={FPS * 12}
+      durationInFrames={FPS * 13.5}
       defaultProps={{job: sampleJob, storyIndex: 0}}
     />
   </>
