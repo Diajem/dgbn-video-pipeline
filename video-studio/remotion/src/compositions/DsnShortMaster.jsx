@@ -6,6 +6,7 @@ import {
   OffthreadVideo,
   Sequence,
   interpolate,
+  staticFile,
   useCurrentFrame,
 } from 'remotion';
 
@@ -13,6 +14,12 @@ const RED = '#d71920';
 const WHITE = '#ffffff';
 const MUTED = '#b8bcc5';
 const BG = '#0b0b0d';
+
+const resolveAssetSrc = (src) => {
+  if (!src) return src;
+  if (/^(https?:|data:|blob:)/i.test(src)) return src;
+  return staticFile(String(src).replace(/^\//, ''));
+};
 
 const mediaNode = (media, qualityPolicy = 'DEMO') => {
   if (!media?.src) {
@@ -36,9 +43,9 @@ const mediaNode = (media, qualityPolicy = 'DEMO') => {
     );
   }
   if (media.kind === 'video' || /\.(mp4|webm|mov)$/i.test(media.src)) {
-    return <OffthreadVideo src={media.src} volume={media.volume ?? 0} style={{width: '100%', height: '100%', objectFit: 'cover'}} />;
+    return <OffthreadVideo src={resolveAssetSrc(media.src)} volume={media.volume ?? 0} style={{width: '100%', height: '100%', objectFit: 'cover'}} />;
   }
-  return <Img src={media.src} style={{width: '100%', height: '100%', objectFit: 'cover'}} />;
+  return <Img src={resolveAssetSrc(media.src)} style={{width: '100%', height: '100%', objectFit: 'cover'}} />;
 };
 
 const Presenter = ({scene, presenters, presenterSpine, fps = 30, presentationMode = 'AVATAR', qualityPolicy = 'DEMO'}) => {
@@ -78,8 +85,8 @@ const Presenter = ({scene, presenters, presenterSpine, fps = 30, presentationMod
       }}>
         {src ? (
           /\.(png|jpg|jpeg|webp)$/i.test(src)
-            ? <Img src={src} style={{width: '100%', height: '100%', objectFit: 'cover'}} />
-            : <OffthreadVideo src={src} startFrom={sourceStart} volume={mutePresenterVisual ? 0 : 1} style={{width: '100%', height: '100%', objectFit: 'cover'}} />
+            ? <Img src={resolveAssetSrc(src)} style={{width: '100%', height: '100%', objectFit: 'cover'}} />
+            : <OffthreadVideo src={resolveAssetSrc(src)} startFrom={sourceStart} volume={mutePresenterVisual ? 0 : 1} style={{width: '100%', height: '100%', objectFit: 'cover'}} />
         ) : (
           <div style={{width: '100%', height: '100%', display: 'grid', placeItems: 'center', textAlign: 'center'}}>
             <div>
@@ -467,7 +474,7 @@ export const DsnShortMaster = ({config}) => {
 
       {presentationMode === 'AVATAR' && config.presenterSpine?.continuousVisual && config.presenterSpine?.src ? (
         <OffthreadVideo
-          src={config.presenterSpine.src}
+          src={resolveAssetSrc(config.presenterSpine.src)}
           volume={0}
           style={{
             position:'absolute',
@@ -513,7 +520,7 @@ export const DsnShortMaster = ({config}) => {
 
       {config.presenterSpine?.continuousAudio && config.presenterSpine?.src ? (
         <Audio
-          src={config.presenterSpine.audioSrc || config.presenterSpine.src}
+          src={resolveAssetSrc(config.presenterSpine.audioSrc || config.presenterSpine.src)}
           volume={config.presenterSpine.volume ?? 1}
         />
       ) : null}
