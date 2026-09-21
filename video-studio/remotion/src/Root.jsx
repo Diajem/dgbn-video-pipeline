@@ -40,7 +40,8 @@ export const DgbnRoot = () => (
       calculateMetadata={({props}) => {
         const fps = props?.config?.fps || FPS;
         const durationSec = props?.config?.durationSec || dsnShortConfig.durationSec;
-        return {durationInFrames: Math.max(1, Math.round(fps * durationSec)), fps};
+        const outroHoldSec = props?.config?.outroHoldSec ?? 1.5;
+        return {durationInFrames: Math.max(1, Math.round(fps * (durationSec + outroHoldSec))), fps};
       }}
     />
     <Composition
