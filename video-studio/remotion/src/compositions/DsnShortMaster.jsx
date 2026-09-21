@@ -546,7 +546,8 @@ export const DsnShortMaster = ({config}) => {
           }}>
             <div style={{fontSize:92,fontWeight:1000,letterSpacing:'-.03em'}}>DSN</div>
             <div style={{marginTop:10,fontSize:26,fontWeight:800,letterSpacing:'.12em',color:'#ff2633'}}>DIAJEM SPORTS NETWORK</div>
-            <div style={{marginTop:42,fontSize:34,fontWeight:850}}>FOOTBALL TALKS BIGGER</div>
+            <div style={{marginTop:34,fontSize:42,fontWeight:1000,letterSpacing:'.02em'}}>THANKS FOR WATCHING</div>
+            <div style={{marginTop:18,fontSize:30,fontWeight:850}}>FOOTBALL TALKS BIGGER</div>
           </AbsoluteFill>
         </Sequence>
       ) : null}
