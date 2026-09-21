@@ -306,6 +306,8 @@
       "id": "741a3bbf17194f44982a2ac1b28e0443",
       "locale": "en-GB",
       "policy": "EXPLICIT_CLONE"
-    }
+    },
+    "renderAttempt": 2,
+    "renderNote": "FFmpeg explicitly installed in CI before post-render audio mix."
   }
 }
