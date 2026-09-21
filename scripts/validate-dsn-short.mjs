@@ -9,6 +9,9 @@ if (!['AVATAR','VOICEOVER_BROLL','PETER_REAL'].includes(cfg.presentationMode)) {
   fail('presentationMode must be AVATAR, VOICEOVER_BROLL or PETER_REAL');
 }
 if (!Array.isArray(cfg.scenes) || cfg.scenes.length < 3) fail('at least three scenes are required');
+if (cfg.outroHoldSec !== undefined && cfg.outroHoldSec < 0.75) {
+  fail('outroHoldSec must be at least 0.75 seconds to protect the final spoken words');
+}
 
 const production = cfg.qualityPolicy === 'PRODUCTION';
 if (production && cfg.presentationMode === 'AVATAR' && cfg.presenterSpine?.required && !cfg.presenterSpine?.src) {
