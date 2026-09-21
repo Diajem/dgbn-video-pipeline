@@ -37,6 +37,14 @@ jobs:
       - name: Stage production config
         run: cp jobs/renders/brighton-arsenal-production-v1.json jobs/samples/dsn-short-master-v1.json
 
+      - name: Stage presenter master
+        run: |
+          mkdir -p video-studio/remotion/public/assets
+          PRESENTER_URL="$(node -e "const fs=require('fs'); const j=JSON.parse(fs.readFileSync('jobs/renders/brighton-arsenal-production-v1.json','utf8')); process.stdout.write(j.presenterSpine.downloadUrl || '')")"
+          test -n "$PRESENTER_URL"
+          curl --fail --location --retry 3 "$PRESENTER_URL" -o video-studio/remotion/public/assets/brighton-presenter-master.mp4
+          test -s video-studio/remotion/public/assets/brighton-presenter-master.mp4
+
       - name: Render DSN short
         run: |
           mkdir -p renders
