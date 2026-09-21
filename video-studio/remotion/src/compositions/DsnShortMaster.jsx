@@ -427,6 +427,42 @@ const Scene = ({scene, presenters, presenterSpine, fps, presentationMode, qualit
   );
 };
 
+const VisualCue = ({cue, qualityPolicy}) => {
+  const src = cue.asset_url || cue.assetUrl;
+  if (!src) return null;
+  const kind = /\.(mp4|webm|mov)(?:\?|$)/i.test(src) ? 'video' : 'image';
+  const node = mediaNode({kind, src, volume: 0}, qualityPolicy);
+  const lowerOverlay = cue.layout === 'LOWER_OVERLAY' || cue.visual_type === 'BROLL_OVERLAY';
+
+  if (lowerOverlay) {
+    return (
+      <div style={{
+        position:'absolute',
+        left:52,
+        right:52,
+        bottom:300,
+        height:610,
+        zIndex:22,
+        borderRadius:32,
+        overflow:'hidden',
+        border:'2px solid rgba(255,255,255,.22)',
+        boxShadow:'0 28px 90px rgba(0,0,0,.58)',
+        background:'#0b0b0d'
+      }}>
+        {node}
+        <div style={{position:'absolute',inset:0,background:'linear-gradient(180deg,transparent 58%,rgba(5,6,9,.62) 100%)'}} />
+      </div>
+    );
+  }
+
+  return (
+    <AbsoluteFill style={{zIndex:4}}>
+      {node}
+      <AbsoluteFill style={{background:'linear-gradient(180deg,rgba(4,6,10,.05),rgba(4,6,10,.18) 60%,rgba(4,6,10,.45))'}} />
+    </AbsoluteFill>
+  );
+};
+
 const Caption = ({caption}) => {
   const frame = useCurrentFrame();
   const pop = interpolate(frame, [0, 5], [.92, 1], {extrapolateRight: 'clamp'});
@@ -468,14 +504,17 @@ export const DsnShortMaster = ({config}) => {
   if (qualityPolicy === 'PRODUCTION' && presentationMode === 'VOICEOVER_BROLL' && !config.audio?.voiceoverSrc) {
     throw new Error('DSN production render blocked: VOICEOVER_BROLL requires an approved voiceoverSrc');
   }
-  if (qualityPolicy === 'PRODUCTION' && presentationMode === 'PETER_REAL' && !config.presenters?.peter?.src) {
-    throw new Error('DSN production render blocked: PETER_REAL requires Peter real-camera footage');
+  if (qualityPolicy === 'PRODUCTION' && presentationMode === 'PETER_REAL' && !config.presenterSpine?.src) {
+    throw new Error('DSN production render blocked: PETER_REAL requires Peter real-camera presenterSpine.src');
+  }
+  if (qualityPolicy === 'PRODUCTION' && presentationMode === 'PETER_REAL' && config.presenterSpine?.provider !== 'REAL_CAMERA') {
+    throw new Error('DSN production render blocked: PETER_REAL presenter spine must use REAL_CAMERA');
   }
   return (
     <AbsoluteFill style={{background: BG, color: WHITE, fontFamily: 'Arial, Helvetica, sans-serif', overflow: 'hidden'}}>
       <div style={{position: 'absolute', inset: 0, background: 'radial-gradient(circle at 80% 8%, rgba(215,25,32,.22), transparent 30%), linear-gradient(160deg,#15161a 0%,#08090b 58%,#111216 100%)'}} />
 
-      {presentationMode === 'AVATAR' && config.presenterSpine?.continuousVisual && config.presenterSpine?.src ? (
+      {['AVATAR','PETER_REAL'].includes(presentationMode) && config.presenterSpine?.continuousVisual && config.presenterSpine?.src ? (
         <OffthreadVideo
           src={resolveAssetSrc(config.presenterSpine.src)}
           volume={0}
@@ -499,10 +538,22 @@ export const DsnShortMaster = ({config}) => {
         filter:'drop-shadow(0 10px 24px rgba(0,0,0,.48))'
       }}>
         <Img
-          src={staticFile('brand/dsn-official-logo.png')}
+          src={staticFile('brand/dsn-logo-official.jpg')}
           style={{width:'100%',height:'100%',objectFit:'contain'}}
         />
       </div>
+
+      {(config.visualCueSheet?.visual_cues || [])
+        .filter((cue) => (cue.asset_url || cue.assetUrl) && ['BROLL','BROLL_OVERLAY','QUOTE'].includes(cue.visual_type))
+        .map((cue, i) => (
+          <Sequence
+            key={'visual-cue-' + i}
+            from={Math.max(0, Math.round((cue.start || 0) * fps))}
+            durationInFrames={Math.max(1, Math.round(((cue.end || 0) - (cue.start || 0)) * fps))}
+          >
+            <VisualCue cue={cue} qualityPolicy={qualityPolicy} />
+          </Sequence>
+        ))}
 
       {(config.scenes || []).map((scene) => (
         <Sequence
@@ -538,10 +589,10 @@ export const DsnShortMaster = ({config}) => {
         />
       ) : null}
       {config.audio?.voiceoverSrc ? (
-        <Audio src={config.audio.voiceoverSrc} volume={config.audio.voiceoverVolume ?? 1} />
+        <Audio src={resolveAssetSrc(config.audio.voiceoverSrc)} volume={config.audio.voiceoverVolume ?? 1} />
       ) : null}
       {config.audio?.musicSrc ? (
-        <Audio src={config.audio.musicSrc} volume={config.audio.musicVolume ?? 0.10} />
+        <Audio src={resolveAssetSrc(config.audio.musicSrc)} volume={config.audio.musicVolume ?? 0.10} />
       ) : null}
 
       {outroHoldSec > 0 ? (

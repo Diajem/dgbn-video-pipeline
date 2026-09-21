@@ -24,7 +24,7 @@ export const BrandedEndCard = ({brand = 'DGBN'}) => {
     }}>
       {isDSN ? (
         <Img
-          src={staticFile('brand/dsn-official-logo.png')}
+          src={staticFile('brand/dsn-logo-official.jpg')}
           style={{width:240,height:252,objectFit:'contain',filter:'drop-shadow(0 14px 32px rgba(0,0,0,.5))'}}
         />
       ) : (

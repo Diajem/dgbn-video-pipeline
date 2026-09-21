@@ -26,7 +26,7 @@ export const DsnThumbnailMaster = ({config}) => {
       <AbsoluteFill style={{background:'linear-gradient(180deg,rgba(5,7,12,.08),rgba(5,7,12,.18) 42%,rgba(5,7,12,.88) 100%)'}}/>
 
       <Img
-        src={staticFile('brand/dsn-official-logo.png')}
+        src={staticFile('brand/dsn-logo-official.jpg')}
         style={{
           position:'absolute',
           top:vertical?52:36,
