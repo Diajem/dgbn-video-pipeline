@@ -18,6 +18,12 @@ const production = cfg.qualityPolicy === 'PRODUCTION';
 if (production && !fs.existsSync(officialDsnLogo)) {
   fail('official DSN logo asset is missing: ' + officialDsnLogo);
 }
+if (production && cfg.brandAssetPolicy && cfg.brandAssetPolicy !== 'OFFICIAL_ASSET_ONLY') {
+  fail('brandAssetPolicy must be OFFICIAL_ASSET_ONLY');
+}
+if (production && cfg.endCardText && cfg.endCardText !== 'THANKS FOR WATCHING DSN') {
+  fail('endCardText must be THANKS FOR WATCHING DSN');
+}
 if (production && cfg.presentationMode === 'AVATAR' && cfg.presenterSpine?.required && !cfg.presenterSpine?.src) {
   fail('AVATAR requires presenterSpine.src when presenter spine is required');
 }
@@ -27,8 +33,14 @@ if (production && cfg.presentationMode === 'AVATAR' && cfg.presenterSpine?.requi
 if (production && cfg.presentationMode === 'VOICEOVER_BROLL' && !cfg.audio?.voiceoverSrc) {
   fail('VOICEOVER_BROLL requires approved audio.voiceoverSrc');
 }
-if (production && cfg.presentationMode === 'PETER_REAL' && !cfg.presenters?.peter?.src) {
-  fail('PETER_REAL requires presenters.peter.src with real-camera media');
+if (production && cfg.presentationMode === 'PETER_REAL' && !cfg.presenterSpine?.src) {
+  fail('PETER_REAL requires presenterSpine.src with Peter real-camera media');
+}
+if (production && cfg.presentationMode === 'PETER_REAL' && cfg.presenterSpine?.provider !== 'REAL_CAMERA') {
+  fail('PETER_REAL presenterSpine.provider must be REAL_CAMERA');
+}
+if (production && cfg.presentationMode === 'PETER_REAL' && cfg.presenterSpine?.continuousAudio !== true) {
+  fail('PETER_REAL presenter spine must keep continuousAudio=true');
 }
 
 for (const scene of cfg.scenes) {
@@ -52,6 +64,17 @@ for (const scene of cfg.scenes) {
 
 if (production && cfg.audio?.voiceoverStatus && cfg.audio.voiceoverStatus !== 'APPROVED') {
   fail('voiceoverStatus must be APPROVED for production');
+}
+
+for (const cue of cfg.visualCueSheet?.visual_cues || []) {
+  const start = Number(cue.start);
+  const end = Number(cue.end);
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) {
+    fail('visual cue has invalid timing');
+  }
+  if (production && cue.rights_strategy === 'APPROVED_ASSET' && !(cue.asset_url || cue.assetUrl)) {
+    fail('APPROVED_ASSET visual cue is missing asset_url');
+  }
 }
 
 console.log('DSN_SHORT_MASTER_V1 validation passed:', file);
