@@ -7,6 +7,8 @@ on:
     paths:
       - jobs/tests/liverpool-bournemouth-voiceover.json
       - .github/workflows/dsn-liverpool-voiceover-test.yml
+      - scripts/wan3-client.mjs
+      - scripts/prepare-dsn-wan-cues.mjs
 
 permissions:
   contents: read
