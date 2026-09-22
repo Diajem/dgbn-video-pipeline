@@ -1,0 +1,62 @@
+name: Alibaba Qwen/Wan live smoke test
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_wan:
+        description: Run paid Wan generation smoke test
+        required: true
+        default: false
+        type: boolean
+      confirm_paid:
+        description: Confirm the Wan smoke test may incur Alibaba usage charges
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      QWEN_API_KEY: ${{ secrets.QWEN_API_KEY }}
+      QWEN_WORKSPACE_ID: ${{ secrets.QWEN_WORKSPACE_ID }}
+      QWEN_REGION: ${{ secrets.QWEN_REGION }}
+      QWEN_VIDEO_PLANNER_MODEL: qwen3.8-omni-flash
+      QWEN_BASE_URL: ${{ secrets.QWEN_BASE_URL }}
+      WAN_3_API_KEY: ${{ secrets.WAN_3_API_KEY }}
+      WAN_3_WORKSPACE_ID: ${{ secrets.WAN_3_WORKSPACE_ID }}
+      WAN_3_REGION: ${{ secrets.WAN_3_REGION }}
+      WAN_3_MODEL: ${{ secrets.WAN_3_MODEL }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Validate required secure configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$QWEN_API_KEY" || { echo "Missing GitHub secret QWEN_API_KEY"; exit 1; }
+          test -n "$QWEN_WORKSPACE_ID" || { echo "Missing GitHub secret QWEN_WORKSPACE_ID"; exit 1; }
+          test -n "$QWEN_REGION" || { echo "Missing GitHub secret QWEN_REGION"; exit 1; }
+
+      - name: Test Qwen and optional Wan
+        shell: bash
+        run: |
+          set -euo pipefail
+          ARGS=""
+          if [ "${{ inputs.run_wan }}" = "true" ]; then
+            if [ "${{ inputs.confirm_paid }}" != "true" ]; then
+              echo "Wan was requested without paid-generation confirmation."
+              exit 1
+            fi
+            ARGS="--wan --confirm-paid"
+          fi
+          node scripts/alibaba-smoke-test.mjs $ARGS
