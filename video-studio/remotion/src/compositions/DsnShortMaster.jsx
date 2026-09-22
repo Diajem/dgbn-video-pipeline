@@ -119,7 +119,7 @@ const Presenter = ({scene, presenters, presenterSpine, fps = 30, presentationMod
   );
 };
 
-const Headline = ({text, accent, bottom = 350}) => {
+const Headline = ({text, accent, bottom = 430}) => {
   if (!text) return null;
   const parts = accent && text.includes(accent) ? text.split(accent) : null;
   return (
@@ -320,7 +320,7 @@ const Scene = ({scene, presenters, presenterSpine, fps, presentationMode, qualit
             </div>
           ))}
         </div>
-        <Headline text={scene.headline} accent={scene.accent} bottom={255} />
+        <Headline text={scene.headline} accent={scene.accent} bottom={430} />
       </AbsoluteFill>
     );
   }
@@ -538,11 +538,11 @@ export const DsnShortMaster = ({config}) => {
       ) : null}
       <div style={{
         position:'absolute',
-        top:58,
+        top:42,
         left:46,
         zIndex:80,
-        width:150,
-        height:158,
+        width:112,
+        height:118,
         filter:'drop-shadow(0 10px 24px rgba(0,0,0,.48))'
       }}>
         <Img
