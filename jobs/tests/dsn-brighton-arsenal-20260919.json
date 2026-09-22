@@ -1,0 +1,262 @@
+{
+  "storyId": "dsn-brighton-arsenal-20260919",
+  "version": "DSN_SHORT_MASTER_V1",
+  "headline": "Brighton 3–0 Arsenal: champions stunned at the Amex",
+  "brand": "DSN",
+  "aspectRatio": "9:16",
+  "durationSec": 49,
+  "fps": 30,
+  "presentationMode": "VOICEOVER_BROLL",
+  "qualityPolicy": "PRODUCTION",
+  "brandAssetPolicy": "OFFICIAL_ASSET_ONLY",
+  "visualAssetGateRequired": true,
+  "endCardText": "THANKS FOR WATCHING DSN",
+  "narrationTailSec": 0.6,
+  "outroHoldSec": 1.5,
+  "wanPolicy": {
+    "maxShots": 2,
+    "maxDurationSec": 4
+  },
+  "audio": {
+    "voiceoverSrc": "assets/dsn-brighton-arsenal-20260919/voiceover.wav",
+    "voiceoverStatus": "APPROVED",
+    "voiceoverVolume": 1
+  },
+  "visualAssetPack": {
+    "status": "PRODUCTION_READY",
+    "production_ready": true,
+    "score": 100,
+    "profile": "DSN_REAL_STORY_RENDER_TEST",
+    "approved_asset_count": 2,
+    "approved_video_clip_count": 1,
+    "premium_ready": false,
+    "missing": []
+  },
+  "presenters": {},
+  "scenes": [
+    {
+      "id": "hook",
+      "type": "hook",
+      "start": 0,
+      "duration": 5,
+      "presenter": {
+        "mode": "off"
+      },
+      "headline": "BRIGHTON 3–0 ARSENAL",
+      "accent": "3–0",
+      "subhead": "The champions were outplayed at the Amex."
+    },
+    {
+      "id": "score",
+      "type": "scoreboard",
+      "start": 5,
+      "duration": 7,
+      "presenter": {
+        "mode": "off"
+      },
+      "home": {
+        "name": "BRIGHTON",
+        "short": "BHA",
+        "score": 3
+      },
+      "away": {
+        "name": "ARSENAL",
+        "short": "ARS",
+        "score": 0
+      },
+      "scorers": [
+        {
+          "name": "Pascal Groß",
+          "minute": "31'"
+        },
+        {
+          "name": "Charalampos Kostoulas",
+          "minute": "45'"
+        },
+        {
+          "name": "Chema Andrés",
+          "minute": "57'"
+        }
+      ],
+      "headline": "A PERFECT ANNIVERSARY",
+      "accent": "PERFECT"
+    },
+    {
+      "id": "numbers",
+      "type": "stats",
+      "start": 12,
+      "duration": 10,
+      "presenter": {
+        "mode": "off"
+      },
+      "kicker": "THE NUMBERS",
+      "stats": [
+        {
+          "value": "40%",
+          "label": "Brighton possession",
+          "source": "Opta · PL · 19 Sep 2026"
+        },
+        {
+          "value": "17",
+          "label": "Brighton shots",
+          "source": "Opta · PL · 19 Sep 2026"
+        },
+        {
+          "value": "1.33",
+          "label": "Brighton xG",
+          "source": "Opta · PL · 19 Sep 2026"
+        },
+        {
+          "value": "4",
+          "label": "Brighton big chances",
+          "source": "Opta · PL · 19 Sep 2026"
+        }
+      ]
+    },
+    {
+      "id": "tactics",
+      "type": "tactics",
+      "start": 22,
+      "duration": 9,
+      "presenter": {
+        "mode": "off"
+      },
+      "kicker": "WHY ARSENAL LOST",
+      "labels": [
+        "PRESS HIGH",
+        "WIN DUELS",
+        "PUNISH ERRORS",
+        "ATTACK SET PIECES"
+      ],
+      "body": "Arteta pointed to technical errors, lost duels and poor set-piece defending."
+    },
+    {
+      "id": "timeline",
+      "type": "timeline",
+      "start": 31,
+      "duration": 8,
+      "presenter": {
+        "mode": "off"
+      },
+      "kicker": "HOW IT UNFOLDED",
+      "items": [
+        {
+          "title": "31' · Groß",
+          "detail": "Brighton break the deadlock."
+        },
+        {
+          "title": "45' · Kostoulas",
+          "detail": "The lead doubles before half-time."
+        },
+        {
+          "title": "57' · Chema",
+          "detail": "A third goal puts the game beyond Arsenal."
+        }
+      ]
+    },
+    {
+      "id": "quote",
+      "type": "quote",
+      "start": 39,
+      "duration": 6,
+      "presenter": {
+        "mode": "off"
+      },
+      "kicker": "ARTETA'S VERDICT",
+      "quote": "They deserved to win.",
+      "attribution": "Mikel Arteta · post-match"
+    },
+    {
+      "id": "cta",
+      "type": "cta",
+      "start": 45,
+      "duration": 4,
+      "presenter": {
+        "mode": "off"
+      },
+      "headline": "ONE-OFF OR WARNING SIGN?",
+      "accent": "WARNING",
+      "body": "Follow Diajem Sports Network for the next update."
+    }
+  ],
+  "captions": [
+    {
+      "start": 0.2,
+      "end": 3.8,
+      "text": "BRIGHTON HAVE STUNNED ARSENAL THREE NIL",
+      "emphasis": [
+        "STUNNED",
+        "THREE",
+        "NIL"
+      ]
+    },
+    {
+      "start": 5.2,
+      "end": 9.8,
+      "text": "GROSS KOSTOULAS AND CHEMA GOT THE GOALS",
+      "emphasis": [
+        "GOALS"
+      ]
+    },
+    {
+      "start": 12.2,
+      "end": 17.8,
+      "text": "ONLY FORTY PERCENT POSSESSION BUT SEVENTEEN SHOTS",
+      "emphasis": [
+        "SEVENTEEN",
+        "SHOTS"
+      ]
+    },
+    {
+      "start": 22.2,
+      "end": 28.8,
+      "text": "ARTETA POINTED TO ERRORS LOST DUELS AND SET PIECES",
+      "emphasis": [
+        "ERRORS",
+        "DUELS"
+      ]
+    },
+    {
+      "start": 39.2,
+      "end": 43.8,
+      "text": "ARTETA SAID BRIGHTON DESERVED TO WIN",
+      "emphasis": [
+        "DESERVED",
+        "WIN"
+      ]
+    },
+    {
+      "start": 45.2,
+      "end": 48.6,
+      "text": "ONE OFF OR WARNING SIGN FOR ARSENAL",
+      "emphasis": [
+        "WARNING",
+        "ARSENAL"
+      ]
+    }
+  ],
+  "visualCueSheet": {
+    "provider": "MANUAL_VERIFIED_TEST",
+    "visual_cues": [],
+    "cinematic_candidates": [
+      {
+        "start": 0,
+        "end": 4,
+        "prompt": "A cinematic generic English football stadium tunnel opening toward a brightly lit pitch at night, dramatic atmosphere, neutral colours, no people, no club crests, no league logos, no text, no scoreboard, no advertising, no trademarks",
+        "reason": "Opening illustrative transition for a verified match analysis short.",
+        "documentary": false,
+        "status": "APPROVED_BY_RIGHTS_GATE",
+        "resolution": "720P"
+      },
+      {
+        "start": 22,
+        "end": 26,
+        "prompt": "A cinematic overhead view of a generic football training pitch showing an aggressive high pressing shape with anonymous players in plain neutral kits, dynamic movement, no identifiable teams, no club crests, no logos, no text, no scoreboard, no advertising, editorial illustration",
+        "reason": "Illustrative tactical transition; not documentary match footage.",
+        "documentary": false,
+        "status": "APPROVED_BY_RIGHTS_GATE",
+        "resolution": "720P"
+      }
+    ]
+  }
+}
