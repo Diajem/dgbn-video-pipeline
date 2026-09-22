@@ -1,8 +1,8 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
-const [jobPath] = process.argv.slice(2);
-if (!jobPath) throw new Error('Usage: node scripts/stage-dsn-job.mjs <job.json>');
+const [jobPath, stagedJobPath = 'jobs/samples/dsn-short-master-v1.json'] = process.argv.slice(2);
+if (!jobPath) throw new Error('Usage: node scripts/stage-dsn-job.mjs <job.json> [staged-job.json]');
 
 const job = JSON.parse(await fs.readFile(jobPath,'utf8'));
 const staged = structuredClone(job);
@@ -52,8 +52,9 @@ for (let index = 0; index < cues.length; index += 1) {
   }
 }
 
+await fs.mkdir(path.dirname(stagedJobPath), {recursive:true});
 await fs.writeFile(
-  'jobs/samples/dsn-short-master-v1.json',
+  stagedJobPath,
   JSON.stringify(staged,null,2)+'\n',
 );
 console.log(JSON.stringify({
@@ -62,5 +63,6 @@ console.log(JSON.stringify({
   presentationMode:job.presentationMode,
   presenterStaged:Boolean(staged.presenterSpine?.src),
   voiceoverStaged:Boolean(staged.audio?.voiceoverSrc),
-  visualCueCount:cues.length
+  visualCueCount:cues.length,
+  stagedJobPath
 }));
