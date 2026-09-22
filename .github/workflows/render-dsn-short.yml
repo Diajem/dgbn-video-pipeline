@@ -27,11 +27,6 @@ jobs:
       DISPATCH_STORY_ID: ${{ github.event.client_payload.story_id }}
       DISPATCH_ARTIFACT_NAME: ${{ github.event.client_payload.artifact_name }}
       CALLBACK_URL: ${{ github.event.client_payload.callback_url }}
-      QWEN_API_KEY: ${{ secrets.QWEN_API_KEY }}
-      QWEN_WORKSPACE_ID: ${{ secrets.QWEN_WORKSPACE_ID }}
-      QWEN_REGION: ${{ secrets.QWEN_REGION }}
-      QWEN_VIDEO_PLANNER_MODEL: qwen3.8-omni-flash
-      QWEN_BASE_URL: ${{ secrets.QWEN_BASE_URL }}
       WAN_3_API_KEY: ${{ secrets.WAN_3_API_KEY }}
       WAN_3_WORKSPACE_ID: ${{ secrets.WAN_3_WORKSPACE_ID }}
       WAN_3_REGION: ${{ secrets.WAN_3_REGION }}
@@ -52,19 +47,14 @@ jobs:
         run: |
           set -euo pipefail
           echo "DSN Alibaba provider preflight"
-          if [ -n "$QWEN_API_KEY" ] && [ -n "$QWEN_WORKSPACE_ID" ] && [ -n "$QWEN_REGION" ]; then
-            echo "QWEN=CONFIGURED"
-            echo "QWEN_MODEL=${QWEN_VIDEO_PLANNER_MODEL}"
-            echo "QWEN_REGION=${QWEN_REGION}"
-          else
-            echo "QWEN=NOT_CONFIGURED"
-          fi
+          echo "QWEN=NEWSROOM_RENDER_SERVICE"
           if [ -n "$WAN_3_API_KEY" ] && [ -n "$WAN_3_WORKSPACE_ID" ] && [ -n "$WAN_3_REGION" ]; then
             echo "WAN_3=CONFIGURED"
             echo "WAN_3_MODEL=${WAN_3_MODEL}"
             echo "WAN_3_REGION=${WAN_3_REGION}"
           else
             echo "WAN_3=NOT_CONFIGURED"
+            exit 1
           fi
 
       - name: Resolve render job
