@@ -13,6 +13,9 @@ if (!Array.isArray(cfg.scenes) || cfg.scenes.length < 3) fail('at least three sc
 if (cfg.outroHoldSec !== undefined && cfg.outroHoldSec < 0.75) {
   fail('outroHoldSec must be at least 0.75 seconds to protect the final spoken words');
 }
+if (cfg.narrationTailSec !== undefined && cfg.narrationTailSec < 0.25) {
+  fail('narrationTailSec must be at least 0.25 seconds before the branded end card');
+}
 
 const production = cfg.qualityPolicy === 'PRODUCTION';
 if (production && !fs.existsSync(officialDsnLogo)) {
