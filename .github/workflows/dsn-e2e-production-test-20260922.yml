@@ -1,0 +1,61 @@
+name: DSN controlled end-to-end production test 20260922
+
+on:
+  push:
+    branches:
+      - agent/dsn-e2e-production-test-20260922
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      WAN_3_API_KEY: ${{ secrets.WAN_3_API_KEY }}
+      WAN_3_WORKSPACE_ID: ${{ secrets.WAN_3_WORKSPACE_ID }}
+      WAN_3_REGION: ${{ secrets.WAN_3_REGION }}
+      WAN_3_MODEL: ${{ secrets.WAN_3_MODEL }}
+      WAN_3_MAX_SHOTS: "1"
+      WAN_3_MAX_DURATION_SEC: "2"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Validate source production job
+        run: node scripts/validate-dsn-short.mjs jobs/renders/brighton-arsenal-wan-e2e-20260922.json
+
+      - name: Stage remote production assets
+        run: node scripts/stage-dsn-job.mjs jobs/renders/brighton-arsenal-wan-e2e-20260922.json jobs/samples/dsn-short-master-v1.json
+
+      - name: Generate one approved WAN insert
+        run: node scripts/prepare-dsn-wan-cues.mjs jobs/samples/dsn-short-master-v1.json
+
+      - name: Validate staged production job
+        run: node scripts/validate-dsn-short.mjs jobs/samples/dsn-short-master-v1.json
+
+      - name: Render production MP4
+        run: |
+          mkdir -p renders
+          cd video-studio/remotion
+          npx remotion render src/index.jsx DSNShortMaster9x16 ../../renders/dsn-brighton-arsenal-wan-e2e.mp4
+
+      - name: Verify MP4
+        run: |
+          test -s renders/dsn-brighton-arsenal-wan-e2e.mp4
+          ls -lh renders/dsn-brighton-arsenal-wan-e2e.mp4
+
+      - name: Upload production artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dsn-brighton-arsenal-wan-e2e-20260922
+          path: renders/dsn-brighton-arsenal-wan-e2e.mp4
+          if-no-files-found: error
