@@ -31,6 +31,8 @@ jobs:
       WAN_3_WORKSPACE_ID: ${{ secrets.WAN_3_WORKSPACE_ID }}
       WAN_3_REGION: ${{ secrets.WAN_3_REGION }}
       WAN_3_MODEL: ${{ secrets.WAN_3_MODEL }}
+      WAN_3_MAX_SHOTS: "2"
+      WAN_3_MAX_DURATION_SEC: "5"
 
     steps:
       - uses: actions/checkout@v4
@@ -82,10 +84,19 @@ jobs:
         run: node scripts/validate-dsn-short.mjs "${{ steps.resolve.outputs.job_path }}"
 
       - name: Stage remote production assets
-        run: node scripts/stage-dsn-job.mjs "${{ steps.resolve.outputs.job_path }}"
+        id: stage
+        shell: bash
+        run: |
+          set -euo pipefail
+          STAGED_JOB_PATH="jobs/samples/dsn-short-master-v1.json"
+          node scripts/stage-dsn-job.mjs "${{ steps.resolve.outputs.job_path }}" "$STAGED_JOB_PATH"
+          echo "staged_job_path=$STAGED_JOB_PATH" >> "$GITHUB_OUTPUT"
 
       - name: Prepare approved Wan visual cues
-        run: node scripts/prepare-dsn-wan-cues.mjs jobs/samples/dsn-short-master-v1.json
+        run: node scripts/prepare-dsn-wan-cues.mjs "${{ steps.stage.outputs.staged_job_path }}"
+
+      - name: Revalidate staged production job
+        run: node scripts/validate-dsn-short.mjs "${{ steps.stage.outputs.staged_job_path }}"
 
       - name: Render production MP4
         run: |
@@ -94,6 +105,7 @@ jobs:
           npx remotion render src/index.jsx DSNShortMaster9x16 ../../renders/dsn-short.mp4
 
       - name: Upload production artifact
+        id: upload
         uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.resolve.outputs.artifact_name }}
@@ -108,6 +120,9 @@ jobs:
           RUN_ID: ${{ github.run_id }}
           JOB_STATUS: ${{ job.status }}
           ARTIFACT_NAME: ${{ steps.resolve.outputs.artifact_name }}
+          ARTIFACT_URL: ${{ steps.upload.outputs.artifact-url }}
+          ARTIFACT_ID: ${{ steps.upload.outputs.artifact-id }}
+          ARTIFACT_DIGEST: ${{ steps.upload.outputs.artifact-digest }}
         run: |
           node - <<'NODE'
           const fs = require('fs');
@@ -122,7 +137,10 @@ jobs:
             metadata: {
               repository: process.env.GITHUB_REPOSITORY,
               workflow: process.env.GITHUB_WORKFLOW,
-              commit: process.env.GITHUB_SHA
+              commit: process.env.GITHUB_SHA,
+              artifact_url: process.env.ARTIFACT_URL || null,
+              artifact_id: process.env.ARTIFACT_ID || null,
+              artifact_digest: process.env.ARTIFACT_DIGEST || null
             }
           };
           fs.writeFileSync('/tmp/dsn-render-callback.json', JSON.stringify(body));
