@@ -1,0 +1,80 @@
+name: WAN 3 live paid smoke test
+
+on:
+  push:
+    branches:
+      - agent/wan-live-smoke-20260922
+
+permissions:
+  contents: read
+
+jobs:
+  wan-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      WAN_3_API_KEY: ${{ secrets.WAN_3_API_KEY }}
+      WAN_3_WORKSPACE_ID: ${{ secrets.WAN_3_WORKSPACE_ID }}
+      WAN_3_REGION: ${{ secrets.WAN_3_REGION }}
+      WAN_3_MODEL: ${{ secrets.WAN_3_MODEL }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Verify WAN configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$WAN_3_API_KEY" || { echo "WAN_3_API_KEY missing"; exit 1; }
+          test -n "$WAN_3_WORKSPACE_ID" || { echo "WAN_3_WORKSPACE_ID missing"; exit 1; }
+          test -n "$WAN_3_REGION" || { echo "WAN_3_REGION missing"; exit 1; }
+          test -n "$WAN_3_MODEL" || { echo "WAN_3_MODEL missing"; exit 1; }
+          echo "WAN_3_CONFIG=READY"
+          echo "WAN_3_REGION=$WAN_3_REGION"
+          echo "WAN_3_MODEL=$WAN_3_MODEL"
+
+      - name: Create paid two-second smoke job
+        shell: bash
+        run: |
+          mkdir -p jobs/renders
+          cat > jobs/renders/wan-smoke.json <<'JSON'
+          {
+            "storyId": "dsn-wan-live-smoke-20260922",
+            "aspectRatio": "9:16",
+            "characters": [],
+            "shots": [
+              {
+                "shotId": "smoke-shot",
+                "provider": "WAN_3",
+                "status": "APPROVED",
+                "purpose": "ILLUSTRATIVE_BROLL",
+                "prompt": "A generic cinematic football stadium tunnel with dramatic neutral lighting, no people, no club crests, no league logos, no text, no scoreboard, no broadcast styling. Editorial illustration only.",
+                "resolution": "720P",
+                "durationSec": 2,
+                "audio": false,
+                "outputPath": "renders/wan-live-smoke.mp4"
+              }
+            ]
+          }
+          JSON
+
+      - name: Submit, poll and download Wan generation
+        run: node scripts/wan3-client.mjs jobs/renders/wan-smoke.json smoke-shot --confirm-paid
+
+      - name: Verify generated MP4
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s renders/wan-live-smoke.mp4
+          ls -lh renders/wan-live-smoke.mp4
+          echo "WAN_3_SMOKE=SUCCESS"
+
+      - name: Upload Wan smoke artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wan-3-live-smoke-20260922
+          path: renders/wan-live-smoke.mp4
+          if-no-files-found: error
