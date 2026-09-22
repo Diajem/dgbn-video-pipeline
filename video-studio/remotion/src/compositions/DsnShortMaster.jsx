@@ -434,6 +434,10 @@ const VisualCue = ({cue, qualityPolicy}) => {
   const node = mediaNode({kind, src, volume: 0}, qualityPolicy);
   const lowerOverlay = cue.layout === 'LOWER_OVERLAY' || cue.visual_type === 'BROLL_OVERLAY';
 
+  const disclosure = cue.generated || cue.rights_strategy === 'GENERATED_ILLUSTRATION'
+    ? (cue.disclosure || 'AI-GENERATED ILLUSTRATION')
+    : null;
+
   if (lowerOverlay) {
     return (
       <div style={{
@@ -451,6 +455,7 @@ const VisualCue = ({cue, qualityPolicy}) => {
       }}>
         {node}
         <div style={{position:'absolute',inset:0,background:'linear-gradient(180deg,transparent 58%,rgba(5,6,9,.62) 100%)'}} />
+        {disclosure ? <div style={{position:'absolute',top:18,left:18,padding:'8px 12px',borderRadius:8,background:'rgba(0,0,0,.72)',fontSize:17,fontWeight:900,letterSpacing:'.06em'}}>{disclosure}</div> : null}
       </div>
     );
   }
@@ -459,6 +464,7 @@ const VisualCue = ({cue, qualityPolicy}) => {
     <AbsoluteFill style={{zIndex:4}}>
       {node}
       <AbsoluteFill style={{background:'linear-gradient(180deg,rgba(4,6,10,.05),rgba(4,6,10,.18) 60%,rgba(4,6,10,.45))'}} />
+      {disclosure ? <div style={{position:'absolute',top:240,left:52,padding:'9px 13px',borderRadius:8,background:'rgba(0,0,0,.72)',fontSize:18,fontWeight:900,letterSpacing:'.06em'}}>{disclosure}</div> : null}
     </AbsoluteFill>
   );
 };

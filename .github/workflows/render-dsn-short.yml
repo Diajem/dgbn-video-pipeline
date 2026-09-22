@@ -27,6 +27,10 @@ jobs:
       DISPATCH_STORY_ID: ${{ github.event.client_payload.story_id }}
       DISPATCH_ARTIFACT_NAME: ${{ github.event.client_payload.artifact_name }}
       CALLBACK_URL: ${{ github.event.client_payload.callback_url }}
+      WAN_3_API_KEY: ${{ secrets.WAN_3_API_KEY }}
+      WAN_3_WORKSPACE_ID: ${{ secrets.WAN_3_WORKSPACE_ID }}
+      WAN_3_REGION: ${{ secrets.WAN_3_REGION }}
+      WAN_3_MODEL: ${{ secrets.WAN_3_MODEL }}
 
     steps:
       - uses: actions/checkout@v4
@@ -64,6 +68,9 @@ jobs:
 
       - name: Stage remote production assets
         run: node scripts/stage-dsn-job.mjs "${{ steps.resolve.outputs.job_path }}"
+
+      - name: Prepare approved Wan visual cues
+        run: node scripts/prepare-dsn-wan-cues.mjs jobs/samples/dsn-short-master-v1.json
 
       - name: Render production MP4
         run: |
