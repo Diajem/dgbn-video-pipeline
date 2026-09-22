@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import {pathToFileURL} from 'node:url';
 
 const REGION_HOSTS = {
   'eu-central-1': 'eu-central-1.maas.aliyuncs.com',
@@ -86,7 +87,7 @@ export async function pollWan3Task({taskId, baseUrl, apiKey, intervalMs = 15000,
   throw new Error(`Wan task ${taskId} did not finish within polling window`);
 }
 
-async function downloadVideo(url, outputPath) {
+export async function downloadVideo(url, outputPath) {
   const response = await fetch(url);
   if (!response.ok) throw new Error(`Failed to download generated video: ${response.status}`);
   const bytes = Buffer.from(await response.arrayBuffer());
@@ -114,7 +115,13 @@ async function main() {
   console.log(JSON.stringify({event:'saved',shotId,taskId:submitted.taskId,...saved}));
 }
 
-main().catch((error) => {
-  console.error(error.stack || error.message);
-  process.exitCode = 1;
-});
+const invokedDirectly = process.argv[1]
+  ? import.meta.url === pathToFileURL(process.argv[1]).href
+  : false;
+
+if (invokedDirectly) {
+  main().catch((error) => {
+    console.error(error.stack || error.message);
+    process.exitCode = 1;
+  });
+}
