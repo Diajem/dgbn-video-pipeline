@@ -558,6 +558,7 @@ export const DsnShortMaster = ({config}) => {
             key={'visual-cue-' + i}
             from={Math.max(0, Math.round((cue.start || 0) * fps))}
             durationInFrames={Math.max(1, Math.round(((cue.end || 0) - (cue.start || 0)) * fps))}
+            style={{zIndex: 20}}
           >
             <VisualCue cue={cue} qualityPolicy={qualityPolicy} />
           </Sequence>
@@ -568,6 +569,7 @@ export const DsnShortMaster = ({config}) => {
           key={scene.id}
           from={Math.round(scene.start * fps)}
           durationInFrames={Math.round(scene.duration * fps)}
+          style={{zIndex: 10}}
         >
           <Scene
             scene={scene}
