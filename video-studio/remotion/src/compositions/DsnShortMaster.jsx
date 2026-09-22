@@ -329,7 +329,7 @@ const Scene = ({scene, presenters, presenterSpine, fps, presentationMode, qualit
     const labels = scene.labels || ['PRESS HIGH','WIN DUELS','FORCE ERRORS','ATTACK SET PIECES'];
     return (
       <AbsoluteFill style={common}>
-        <div style={{position:'absolute',top:190,left:70,right:70,fontSize:24,fontWeight:900,letterSpacing:'.10em'}}>HOW BRIGHTON BROKE THE DEFENCE</div>
+        <div style={{position:'absolute',top:190,left:70,right:70,fontSize:24,fontWeight:900,letterSpacing:'.10em'}}>{scene.kicker || 'TACTICAL BREAKDOWN'}</div>
         <div style={{
           position:'absolute',
           top:300,
