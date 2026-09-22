@@ -501,7 +501,9 @@ export const DsnShortMaster = ({config}) => {
   const fps = config.fps || 30;
   const qualityPolicy = config.qualityPolicy || 'DEMO';
   const outroHoldSec = config.outroHoldSec ?? 1.5;
+  const narrationTailSec = config.narrationTailSec ?? 0.4;
   const storyDurationSec = config.durationSec || 0;
+  const outroStartSec = storyDurationSec + narrationTailSec;
   const presentationMode = config.presentationMode || 'AVATAR';
 
   if (qualityPolicy === 'PRODUCTION' && presentationMode === 'AVATAR' && config.presenterSpine?.required && !config.presenterSpine?.src) {
@@ -602,7 +604,7 @@ export const DsnShortMaster = ({config}) => {
       ) : null}
 
       {outroHoldSec > 0 ? (
-        <Sequence from={Math.max(0, Math.round(storyDurationSec * fps))} durationInFrames={Math.max(1, Math.round(outroHoldSec * fps))}>
+        <Sequence from={Math.max(0, Math.round(outroStartSec * fps))} durationInFrames={Math.max(1, Math.round(outroHoldSec * fps))}>
           <BrandedEndCard brand="DSN" />
         </Sequence>
       ) : null}
