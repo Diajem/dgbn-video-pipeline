@@ -237,7 +237,32 @@
   ],
   "visualCueSheet": {
     "provider": "MANUAL_VERIFIED_TEST",
-    "visual_cues": [],
+    "visual_cues": [
+      {
+        "start": 0,
+        "end": 4,
+        "spoken_idea": "Opening illustrative transition for a verified match analysis short.",
+        "visual_type": "BROLL",
+        "layout": "FULL",
+        "rights_strategy": "GENERATED_ILLUSTRATION",
+        "asset_url": "assets/dsn-brighton-arsenal-20260919/wan/wan-cue-01.mp4",
+        "generated": true,
+        "disclosure": "AI-GENERATED ILLUSTRATION",
+        "notes": "Wan-generated illustrative insert approved by the production rights gate. Narration continues underneath."
+      },
+      {
+        "start": 22,
+        "end": 26,
+        "spoken_idea": "Illustrative tactical transition; not documentary match footage.",
+        "visual_type": "BROLL",
+        "layout": "FULL",
+        "rights_strategy": "GENERATED_ILLUSTRATION",
+        "asset_url": "assets/dsn-brighton-arsenal-20260919/wan/wan-cue-02.mp4",
+        "generated": true,
+        "disclosure": "AI-GENERATED ILLUSTRATION",
+        "notes": "Wan-generated illustrative insert approved by the production rights gate. Narration continues underneath."
+      }
+    ],
     "cinematic_candidates": [
       {
         "start": 0,
@@ -245,8 +270,12 @@
         "prompt": "A cinematic generic English football stadium tunnel opening toward a brightly lit pitch at night, dramatic atmosphere, neutral colours, no people, no club crests, no league logos, no text, no scoreboard, no advertising, no trademarks",
         "reason": "Opening illustrative transition for a verified match analysis short.",
         "documentary": false,
-        "status": "APPROVED_BY_RIGHTS_GATE",
-        "resolution": "720P"
+        "status": "GENERATED",
+        "resolution": "720P",
+        "provider": "WAN_3",
+        "taskId": "c76f26f3-acb6-4fbb-a9e9-0adcc59be601",
+        "outputPath": "assets/dsn-brighton-arsenal-20260919/wan/wan-cue-01.mp4",
+        "bytes": 5196003
       },
       {
         "start": 22,
@@ -254,8 +283,12 @@
         "prompt": "A cinematic overhead view of a generic football training pitch showing an aggressive high pressing shape with anonymous players in plain neutral kits, dynamic movement, no identifiable teams, no club crests, no logos, no text, no scoreboard, no advertising, editorial illustration",
         "reason": "Illustrative tactical transition; not documentary match footage.",
         "documentary": false,
-        "status": "APPROVED_BY_RIGHTS_GATE",
-        "resolution": "720P"
+        "status": "GENERATED",
+        "resolution": "720P",
+        "provider": "WAN_3",
+        "taskId": "d8c287f3-0714-4de6-87a9-be853a69df01",
+        "outputPath": "assets/dsn-brighton-arsenal-20260919/wan/wan-cue-02.mp4",
+        "bytes": 7636382
       }
     ]
   }
