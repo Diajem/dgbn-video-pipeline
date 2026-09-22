@@ -1,0 +1,215 @@
+{
+  "storyId": "dsn-liverpool-bournemouth-2026-09-20",
+  "version": "DSN_SHORT_MASTER_V1",
+  "brand": "DSN",
+  "brandAssetPolicy": "OFFICIAL_ASSET_ONLY",
+  "endCardText": "THANKS FOR WATCHING DSN",
+  "presentationMode": "VOICEOVER_BROLL",
+  "qualityPolicy": "PRODUCTION",
+  "durationSec": 42.45,
+  "outroHoldSec": 1.8,
+  "fps": 30,
+  "audio": {
+    "voiceoverSrc": "https://resource2.heygen.ai/text_to_speech/348ba8efd3f1430992d31a5afab57fc4/741a3bbf17194f44982a2ac1b28e0443/id=c3f121fc-5c43-41dd-a8c7-966f2755f7e5.wav",
+    "voiceoverStatus": "APPROVED",
+    "voiceoverVolume": 1
+  },
+  "visualCueSheet": {
+    "provider": "TIMED_EDITORIAL_GRAPHICS",
+    "narration_duration_sec": 42.42285714285714,
+    "visual_cues": [],
+    "cinematic_candidates": []
+  },
+  "scenes": [
+    {
+      "id": "hook",
+      "type": "hook",
+      "start": 0,
+      "duration": 2.3,
+      "presenter": {
+        "mode": "off"
+      },
+      "headline": "LIVERPOOL ARE LEARNING TO WIN UGLY",
+      "accent": "WIN UGLY",
+      "subhead": "BOURNEMOUTH 0–1 LIVERPOOL"
+    },
+    {
+      "id": "score",
+      "type": "scoreboard",
+      "start": 2.3,
+      "duration": 8.1,
+      "presenter": {
+        "mode": "off"
+      },
+      "home": {
+        "name": "BOURNEMOUTH",
+        "short": "BOU",
+        "score": 0
+      },
+      "away": {
+        "name": "LIVERPOOL",
+        "short": "LIV",
+        "score": 1
+      },
+      "scorers": [
+        {
+          "name": "Alexander Isak",
+          "minute": "57′"
+        }
+      ],
+      "headline": "ISAK SETTLED IT",
+      "accent": "ISAK"
+    },
+    {
+      "id": "clean-sheets",
+      "type": "stats",
+      "start": 10.4,
+      "duration": 7.1,
+      "presenter": {
+        "mode": "off"
+      },
+      "kicker": "THE BIGGER STORY",
+      "stats": [
+        {
+          "value": "3",
+          "label": "Straight Premier League clean sheets",
+          "source": "Liverpool FC · 21 Sep 2026"
+        },
+        {
+          "value": "1–0",
+          "label": "Away win at Bournemouth",
+          "source": "Premier League · 20 Sep 2026"
+        },
+        {
+          "value": "57′",
+          "label": "Alexander Isak winner",
+          "source": "Liverpool FC · match report"
+        },
+        {
+          "value": "POTM",
+          "label": "Jeremy Jacquet fan vote",
+          "source": "Liverpool FC · 20 Sep 2026"
+        }
+      ]
+    },
+    {
+      "id": "shape",
+      "type": "tactics",
+      "start": 17.5,
+      "duration": 5.4,
+      "presenter": {
+        "mode": "off"
+      },
+      "kicker": "HOW LIVERPOOL SAW IT OUT",
+      "labels": [
+        "STAY COMPACT",
+        "PROTECT THE BOX",
+        "WIN DUELS",
+        "MANAGE THE LEAD"
+      ],
+      "body": "Liverpool grew more secure as the game developed and protected a narrow advantage."
+    },
+    {
+      "id": "quote",
+      "type": "quote",
+      "start": 22.9,
+      "duration": 7.7,
+      "presenter": {
+        "mode": "off"
+      },
+      "kicker": "IRAOLA'S VERDICT",
+      "quote": "To win here is very difficult.",
+      "attribution": "Andoni Iraola · Liverpool FC · 20 Sep 2026"
+    },
+    {
+      "id": "analysis",
+      "type": "cta",
+      "start": 30.6,
+      "duration": 9.8,
+      "presenter": {
+        "mode": "off"
+      },
+      "headline": "WINNING UGLY CAN MATTER",
+      "accent": "WINNING UGLY",
+      "body": "Away win. Narrow lead protected. Another clean sheet."
+    },
+    {
+      "id": "question",
+      "type": "cta",
+      "start": 40.4,
+      "duration": 2.05,
+      "presenter": {
+        "mode": "off"
+      },
+      "headline": "HARDER TO BEAT?",
+      "accent": "HARDER",
+      "body": "Is this Liverpool's next step?"
+    }
+  ],
+  "captions": [
+    {
+      "start": 0.12,
+      "end": 1.9,
+      "text": "LIVERPOOL ARE LEARNING TO WIN UGLY",
+      "emphasis": [
+        "WIN UGLY"
+      ]
+    },
+    {
+      "start": 2.36,
+      "end": 10.04,
+      "text": "ISAK WINS IT AT BOURNEMOUTH",
+      "emphasis": [
+        "ISAK"
+      ]
+    },
+    {
+      "start": 10.32,
+      "end": 12.84,
+      "text": "THE BIGGER STORY: WITHOUT THE BALL",
+      "emphasis": [
+        "WITHOUT THE BALL"
+      ]
+    },
+    {
+      "start": 13.46,
+      "end": 16.74,
+      "text": "THREE STRAIGHT LEAGUE CLEAN SHEETS",
+      "emphasis": [
+        "THREE"
+      ]
+    },
+    {
+      "start": 17.02,
+      "end": 22.12,
+      "text": "ALISSON AND THE BACK LINE HELD FIRM",
+      "emphasis": [
+        "HELD FIRM"
+      ]
+    },
+    {
+      "start": 22.48,
+      "end": 30.46,
+      "text": "JACQUET VOTED PLAYER OF THE MATCH",
+      "emphasis": [
+        "PLAYER OF THE MATCH"
+      ]
+    },
+    {
+      "start": 31.26,
+      "end": 39.68,
+      "text": "WINNING UGLY CAN MATTER",
+      "emphasis": [
+        "WINNING UGLY"
+      ]
+    },
+    {
+      "start": 40.48,
+      "end": 42.16,
+      "text": "ARE LIVERPOOL HARDER TO BEAT?",
+      "emphasis": [
+        "HARDER TO BEAT?"
+      ]
+    }
+  ]
+}
