@@ -27,6 +27,13 @@ function buildBaseUrl() {
   return `https://${workspaceId}.${host}/api/v1`;
 }
 
+export function getWan3RuntimeConfig() {
+  return {
+    apiKey: requiredEnv('WAN_3_API_KEY', 'DASHSCOPE_API_KEY'),
+    baseUrl: buildBaseUrl(),
+  };
+}
+
 async function requestJson(url, options) {
   const response = await fetch(url, options);
   const body = await response.json().catch(() => ({}));
