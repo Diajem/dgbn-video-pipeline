@@ -9,6 +9,7 @@ on:
       - .github/workflows/dsn-liverpool-voiceover-test.yml
       - scripts/wan3-client.mjs
       - scripts/prepare-dsn-wan-cues.mjs
+      - video-studio/remotion/public/brand/dsn-logo-official.jpg
 
 permissions:
   contents: read
