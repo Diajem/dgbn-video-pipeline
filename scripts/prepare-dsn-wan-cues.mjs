@@ -21,12 +21,30 @@ if (!configured) {
   process.exit(0);
 }
 
-const eligible = candidates.filter((candidate) =>
+const requestedMaxShots = Number(job.wanPolicy?.maxShots ?? process.env.WAN_3_MAX_SHOTS ?? 2);
+const requestedMaxDurationSec = Number(job.wanPolicy?.maxDurationSec ?? process.env.WAN_3_MAX_DURATION_SEC ?? 5);
+const maxShots = Number.isFinite(requestedMaxShots) ? Math.max(0, Math.min(4, Math.floor(requestedMaxShots))) : 2;
+const maxDurationSec = Number.isFinite(requestedMaxDurationSec)
+  ? Math.max(2, Math.min(8, requestedMaxDurationSec))
+  : 5;
+
+const allEligible = candidates.filter((candidate) =>
   candidate &&
   candidate.documentary === false &&
   candidate.prompt &&
   ['APPROVED','APPROVED_BY_RIGHTS_GATE'].includes(candidate.status)
 );
+const eligible = allEligible.slice(0, maxShots);
+
+if (allEligible.length > eligible.length) {
+  console.log(JSON.stringify({
+    event:'wan3-candidates-capped',
+    eligible:allEligible.length,
+    selected:eligible.length,
+    maxShots,
+    maxDurationSec
+  }));
+}
 
 if (!eligible.length) {
   console.log(JSON.stringify({event:'wan3-no-approved-candidates'}));
@@ -48,7 +66,7 @@ for (let index = 0; index < eligible.length; index += 1) {
   const shotId = `wan-cue-${String(index + 1).padStart(2,'0')}`;
   const durationSec = Math.max(
     2,
-    Math.min(8, Number(candidate.end || 0) - Number(candidate.start || 0) || 4)
+    Math.min(maxDurationSec, Number(candidate.end || 0) - Number(candidate.start || 0) || 4)
   );
   const outputPath = path.join(generatedDir, shotId + '.mp4');
   const shot = {
@@ -105,5 +123,8 @@ await fs.writeFile(jobPath,JSON.stringify(job,null,2)+'\n');
 console.log(JSON.stringify({
   event:'wan3-cues-ready',
   generated:eligible.length,
+  eligibleTotal:allEligible.length,
+  maxShots,
+  maxDurationSec,
   jobPath
 }));
