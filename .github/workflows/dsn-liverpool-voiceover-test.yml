@@ -1,0 +1,53 @@
+name: DSN Liverpool voiceover production test
+
+on:
+  push:
+    branches:
+      - test/dsn-liverpool-voiceover-2026-09-22
+    paths:
+      - jobs/tests/liverpool-bournemouth-voiceover.json
+      - .github/workflows/dsn-liverpool-voiceover-test.yml
+
+permissions:
+  contents: read
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Validate production job
+        run: node scripts/validate-dsn-short.mjs jobs/tests/liverpool-bournemouth-voiceover.json
+
+      - name: Stage remote narration
+        run: node scripts/stage-dsn-job.mjs jobs/tests/liverpool-bournemouth-voiceover.json
+
+      - name: Prepare optional approved Wan cues
+        env:
+          WAN_3_API_KEY: ${{ secrets.WAN_3_API_KEY }}
+          WAN_3_WORKSPACE_ID: ${{ secrets.WAN_3_WORKSPACE_ID }}
+          WAN_3_REGION: ${{ secrets.WAN_3_REGION }}
+          WAN_3_MODEL: ${{ secrets.WAN_3_MODEL }}
+        run: node scripts/prepare-dsn-wan-cues.mjs jobs/samples/dsn-short-master-v1.json
+
+      - name: Render Liverpool voiceover test
+        run: |
+          mkdir -p renders
+          cd video-studio/remotion
+          npx remotion render src/index.jsx DSNShortMaster9x16 ../../renders/DSN_Liverpool_Bournemouth_Voiceover_Test.mp4
+
+      - name: Upload test render
+        uses: actions/upload-artifact@v4
+        with:
+          name: DSN-Liverpool-Bournemouth-Voiceover-Test
+          path: renders/DSN_Liverpool_Bournemouth_Voiceover_Test.mp4
+          if-no-files-found: error
