@@ -1,0 +1,84 @@
+name: DSN Brighton real-story production test
+
+on:
+  push:
+    branches:
+      - agent/dsn-brighton-live-production-test-20260922
+    paths:
+      - jobs/tests/dsn-brighton-arsenal-20260919.json
+      - .github/workflows/dsn-brighton-production-test.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      WAN_3_API_KEY: ${{ secrets.WAN_3_API_KEY }}
+      WAN_3_WORKSPACE_ID: ${{ secrets.WAN_3_WORKSPACE_ID }}
+      WAN_3_REGION: ${{ secrets.WAN_3_REGION }}
+      WAN_3_MODEL: ${{ secrets.WAN_3_MODEL }}
+      WAN_3_MAX_SHOTS: "2"
+      WAN_3_MAX_DURATION_SEC: "4"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install renderer dependencies
+        run: npm install
+
+      - name: Install temporary test narrator
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y espeak-ng
+
+      - name: Stage verified DSN story job
+        run: |
+          cp jobs/tests/dsn-brighton-arsenal-20260919.json jobs/samples/dsn-short-master-v1.json
+          mkdir -p video-studio/remotion/public/assets/dsn-brighton-arsenal-20260919
+
+      - name: Generate temporary narration track
+        shell: bash
+        run: |
+          cat > /tmp/dsn-narration.txt <<'TXT'
+          Brighton have handed Premier League champions Arsenal their first defeat of the season, winning three nil at the Amex. Pascal Gross opened the scoring in the thirty-first minute, Charalampos Kostoulas doubled the lead just before half-time, and Chema Andres made it three in the fifty-seventh minute. The striking part is the numbers. Arsenal had about sixty percent possession and slightly higher expected goals, but Brighton took seventeen shots and created four big chances. Mikel Arteta admitted Brighton were the better side and pointed to technical errors, lost duels and poor set-piece defending. Arsenal remain on twelve points while Brighton move to ten. Was this a one-off collapse, or a warning sign for the champions? Follow Diajem Sports Network.
+          TXT
+          espeak-ng -v en-gb -s 165 -f /tmp/dsn-narration.txt -w video-studio/remotion/public/assets/dsn-brighton-arsenal-20260919/voiceover.wav
+          test -s video-studio/remotion/public/assets/dsn-brighton-arsenal-20260919/voiceover.wav
+
+      - name: Validate production job before paid generation
+        run: node scripts/validate-dsn-short.mjs jobs/samples/dsn-short-master-v1.json
+
+      - name: Generate approved WAN illustrative inserts
+        run: node scripts/prepare-dsn-wan-cues.mjs jobs/samples/dsn-short-master-v1.json
+
+      - name: Revalidate post-WAN production job
+        run: node scripts/validate-dsn-short.mjs jobs/samples/dsn-short-master-v1.json
+
+      - name: Render DSN vertical MP4
+        run: |
+          mkdir -p renders
+          cd video-studio/remotion
+          npx remotion render src/index.jsx DSNShortMaster9x16 ../../renders/dsn-brighton-arsenal-20260919.mp4
+
+      - name: Verify MP4
+        run: |
+          test -s renders/dsn-brighton-arsenal-20260919.mp4
+          ls -lh renders/dsn-brighton-arsenal-20260919.mp4
+
+      - name: Upload finished DSN test
+        uses: actions/upload-artifact@v4
+        with:
+          name: dsn-brighton-arsenal-production-test
+          path: |
+            renders/dsn-brighton-arsenal-20260919.mp4
+            jobs/samples/dsn-short-master-v1.json
+          if-no-files-found: error
+          retention-days: 30
