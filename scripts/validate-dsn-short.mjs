@@ -27,6 +27,19 @@ if (production && cfg.brandAssetPolicy && cfg.brandAssetPolicy !== 'OFFICIAL_ASS
 if (production && cfg.endCardText && cfg.endCardText !== 'THANKS FOR WATCHING DSN') {
   fail('endCardText must be THANKS FOR WATCHING DSN');
 }
+if (production && cfg.visualAssetGateRequired === true) {
+  const pack = cfg.visualAssetPack;
+  if (!pack) {
+    fail('visualAssetPack is required for governed DSN production renders');
+  }
+  if (pack.production_ready !== true || pack.status !== 'PRODUCTION_READY') {
+    const missing = Array.isArray(pack.missing) ? pack.missing.join('; ') : 'required football visuals';
+    fail('VISUAL ASSETS INCOMPLETE — NOT PRODUCTION READY: ' + missing);
+  }
+  if (cfg.presentationMode === 'VOICEOVER_BROLL' && Number(pack.approved_video_clip_count || 0) < 1) {
+    fail('VOICEOVER_BROLL production requires at least one approved football video clip');
+  }
+}
 if (production && cfg.presentationMode === 'AVATAR' && cfg.presenterSpine?.required && !cfg.presenterSpine?.src) {
   fail('AVATAR requires presenterSpine.src when presenter spine is required');
 }
