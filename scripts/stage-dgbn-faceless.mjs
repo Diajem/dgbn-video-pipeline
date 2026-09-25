@@ -26,7 +26,7 @@ async function stage(url, file, label) {
   return {absolute, relative:'assets/' + job.storyId + '/' + file};
 }
 
-const audio = await stage(job.audio.voiceoverSrc,'narration.mp3','Approved narration');
+const audio = await stage(job.audio.voiceoverSrc,'narration.wav','Approved narration');
 staged.audio.voiceoverSrc = audio.relative;
 const seconds = Number(execFileSync('ffprobe',['-v','error','-show_entries','format=duration','-of','default=noprint_wrappers=1:nokey=1',audio.absolute],{encoding:'utf8'}).trim());
 if (!(seconds > 3 && seconds < 600)) throw new Error('Narration duration is outside DGBN short limits');
