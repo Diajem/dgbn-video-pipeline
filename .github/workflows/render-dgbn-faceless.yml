@@ -51,6 +51,8 @@ jobs:
           fi
       - name: Validate approved job
         run: node scripts/validate-dgbn-faceless.mjs "${{ steps.resolve.outputs.job_path }}"
+      - name: Install FFmpeg probe for narration duration
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
       - name: Stage reviewed narration and visuals
         env:
           VIDEO_RENDER_CALLBACK_TOKEN: ${{ secrets.VIDEO_RENDER_CALLBACK_TOKEN }}
