@@ -28,6 +28,11 @@ jobs:
           node --check scripts/stage-dsn-job.mjs
           node --check scripts/prepare-dsn-wan-cues.mjs
           node --check scripts/alibaba-smoke-test.mjs
+          node --check scripts/validate-dgbn-faceless.mjs
+          node --check scripts/stage-dgbn-faceless.mjs
+
+      - name: Validate DGBN faceless voiceover contract
+        run: node scripts/validate-dgbn-faceless.mjs jobs/samples/dgbn-faceless-v1.json
 
       - name: Validate DSN short contract
         run: node scripts/validate-dsn-short.mjs jobs/samples/dsn-short-master-v1.json
