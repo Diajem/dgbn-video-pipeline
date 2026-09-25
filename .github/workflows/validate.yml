@@ -43,6 +43,9 @@ jobs:
       - name: Bundle Remotion compositions
         run: npm --workspace @dgbn/remotion-studio exec -- remotion compositions src/index.jsx
 
+      - name: Install FFmpeg probe for media verification
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
       - name: Render a short faceless MP4 with local narration and visual
         run: |
           python3 - <<'PY'
