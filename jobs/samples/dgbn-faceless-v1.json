@@ -1,0 +1,12 @@
+{
+  "version": "DGBN_FACELESS_V1",
+  "brand": "DGBN",
+  "storyId": "demo-dgbn",
+  "sourceScriptArtifactId": "demo-script",
+  "narrationArtifactId": "demo-reviewed-audio",
+  "headline": "DGBN faceless voiceover template",
+  "script": "A verified story starts here. This is an illustrative template for a reviewed narration track.",
+  "audio": {"voiceoverSrc": "https://example.invalid/approved-narration.mp3", "voiceoverStatus": "APPROVED"},
+  "visuals": [{"assetId":"demo-visual","src":"https://example.invalid/approved-visual.png","kind":"image","label":"EDITORIAL IMAGE"}],
+  "qualityPolicy": "PRODUCTION"
+}
