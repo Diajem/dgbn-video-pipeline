@@ -1,0 +1,103 @@
+name: DGBN Faceless Voiceover Render
+
+on:
+  workflow_dispatch:
+    inputs:
+      job_path:
+        description: Approved DGBN_FACELESS_V1 job JSON
+        required: true
+        default: jobs/samples/dgbn-faceless-v1.json
+  repository_dispatch:
+    types: [dgbn_voiceover_render]
+
+permissions:
+  contents: read
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      EVENT_NAME: ${{ github.event_name }}
+      DISPATCH_JOB_JSON: ${{ toJson(github.event.client_payload.job) }}
+      DISPATCH_STORY_ID: ${{ github.event.client_payload.story_id }}
+      DISPATCH_ARTIFACT_NAME: ${{ github.event.client_payload.artifact_name }}
+      CALLBACK_URL: ${{ github.event.client_payload.callback_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install
+      - name: Resolve approved job
+        id: resolve
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "$EVENT_NAME" = "repository_dispatch" ]; then
+            mkdir -p jobs/renders
+            node - <<'NODE'
+          const fs = require('fs');
+          const raw = process.env.DISPATCH_JOB_JSON;
+          if (!raw || raw === 'null') throw new Error('No DGBN voiceover job supplied');
+          fs.writeFileSync('jobs/renders/dispatched-dgbn.json',JSON.stringify(JSON.parse(raw),null,2)+'\n');
+          NODE
+            echo "job_path=jobs/renders/dispatched-dgbn.json" >> "$GITHUB_OUTPUT"
+            echo "artifact_name=${DISPATCH_ARTIFACT_NAME:-dgbn-faceless-render}" >> "$GITHUB_OUTPUT"
+          else
+            echo "job_path=${{ inputs.job_path }}" >> "$GITHUB_OUTPUT"
+            echo "artifact_name=dgbn-faceless-render" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Validate approved job
+        run: node scripts/validate-dgbn-faceless.mjs "${{ steps.resolve.outputs.job_path }}"
+      - name: Stage reviewed narration and visuals
+        env:
+          VIDEO_RENDER_CALLBACK_TOKEN: ${{ secrets.VIDEO_RENDER_CALLBACK_TOKEN }}
+        run: node scripts/stage-dgbn-faceless.mjs "${{ steps.resolve.outputs.job_path }}" jobs/samples/dgbn-faceless-v1.json
+      - name: Validate staged job
+        run: node scripts/validate-dgbn-faceless.mjs jobs/samples/dgbn-faceless-v1.json
+      - name: Render DGBN MP4
+        run: |
+          mkdir -p renders
+          cd video-studio/remotion
+          npx remotion render src/index.jsx DGBNFaceless9x16 ../../renders/dgbn-faceless.mp4
+      - name: Upload render
+        id: upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.resolve.outputs.artifact_name }}
+          path: renders/dgbn-faceless.mp4
+          if-no-files-found: error
+      - name: Report renderer result to newsroom
+        if: always() && github.event_name == 'repository_dispatch' && env.CALLBACK_URL != ''
+        env:
+          CALLBACK_TOKEN: ${{ secrets.VIDEO_RENDER_CALLBACK_TOKEN }}
+          RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          RUN_ID: ${{ github.run_id }}
+          JOB_STATUS: ${{ job.status }}
+          ARTIFACT_NAME: ${{ steps.resolve.outputs.artifact_name }}
+          ARTIFACT_URL: ${{ steps.upload.outputs.artifact-url }}
+          ARTIFACT_ID: ${{ steps.upload.outputs.artifact-id }}
+          ARTIFACT_DIGEST: ${{ steps.upload.outputs.artifact-digest }}
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const status = process.env.JOB_STATUS === 'success' ? 'RENDERED' : 'FAILED';
+          fs.writeFileSync('/tmp/dgbn-render-callback.json',JSON.stringify({
+            story_id:process.env.DISPATCH_STORY_ID,status,
+            artifact_name:process.env.ARTIFACT_NAME || null,
+            actions_url:process.env.RUN_URL,run_id:process.env.RUN_ID,
+            error:status === 'FAILED' ? 'DGBN renderer failed; inspect the Actions run.' : null,
+            metadata:{repository:process.env.GITHUB_REPOSITORY,workflow:process.env.GITHUB_WORKFLOW,
+              commit:process.env.GITHUB_SHA,artifact_url:process.env.ARTIFACT_URL || null,
+              artifact_id:process.env.ARTIFACT_ID || null,artifact_digest:process.env.ARTIFACT_DIGEST || null}
+          }));
+          NODE
+          if [ -z "$CALLBACK_TOKEN" ]; then
+            echo "VIDEO_RENDER_CALLBACK_TOKEN is not configured" >&2
+            exit 1
+          fi
+          curl --fail --silent --show-error --location -X POST "$CALLBACK_URL" \
+            -H "Authorization: Bearer $CALLBACK_TOKEN" -H "Content-Type: application/json" \
+            --data-binary @/tmp/dgbn-render-callback.json
