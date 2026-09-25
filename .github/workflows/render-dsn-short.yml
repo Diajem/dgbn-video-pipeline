@@ -55,8 +55,7 @@ jobs:
             echo "WAN_3_MODEL=${WAN_3_MODEL}"
             echo "WAN_3_REGION=${WAN_3_REGION}"
           else
-            echo "WAN_3=NOT_CONFIGURED"
-            exit 1
+            echo "WAN_3=NOT_CONFIGURED; image-only and voiceover jobs may continue"
           fi
 
       - name: Resolve render job

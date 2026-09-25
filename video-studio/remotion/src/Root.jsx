@@ -5,9 +5,11 @@ import {DgbnBulletin} from './compositions/DgbnBulletin.jsx';
 import {DgbnNewsFlash} from './compositions/DgbnNewsFlash.jsx';
 import {DgbnNewsCard} from './compositions/DgbnNewsCard.jsx';
 import {DsnShortMaster} from './compositions/DsnShortMaster.jsx';
+import {DgbnFaceless} from './compositions/DgbnFaceless.jsx';
 import {CinematicStoryMaster} from './compositions/CinematicStoryMaster.jsx';
 import {DsnThumbnailMaster} from './compositions/DsnThumbnailMaster.jsx';
 import dsnShortConfig from '../../../jobs/samples/dsn-short-master-v1.json';
+import dgbnFacelessConfig from '../../../jobs/samples/dgbn-faceless-v1.json';
 import cinematicConfig from '../../../jobs/samples/cinematic-story-master-v1.json';
 import dsnThumbnailConfig from '../../../jobs/samples/dsn-thumbnail-master-v1.json';
 
@@ -47,6 +49,19 @@ export const DgbnRoot = () => (
         const narrationTailSec = props?.config?.narrationTailSec ?? 0.4;
         const outroHoldSec = props?.config?.outroHoldSec ?? 1.5;
         return {durationInFrames: Math.max(1, Math.round(fps * (durationSec + narrationTailSec + outroHoldSec))), fps};
+      }}
+    />
+    <Composition
+      id="DGBNFaceless9x16"
+      component={DgbnFaceless}
+      width={1080}
+      height={1920}
+      fps={FPS}
+      durationInFrames={FPS * 60}
+      defaultProps={{config:dgbnFacelessConfig}}
+      calculateMetadata={({props}) => {
+        const seconds = Number(props?.config?.durationSec || 60);
+        return {durationInFrames:Math.max(1,Math.ceil(FPS * (seconds + 1.9))),fps:FPS};
       }}
     />
     <Composition

@@ -7,20 +7,6 @@ const job = JSON.parse(await fs.readFile(jobPath,'utf8'));
 const cueSheet = job.visualCueSheet || {};
 const candidates = cueSheet.cinematic_candidates || [];
 
-const configured = Boolean(
-  (process.env.WAN_3_API_KEY || process.env.DASHSCOPE_API_KEY) &&
-  process.env.WAN_3_WORKSPACE_ID
-);
-
-if (!configured) {
-  console.log(JSON.stringify({
-    event:'wan3-skipped',
-    reason:'WAN_3 credentials not configured',
-    candidates:candidates.length
-  }));
-  process.exit(0);
-}
-
 const requestedMaxShots = Number(job.wanPolicy?.maxShots ?? process.env.WAN_3_MAX_SHOTS ?? 2);
 const requestedMaxDurationSec = Number(job.wanPolicy?.maxDurationSec ?? process.env.WAN_3_MAX_DURATION_SEC ?? 5);
 const maxShots = Number.isFinite(requestedMaxShots) ? Math.max(0, Math.min(4, Math.floor(requestedMaxShots))) : 2;
@@ -49,6 +35,14 @@ if (allEligible.length > eligible.length) {
 if (!eligible.length) {
   console.log(JSON.stringify({event:'wan3-no-approved-candidates'}));
   process.exit(0);
+}
+
+const configured = Boolean(
+  (process.env.WAN_3_API_KEY || process.env.DASHSCOPE_API_KEY) &&
+  process.env.WAN_3_WORKSPACE_ID
+);
+if (!configured) {
+  throw new Error('Approved Wan shots were requested, but Wan credentials are not configured');
 }
 
 const storyId = job.storyId || 'dsn-job';
