@@ -43,6 +43,31 @@ jobs:
       - name: Bundle Remotion compositions
         run: npm --workspace @dgbn/remotion-studio exec -- remotion compositions src/index.jsx
 
+      - name: Render a short faceless MP4 with local narration and visual
+        run: |
+          python3 - <<'PY'
+          import base64, json, math, struct, wave
+          from pathlib import Path
+          media = Path('video-studio/remotion/public/smoke')
+          media.mkdir(parents=True, exist_ok=True)
+          (media / 'still.png').write_bytes(base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScL/nwAAAABJRU5ErkJggg=='))
+          with wave.open(str(media / 'narration.wav'), 'wb') as audio:
+              audio.setnchannels(1)
+              audio.setsampwidth(2)
+              audio.setframerate(24000)
+              audio.writeframes(b''.join(struct.pack('<h', int(2500 * math.sin(2 * math.pi * 220 * i / 24000))) for i in range(24000)))
+          Path('jobs/samples/smoke-dgbn-props.json').write_text(json.dumps({'config': {
+              'durationSec': 1, 'headline': 'Visual render check',
+              'script': 'Verified short narration.', 'qualityPolicy': 'PRODUCTION',
+              'audio': {'voiceoverSrc': 'smoke/narration.wav', 'voiceoverStatus': 'APPROVED'},
+              'visuals': [{'assetId': 'smoke', 'src': 'smoke/still.png', 'kind': 'image', 'label': 'AI-GENERATED ILLUSTRATION'}],
+          }}))
+          PY
+          cd video-studio/remotion
+          npx remotion render src/index.jsx DGBNFaceless9x16 ../../renders/dgbn-faceless-smoke.mp4 --props ../../jobs/samples/smoke-dgbn-props.json --scale=0.25 --log=error
+          ffprobe -v error -select_streams v:0 -show_entries stream=codec_name -of csv=p=0 ../../renders/dgbn-faceless-smoke.mp4 | grep -q h264
+          ffprobe -v error -select_streams a:0 -show_entries stream=codec_name -of csv=p=0 ../../renders/dgbn-faceless-smoke.mp4 | grep -q aac
+
       - name: Validate scheduled bulletin fixture
         run: node scripts/validate-manifest.mjs jobs/samples/dgbn-2026-08-05-evening.json
 
