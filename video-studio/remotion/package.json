@@ -8,6 +8,7 @@
     "render:bulletin": "remotion render src/index.jsx DGBNBulletin16x9 ../../renders/dgbn-bulletin-16x9.mp4",
     "render:flash": "remotion render src/index.jsx DGBNNewsFlash9x16 ../../renders/dgbn-news-flash-9x16.mp4",
     "render:card": "remotion render src/index.jsx DGBNNewsCard9x16 ../../renders/dgbn-news-card-9x16.mp4",
+    "render:dgbn-faceless": "remotion render src/index.jsx DGBNFaceless9x16 ../../renders/dgbn-faceless-9x16.mp4",
     "render:dsn-short": "remotion render src/index.jsx DSNShortMaster9x16 ../../renders/dsn-short-master-9x16.mp4",
     "render:cinematic-short": "remotion render src/index.jsx CinematicStoryMaster9x16 ../../renders/cinematic-story-9x16.mp4",
     "render:cinematic-wide": "remotion render src/index.jsx CinematicStoryMaster16x9 ../../renders/cinematic-story-16x9.mp4",
