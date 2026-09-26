@@ -3,7 +3,7 @@ import fs from 'node:fs';
 const file = process.argv[2] || 'jobs/samples/dgbn-faceless-v1.json';
 const job = JSON.parse(fs.readFileSync(file, 'utf8'));
 const fail = message => { throw new Error('DGBN faceless validation failed: ' + message); };
-if (job.version !== 'DGBN_FACELESS_V1' || job.brand !== 'DGBN') fail('wrong job version or brand');
+if (job.version !== 'DGBN_FACELESS_V1' || !['DGBN','DSN'].includes(job.brand)) fail('wrong job version or brand');
 if (job.qualityPolicy !== 'PRODUCTION') fail('only production jobs may be rendered by this workflow');
 if (!job.storyId || !job.sourceScriptArtifactId || !job.narrationArtifactId) fail('approved source lineage is missing');
 if (!job.script || !job.headline || !job.audio?.voiceoverSrc || job.audio.voiceoverStatus !== 'APPROVED') fail('approved script and narration are required');

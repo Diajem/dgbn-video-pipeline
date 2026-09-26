@@ -3,12 +3,14 @@ import {AbsoluteFill, Audio, Img, OffthreadVideo, Sequence, interpolate, staticF
 import {BrandedEndCard} from '../components/BrandedEndCard.jsx';
 
 const resolveSrc = (src) => /^(https?:|data:|blob:)/i.test(src || '') ? src : staticFile(String(src || '').replace(/^\//, ''));
-const GOLD = '#d7a62a';
+const BRAND_ACCENT = {DGBN: '#d7a62a', DSN: '#ff2633'};
 
 const splitNarration = (script) => (String(script || '').match(/[^.!?]+[.!?]?/g) || []).map(s => s.trim()).filter(Boolean);
 
 export const DgbnFaceless = ({config}) => {
   const {fps} = useVideoConfig();
+  const brand = config.brand === 'DSN' ? 'DSN' : 'DGBN';
+  const GOLD = BRAND_ACCENT[brand];
   const frame = useCurrentFrame();
   const durationSec = Number(config.durationSec || 0);
   const mainFrames = Math.max(1, Math.round(durationSec * fps));
@@ -37,15 +39,16 @@ export const DgbnFaceless = ({config}) => {
             : <Img src={resolveSrc(visual.src)} style={{width:'100%',height:'100%',objectFit:'cover',transform:`scale(${interpolate(frame, [start,end], [1,1.07], {extrapolateLeft:'clamp',extrapolateRight:'clamp'})})`}} />}
           <AbsoluteFill style={{background:'linear-gradient(180deg,rgba(0,0,0,.35),rgba(0,0,0,.12) 40%,rgba(0,0,0,.85))'}} />
           {visual.label?.includes('AI-GENERATED') && <div style={{position:'absolute',top:155,left:64,background:'#101010df',padding:'10px 16px',fontSize:26,fontWeight:800,color:GOLD}}>AI-GENERATED ILLUSTRATION</div>}
+          {visual.credit && <div style={{position:'absolute',bottom:120,left:64,right:64,fontSize:20,color:'#d9d9d9',textShadow:'0 1px 4px #000'}}>Photo: {visual.credit}</div>}
         </AbsoluteFill>
       </Sequence>;
     })}
     <div style={{position:'absolute',top:0,left:0,right:0,height:12,background:GOLD}} />
-    <div style={{position:'absolute',top:62,left:64,fontWeight:900,letterSpacing:4,fontSize:35,textShadow:'0 2px 8px #000'}}>DGBN</div>
+    <div style={{position:'absolute',top:62,left:64,fontWeight:900,letterSpacing:4,fontSize:35,textShadow:'0 2px 8px #000'}}>{brand}</div>
     <div style={{position:'absolute',top:240,left:64,right:64,fontSize:55,fontWeight:900,lineHeight:1.07,textShadow:'0 3px 18px #000'}}>{config.headline}</div>
     {frame < mainFrames && <div style={{position:'absolute',bottom:185,left:64,right:64,padding:'28px 30px',borderLeft:`8px solid ${GOLD}`,background:'rgba(6,6,6,.80)',fontSize:39,fontWeight:750,lineHeight:1.22}}>{activeLine}</div>}
     <Sequence from={mainFrames + Math.round(.4*fps)} durationInFrames={Math.max(1,Math.round(1.5*fps))}>
-      <BrandedEndCard brand="DGBN" />
+      <BrandedEndCard brand={brand} />
     </Sequence>
   </AbsoluteFill>;
 };
