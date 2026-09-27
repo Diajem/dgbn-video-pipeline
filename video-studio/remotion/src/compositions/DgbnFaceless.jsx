@@ -5,7 +5,8 @@ import {BrandedEndCard} from '../components/BrandedEndCard.jsx';
 const resolveSrc = (src) => /^(https?:|data:|blob:)/i.test(src || '') ? src : staticFile(String(src || '').replace(/^\//, ''));
 const BRAND_ACCENT = {DGBN: '#d7a62a', DSN: '#ff2633'};
 
-const splitNarration = (script) => (String(script || '').match(/[^.!?]+[.!?]?/g) || []).map(s => s.trim()).filter(Boolean);
+// Split only where a sentence ends and a space follows, so names like football.london or 2.5m stay whole.
+const splitNarration = (script) => String(script || '').split(/(?<=[.!?]["\u201d\u2019)]?)\s+/).map(s => s.trim()).filter(Boolean);
 
 export const DgbnFaceless = ({config}) => {
   const {fps} = useVideoConfig();
