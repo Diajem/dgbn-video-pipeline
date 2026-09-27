@@ -17,7 +17,8 @@ async function stage(url, file, label) {
     if (!token) throw new Error('Renderer media token is missing');
     headers.Authorization = 'Bearer ' + token;
   }
-  const response = await fetch(url, {headers, redirect:'error'});
+  // Never follow redirects with the newsroom token; public asset hosts (Commons, Pexels) may redirect to a CDN.
+  const response = await fetch(url, {headers, redirect: headers.Authorization ? 'error' : 'follow'});
   if (!response.ok) throw new Error(label + ' download failed: ' + response.status);
   const data = Buffer.from(await response.arrayBuffer());
   if (!data.length || data.length > 120 * 1024 * 1024) throw new Error(label + ' asset is empty or too large');
