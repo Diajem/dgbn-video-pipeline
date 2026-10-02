@@ -1,5 +1,5 @@
 import React from 'react';
-import {AbsoluteFill, Audio, OffthreadVideo, Sequence, interpolate, staticFile, useCurrentFrame} from 'remotion';
+import {AbsoluteFill, Audio, Img, OffthreadVideo, Sequence, interpolate, staticFile, useCurrentFrame} from 'remotion';
 import {BrandedEndCard} from '../components/BrandedEndCard.jsx';
 
 const FONT = 'Arial, Helvetica, sans-serif';
@@ -16,10 +16,30 @@ const Shot = ({shot, disclosure}) => {
   const frame = useCurrentFrame();
   const fade = interpolate(frame, [0, 6], [0, 1], {extrapolateRight:'clamp'});
   const src = resolveMediaSrc(shot.renderSrc || shot.outputPath);
+  const rawSrc = String(shot.renderSrc || shot.outputPath || '');
+  const imageExt = /\.(png|jpe?g|webp|avif)(\?.*)?$/i.test(rawSrc);
+  const isImage = shot.kind === 'image' || imageExt;
+  const durationFrames = Math.max(1, Math.round((shot.durationSec || 5) * (shot.fps || 30)));
+  const imageScale = interpolate(frame, [0, durationFrames], [1.02, 1.09], {extrapolateRight:'clamp'});
+  const imageX = interpolate(frame, [0, durationFrames], [0, shot.panX ?? -1.8], {extrapolateRight:'clamp'});
+  const imageY = interpolate(frame, [0, durationFrames], [0, shot.panY ?? -0.8], {extrapolateRight:'clamp'});
   return (
     <AbsoluteFill style={{backgroundColor:'#08090b',opacity:fade}}>
       {src ? (
-        <OffthreadVideo src={src} volume={shot.naturalSoundVolume ?? 0} style={{width:'100%',height:'100%',objectFit:'cover'}} />
+        isImage ? (
+          <Img
+            src={src}
+            style={{
+              width:'100%',
+              height:'100%',
+              objectFit:'cover',
+              transform:`translate(${imageX}%, ${imageY}%) scale(${imageScale})`,
+              transformOrigin:shot.transformOrigin || 'center center'
+            }}
+          />
+        ) : (
+          <OffthreadVideo src={src} volume={shot.naturalSoundVolume ?? 0} style={{width:'100%',height:'100%',objectFit:'cover'}} />
+        )
       ) : (
         <AbsoluteFill style={{display:'grid',placeItems:'center',padding:80,color:'#c9ccd3',fontFamily:FONT,textAlign:'center'}}>
           <div><div style={{fontSize:24,letterSpacing:2,textTransform:'uppercase'}}>Cinematic shot pending</div><div style={{fontSize:36,fontWeight:800,marginTop:20}}>{shot.shotId}</div></div>
