@@ -25,6 +25,20 @@ export const DgbnRoot = () => (
       fps={FPS}
       durationInFrames={FPS * 151.5}
       defaultProps={{job: sampleJob}}
+      calculateMetadata={({props}) => {
+        const job = props?.job || sampleJob;
+        const explicit = Number(job.durationSec || job.presenter?.durationSec || 0);
+        const storyEnd = Math.max(
+          0,
+          ...(job.stories || []).map((story, index) => {
+            if (Number.isFinite(Number(story.endSec))) return Number(story.endSec);
+            return (index + 1) * Number(job.defaultStorySec || 20);
+          }),
+        );
+        const seconds = Math.max(3, explicit || storyEnd || 150);
+        const outro = Number(job.outroHoldSec ?? 1.5);
+        return {durationInFrames: Math.max(1, Math.ceil(FPS * (seconds + outro))), fps: FPS};
+      }}
     />
     <Composition
       id="DGBNNewsFlash9x16"
