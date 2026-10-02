@@ -63,6 +63,19 @@ const durationSec = Number(execFileSync(
 if (!(durationSec > 5 && durationSec < 1800)) {
   throw new Error('Presenter master duration is outside bulletin limits');
 }
+const timingBasisSec = Number(staged.timingBasisSec || staged.durationSec || staged.presenter?.durationSec || 0);
+if (timingBasisSec > 0 && Number.isFinite(timingBasisSec)) {
+  const scale = durationSec / timingBasisSec;
+  for (const story of staged.stories || []) {
+    if (Number.isFinite(Number(story.startSec))) story.startSec = Number(story.startSec) * scale;
+    if (Number.isFinite(Number(story.endSec))) story.endSec = Number(story.endSec) * scale;
+    for (const asset of story.visuals?.assets || []) {
+      if (Number.isFinite(Number(asset.startSec))) asset.startSec = Number(asset.startSec) * scale;
+      if (Number.isFinite(Number(asset.endSec))) asset.endSec = Number(asset.endSec) * scale;
+    }
+  }
+  staged.timingScale = scale;
+}
 staged.durationSec = durationSec;
 staged.presenter.durationSec = durationSec;
 

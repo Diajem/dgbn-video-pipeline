@@ -85,6 +85,7 @@ jobs:
           const fs = require('fs');
           const status = process.env.JOB_STATUS === 'success' ? 'RENDERED' : 'FAILED';
           fs.writeFileSync('/tmp/dgbn-bulletin-callback.json',JSON.stringify({
+            story_id:process.env.DISPATCH_BULLETIN_ID,
             status,
             artifact_name:process.env.ARTIFACT_NAME || null,
             actions_url:process.env.RUN_URL,
