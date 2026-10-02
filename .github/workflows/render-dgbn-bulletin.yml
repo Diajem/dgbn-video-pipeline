@@ -1,0 +1,107 @@
+name: DGBN Bulletin Final Render
+
+on:
+  workflow_dispatch:
+    inputs:
+      job_path:
+        description: Approved staged-ready DGBN bulletin job JSON
+        required: true
+        default: jobs/samples/dgbn-2026-08-05-evening.json
+  repository_dispatch:
+    types: [dgbn_bulletin_render]
+
+permissions:
+  contents: read
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      EVENT_NAME: ${{ github.event_name }}
+      DISPATCH_JOB_JSON: ${{ toJson(github.event.client_payload.job) }}
+      DISPATCH_BULLETIN_ID: ${{ github.event.client_payload.bulletin_id }}
+      DISPATCH_ARTIFACT_NAME: ${{ github.event.client_payload.artifact_name }}
+      CALLBACK_URL: ${{ github.event.client_payload.callback_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install
+      - name: Install FFmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - name: Resolve approved bulletin job
+        id: resolve
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "$EVENT_NAME" = "repository_dispatch" ]; then
+            mkdir -p jobs/renders
+            node - <<'NODE'
+          const fs = require('fs');
+          const raw = process.env.DISPATCH_JOB_JSON;
+          if (!raw || raw === 'null') throw new Error('No DGBN bulletin job supplied');
+          fs.writeFileSync('jobs/renders/dispatched-dgbn-bulletin.json',JSON.stringify(JSON.parse(raw),null,2)+'\n');
+          NODE
+            echo "job_path=jobs/renders/dispatched-dgbn-bulletin.json" >> "$GITHUB_OUTPUT"
+            echo "artifact_name=${DISPATCH_ARTIFACT_NAME:-dgbn-bulletin-final}" >> "$GITHUB_OUTPUT"
+          else
+            echo "job_path=${{ inputs.job_path }}" >> "$GITHUB_OUTPUT"
+            echo "artifact_name=dgbn-bulletin-final" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Validate production manifest
+        run: node scripts/validate-manifest.mjs "${{ steps.resolve.outputs.job_path }}"
+      - name: Stage presenter master and approved visual assets
+        env:
+          VIDEO_RENDER_CALLBACK_TOKEN: ${{ secrets.VIDEO_RENDER_CALLBACK_TOKEN }}
+        run: node scripts/stage-dgbn-bulletin.mjs "${{ steps.resolve.outputs.job_path }}" jobs/renders/staged-dgbn-bulletin.json
+      - name: Render final Remotion master
+        run: |
+          mkdir -p renders
+          cd video-studio/remotion
+          npx remotion render src/index.jsx DGBNBulletin16x9 ../../renders/dgbn-bulletin-final.mp4 --props=../../jobs/renders/staged-dgbn-bulletin.json
+      - name: Upload final render
+        id: upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.resolve.outputs.artifact_name }}
+          path: renders/dgbn-bulletin-final.mp4
+          if-no-files-found: error
+      - name: Report final render to newsroom
+        if: always() && github.event_name == 'repository_dispatch' && env.CALLBACK_URL != ''
+        env:
+          CALLBACK_TOKEN: ${{ secrets.VIDEO_RENDER_CALLBACK_TOKEN }}
+          RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          RUN_ID: ${{ github.run_id }}
+          JOB_STATUS: ${{ job.status }}
+          ARTIFACT_NAME: ${{ steps.resolve.outputs.artifact_name }}
+          ARTIFACT_URL: ${{ steps.upload.outputs.artifact-url }}
+          ARTIFACT_ID: ${{ steps.upload.outputs.artifact-id }}
+          ARTIFACT_DIGEST: ${{ steps.upload.outputs.artifact-digest }}
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const status = process.env.JOB_STATUS === 'success' ? 'RENDERED' : 'FAILED';
+          fs.writeFileSync('/tmp/dgbn-bulletin-callback.json',JSON.stringify({
+            status,
+            artifact_name:process.env.ARTIFACT_NAME || null,
+            actions_url:process.env.RUN_URL,
+            run_id:process.env.RUN_ID,
+            error:status === 'FAILED' ? 'DGBN bulletin final renderer failed; inspect the Actions run.' : null,
+            metadata:{
+              repository:process.env.GITHUB_REPOSITORY,
+              workflow:process.env.GITHUB_WORKFLOW,
+              commit:process.env.GITHUB_SHA,
+              artifact_url:process.env.ARTIFACT_URL || null,
+              artifact_id:process.env.ARTIFACT_ID || null,
+              artifact_digest:process.env.ARTIFACT_DIGEST || null
+            }
+          }));
+          NODE
+          if [ -z "$CALLBACK_TOKEN" ]; then
+            echo "VIDEO_RENDER_CALLBACK_TOKEN is not configured" >&2
+            exit 1
+          fi
+          curl --fail --silent --show-error --location -X POST "$CALLBACK_URL"             -H "Authorization: Bearer $CALLBACK_TOKEN"             -H "Content-Type: application/json"             --data-binary @/tmp/dgbn-bulletin-callback.json
