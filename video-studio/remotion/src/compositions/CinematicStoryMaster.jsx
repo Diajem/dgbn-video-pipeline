@@ -14,6 +14,7 @@ const resolveMediaSrc = (src) => {
 
 const Shot = ({shot, disclosure}) => {
   const frame = useCurrentFrame();
+  const disclosureLabel = shot.disclosureLabel ?? (shot.aiGenerated ? disclosure?.reconstructionLabel : null);
   const fade = interpolate(frame, [0, 6], [0, 1], {extrapolateRight:'clamp'});
   const src = resolveMediaSrc(shot.renderSrc || shot.outputPath);
   const rawSrc = String(shot.renderSrc || shot.outputPath || '');
@@ -45,9 +46,9 @@ const Shot = ({shot, disclosure}) => {
           <div><div style={{fontSize:24,letterSpacing:2,textTransform:'uppercase'}}>Cinematic shot pending</div><div style={{fontSize:36,fontWeight:800,marginTop:20}}>{shot.shotId}</div></div>
         </AbsoluteFill>
       )}
-      {disclosure?.reconstructionLabel ? (
+      {disclosureLabel ? (
         <div style={{position:'absolute',top:60,left:60,padding:'10px 14px',background:'rgba(0,0,0,.62)',borderRadius:10,color:'#fff',fontFamily:FONT,fontSize:19,fontWeight:800,letterSpacing:1,textTransform:'uppercase'}}>
-          {disclosure.reconstructionLabel}
+          {disclosureLabel}
         </div>
       ) : null}
     </AbsoluteFill>
