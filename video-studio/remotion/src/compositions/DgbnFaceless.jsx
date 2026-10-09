@@ -11,6 +11,40 @@ const clamp = {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'};
 // Split only where a sentence ends and a space follows, so names like football.london or 2.5m stay whole.
 const splitNarration = (script) => String(script || '').split(/(?<=[.!?]["”’)]?)\s+/).map(s => s.trim()).filter(Boolean);
 
+// Word-by-word timing: each word is weighted by its length, with extra time after commas and full stops.
+export const buildWordChunks = (script, totalFrames) => {
+  const tokens = String(script || '').split(/\s+/).filter(Boolean);
+  if (!tokens.length) return [];
+  const weight = w => Math.max(2, w.replace(/[^\p{L}\p{N}]/gu, '').length) + (/[.!?]["”’)]?$/.test(w) ? 6 : /[,;:–—-]$/.test(w) ? 3 : 0);
+  const weights = tokens.map(weight);
+  const total = weights.reduce((a, b) => a + b, 0);
+  let acc = 0;
+  const words = tokens.map((text, i) => {
+    const start = Math.round(totalFrames * acc / total);
+    acc += weights[i];
+    return {text, start, end: Math.max(start + 1, Math.round(totalFrames * acc / total))};
+  });
+  // Chunks of up to four short words; always break after punctuation.
+  const chunks = [];
+  let cur = [];
+  const flush = () => { if (cur.length) { chunks.push({words: cur, start: cur[0].start, end: cur[cur.length - 1].end}); cur = []; } };
+  for (const w of words) {
+    cur.push(w);
+    const letters = cur.reduce((n, x) => n + x.text.length, 0);
+    const hard = /[.!?]["”’)]?$/.test(w.text), soft = /[,;:–—]["”’)]?$/.test(w.text);
+    if (cur.length >= 4 || letters > 24 || hard || (soft && cur.length >= 2)) flush();
+  }
+  flush();
+  return chunks;
+};
+
+// How a picture sits in the 9:16 frame. Photos fill and move (Ken Burns); landscape clips sit on a blurred copy of themselves.
+export const fitMode = visual => {
+  if (visual.fit === 'fit' || visual.fit === 'fill') return visual.fit;
+  const ratio = visual.width && visual.height ? visual.width / visual.height : null;
+  return visual.kind === 'video' && ratio && ratio > 0.9 ? 'fit' : 'fill';
+};
+
 // Camera moves for stills: [scale from, scale to, x from %, x to %, y from %, y to %]
 const MOVES = [
   [1.04, 1.20, 0, 0, 0, -2],     // slow push in
@@ -24,6 +58,14 @@ const MOVES = [
 // Enough shots to keep the picture moving: every visual at least once, stills revisited with a new move.
 export const buildShots = (visuals, totalFrames, fps) => {
   if (!visuals.length) return [];
+  // Studio jobs give each visual its own time window (scene-aligned).
+  if (visuals.every(v => Number.isFinite(Number(v.startSec)))) {
+    return visuals.map((visual, i) => {
+      const start = Math.max(0, Math.round(Number(visual.startSec) * fps));
+      const end = Math.min(totalFrames, Math.max(start + 1, Math.round(Number(visual.endSec) * fps)));
+      return {visual, move: MOVES[i % MOVES.length], videoOffset: 0, start, end};
+    });
+  }
   const wanted = Math.max(visuals.length, Math.round(totalFrames / (SHOT_SECONDS * fps)));
   const shots = [];
   for (let i = 0; i < wanted; i++) {
@@ -47,10 +89,21 @@ const Shot = ({shot, fps}) => {
   const eased = t * t * (3 - 2 * t);
   const transform = `translate(${x0 + (x1 - x0) * eased}%, ${y0 + (y1 - y0) * eased}%) scale(${s0 + (s1 - s0) * eased})`;
   const {visual} = shot;
+  const mode = fitMode(visual);
+  const src = resolveSrc(visual.src);
+  const startFrom = Math.round(shot.videoOffset * fps);
+  const media = (style) => visual.kind === 'video'
+    ? <OffthreadVideo src={src} muted startFrom={startFrom} style={style} />
+    : <Img src={src} style={style} />;
   return <AbsoluteFill style={{opacity}}>
-    {visual.kind === 'video'
-      ? <OffthreadVideo src={resolveSrc(visual.src)} muted startFrom={Math.round(shot.videoOffset * fps)} style={{width:'100%',height:'100%',objectFit:'cover',transform:`scale(${1.02 + .06 * eased})`}} />
-      : <Img src={resolveSrc(visual.src)} style={{width:'100%',height:'100%',objectFit:'cover',transform}} />}
+    {mode === 'fit' ? <>
+      {media({width:'100%',height:'100%',objectFit:'cover',transform:'scale(1.25)',filter:'blur(38px) brightness(.55)'})}
+      <AbsoluteFill style={{justifyContent:'center'}}>
+        {media({width:'100%',height:'auto',maxHeight:'100%',objectFit:'contain',transform:`scale(${1 + .04 * eased})`})}
+      </AbsoluteFill>
+    </> : media(visual.kind === 'video'
+      ? {width:'100%',height:'100%',objectFit:'cover',transform:`scale(${1.02 + .06 * eased})`}
+      : {width:'100%',height:'100%',objectFit:'cover',transform})}
     <AbsoluteFill style={{background:'linear-gradient(180deg,rgba(0,0,0,.45),rgba(0,0,0,.10) 38%,rgba(0,0,0,.88))'}} />
   </AbsoluteFill>;
 };
@@ -69,18 +122,13 @@ export const DgbnFaceless = ({config}) => {
   const shots = buildShots(visuals, mainFrames, fps);
   const current = shots.find(s => frame >= s.start && frame < s.end) || shots[shots.length - 1];
 
-  // Captions follow the narration, weighted by word count.
-  const lines = splitNarration(config.script);
-  const words = lines.map(line => Math.max(1, line.split(/\s+/).length));
-  const totalWords = words.reduce((a, b) => a + b, 0) || 1;
-  let cursor = 0;
-  const timed = lines.map((text, i) => {
-    const start = Math.floor(mainFrames * cursor / totalWords);
-    cursor += words[i];
-    return {text, start, end: Math.floor(mainFrames * cursor / totalWords)};
-  });
-  const caption = timed.find(l => frame >= l.start && frame < l.end) || timed[timed.length - 1];
-  const captionIn = caption ? interpolate(frame - caption.start, [0, 7], [0, 1], clamp) : 0;
+  // Word-by-word captions: three or four words at a time, the spoken word highlighted.
+  const chunks = buildWordChunks(config.script, mainFrames);
+  const chunk = chunks.find(c => frame >= c.start && frame < c.end);
+  const activeWord = chunk?.words.find(w => frame >= w.start && frame < w.end) || chunk?.words[chunk.words.length - 1];
+  const pop = chunk ? interpolate(frame - chunk.start, [0, 4], [0, 1], clamp) : 1;
+  const format = config.format || 'website';
+  const creditsFrom = mainFrames - Math.round(4 * fps);
   const headlineIn = interpolate(frame, [0, 14], [0, 1], clamp);
   const progress = Math.min(1, frame / mainFrames);
 
@@ -91,16 +139,24 @@ export const DgbnFaceless = ({config}) => {
         <Shot shot={shot} fps={fps} />
       </Sequence>
     ))}
-    {current?.visual.label?.includes('AI-GENERATED') && <div style={{position:'absolute',top:155,left:64,background:'#101010df',padding:'10px 16px',fontSize:26,fontWeight:800,color:ACCENT}}>AI-GENERATED ILLUSTRATION</div>}
-    {current?.visual.label === 'ILLUSTRATIVE FOOTAGE' && frame < mainFrames && <div style={{position:'absolute',top:160,right:64,background:'#101010c0',padding:'6px 12px',fontSize:20,fontWeight:700,letterSpacing:1,color:'#ddd'}}>ILLUSTRATIVE FOOTAGE</div>}
-    {current?.visual.credit && frame < mainFrames && <div style={{position:'absolute',bottom:120,left:64,right:64,fontSize:20,color:'#d9d9d9',textShadow:'0 1px 4px #000'}}>{current.visual.kind === 'video' ? 'Video' : 'Photo'}: {current.visual.credit}</div>}
+    {current?.visual.label?.includes('AI-GENERATED') && <div style={{position:'absolute',top:56,right:64,background:'#101010df',padding:'10px 16px',fontSize:26,fontWeight:800,color:ACCENT}}>AI-GENERATED ILLUSTRATION</div>}
+    {['ILLUSTRATIVE IMAGE', 'ILLUSTRATIVE FOOTAGE', 'FILE FOOTAGE', 'ARCHIVE'].includes(current?.visual.label) && frame < mainFrames && <div style={{position:'absolute',top:60,right:64,background:'#101010c0',padding:'6px 12px',fontSize:20,fontWeight:700,letterSpacing:1,color:'#ddd'}}>{current.visual.label}</div>}
+    {current?.visual.credit?.trim() && frame < mainFrames && <div style={{position:'absolute',bottom:262,left:48,right:200,fontSize:23,fontWeight:600,color:'rgba(255,255,255,.82)',textShadow:'0 1px 5px #000, 0 0 10px #000',
+      whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{current.visual.kind === 'video' ? 'Video' : 'Photo'}: {current.visual.credit.trim().slice(0, 90)}</div>}
+    {config.draft && <div style={{position:'absolute',bottom:60,left:64,right:64,textAlign:'center',background:'#b00020e6',padding:'10px',fontSize:26,fontWeight:900,letterSpacing:2}}>DRAFT - NOT FOR PUBLICATION</div>}
     <div style={{position:'absolute',top:0,left:0,right:0,height:12,background:ACCENT}} />
     <div style={{position:'absolute',top:12,left:0,height:6,width:`${progress * 100}%`,background:'rgba(255,255,255,.75)'}} />
     <div style={{position:'absolute',top:62,left:64,fontWeight:900,letterSpacing:4,fontSize:35,textShadow:'0 2px 8px #000'}}>{brand}</div>
-    <div style={{position:'absolute',top:240,left:64,right:64,fontSize:55,fontWeight:900,lineHeight:1.07,textShadow:'0 3px 18px #000',
-      opacity:headlineIn,transform:`translateY(${(1 - headlineIn) * 40}px)`}}>{config.headline}</div>
-    {frame < mainFrames && caption && <div style={{position:'absolute',bottom:185,left:64,right:64,padding:'28px 30px',borderLeft:`8px solid ${ACCENT}`,
-      background:'rgba(6,6,6,.82)',fontSize:39,fontWeight:750,lineHeight:1.22,opacity:captionIn,transform:`translateY(${(1 - captionIn) * 18}px)`}}>{caption.text}</div>}
+    <div style={{position:'absolute',top:150,left:48,right:48,background:ACCENT,color:'#0b0b0b',borderRadius:10,padding:'18px 26px',fontWeight:900,lineHeight:1.08,textTransform:'uppercase',
+      fontSize:String(config.headline || '').length > 80 ? 38 : String(config.headline || '').length > 48 ? 46 : 56,boxShadow:'0 8px 28px rgba(0,0,0,.5)',
+      opacity:headlineIn,transform:`translateY(${(1 - headlineIn) * -30}px)`}}>{config.headline}</div>
+    {frame < mainFrames && chunk && <div style={{position:'absolute',bottom:330,left:48,right:48,textAlign:'center',fontSize:76,fontWeight:900,lineHeight:1.12,
+      transform:`scale(${.9 + .1 * pop})`,opacity:.25 + .75 * pop,WebkitTextStroke:'10px #000',paintOrder:'stroke fill',textShadow:'0 6px 22px rgba(0,0,0,.85)'}}>
+      {chunk.words.map((w, i) => <span key={i} style={{color: w === activeWord ? ACCENT : '#fff'}}>{w.text}{i < chunk.words.length - 1 ? ' ' : ''}</span>)}
+    </div>}
+    {format === 'long' && config.credits?.length > 0 && frame >= creditsFrom && frame < mainFrames && <div style={{position:'absolute',bottom:150,left:64,right:64,fontSize:24,lineHeight:1.35,color:'#e6e6e6',textShadow:'0 1px 6px #000',
+      opacity:interpolate(frame, [creditsFrom, creditsFrom + 12], [0, 1], clamp)}}>
+      <div style={{fontWeight:900,letterSpacing:2,marginBottom:4}}>CREDITS</div>{config.credits.map((c, i) => <div key={i}>{c}</div>)}</div>}
     <Sequence from={mainFrames + Math.round(.4*fps)} durationInFrames={Math.max(1,Math.round(1.5*fps))}>
       <BrandedEndCard brand={brand} />
     </Sequence>
