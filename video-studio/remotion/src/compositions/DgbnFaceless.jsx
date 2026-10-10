@@ -80,6 +80,29 @@ export const buildShots = (visuals, totalFrames, fps) => {
   }));
 };
 
+// Player card: a framed photo with the name, role and a status chip (OUT / DOUBT / AVAILABLE / PREDICTED) and one line of data.
+const STATUS_COLOURS = {OUT: '#e5252f', DOUBT: '#f5a300', AVAILABLE: '#22b455', PREDICTED: '#3a7bd5'};
+const PlayerCard = ({visual, src, eased, accent}) => {
+  const c = visual.card;
+  const status = String(c.status || '').toUpperCase();
+  const colour = STATUS_COLOURS[status] || accent;
+  const nameSize = String(c.name).length > 22 ? 52 : String(c.name).length > 16 ? 62 : 74;
+  return <AbsoluteFill>
+    <Img src={src} style={{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover',transform:'scale(1.3)',filter:'blur(42px) brightness(.38)'}} />
+    <div style={{position:'absolute',top:292,left:90,width:900,height:1090,borderRadius:28,overflow:'hidden',background:'#0e0e0e',border:`5px solid ${colour}`,boxShadow:'0 24px 70px rgba(0,0,0,.7)'}}>
+      <div style={{position:'relative',height:742,overflow:'hidden'}}>
+        <Img src={src} style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'50% 18%',transform:`scale(${1.02 + .06 * eased})`}} />
+        {status && <div style={{position:'absolute',top:24,left:24,background:colour,color:status === 'DOUBT' ? '#111' : '#fff',padding:'10px 24px',borderRadius:10,fontSize:44,fontWeight:900,letterSpacing:3}}>{status === 'PREDICTED' ? 'PREDICTED XI' : status}</div>}
+      </div>
+      <div style={{padding:'22px 36px 0'}}>
+        <div style={{fontSize:nameSize,fontWeight:900,lineHeight:1.05,textTransform:'uppercase',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{c.name}</div>
+        {c.role && <div style={{marginTop:6,fontSize:34,fontWeight:700,color:colour === accent ? '#ddd' : colour,letterSpacing:1}}>{c.role}</div>}
+        {c.line && <div style={{marginTop:10,fontSize:36,fontWeight:600,lineHeight:1.2,color:'#f2f2f2'}}>{String(c.line).slice(0, 80)}</div>}
+      </div>
+    </div>
+  </AbsoluteFill>;
+};
+
 const Shot = ({shot, fps}) => {
   const frame = useCurrentFrame();   // local to the shot's Sequence
   const length = Math.max(1, shot.end - shot.start);
@@ -92,6 +115,7 @@ const Shot = ({shot, fps}) => {
   const mode = fitMode(visual);
   const src = resolveSrc(visual.src);
   const startFrom = Math.round(shot.videoOffset * fps);
+  if (visual.card?.name && visual.kind !== 'video') return <AbsoluteFill style={{opacity}}><PlayerCard visual={visual} src={src} eased={eased} accent={shot.accent} /></AbsoluteFill>;
   const media = (style) => visual.kind === 'video'
     ? <OffthreadVideo src={src} muted startFrom={startFrom} style={style} />
     : <Img src={src} style={style} />;
@@ -136,7 +160,7 @@ export const DgbnFaceless = ({config}) => {
     {config.audio?.voiceoverSrc && <Sequence from={0} durationInFrames={mainFrames}><Audio src={resolveSrc(config.audio.voiceoverSrc)} volume={1} /></Sequence>}
     {shots.map((shot, index) => (
       <Sequence key={index} from={shot.start} durationInFrames={Math.max(1, shot.end - shot.start + (index < shots.length - 1 ? FADE_FRAMES : 0))}>
-        <Shot shot={shot} fps={fps} />
+        <Shot shot={{...shot, accent: ACCENT}} fps={fps} />
       </Sequence>
     ))}
     {current?.visual.label?.includes('AI-GENERATED') && <div style={{position:'absolute',top:56,right:64,background:'#101010df',padding:'10px 16px',fontSize:26,fontWeight:800,color:ACCENT}}>AI-GENERATED ILLUSTRATION</div>}

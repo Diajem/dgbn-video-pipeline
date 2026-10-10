@@ -196,6 +196,12 @@ async function api(req, res, url, p) {
         else if (asset.rights === 'ai_labelled') asset.rights = 'unknown';
       }
       if (['auto', 'fill', 'fit'].includes(b.fit)) asset.fit = b.fit;
+      if (b.card !== undefined) {
+        const t = (v, n) => String(v || '').trim().slice(0, n);
+        const status = t(b.card?.status, 12).toUpperCase();
+        const card = {name: t(b.card?.name, 40), role: t(b.card?.role, 50), status: ['OUT', 'DOUBT', 'AVAILABLE', 'PREDICTED'].includes(status) ? status : '', line: t(b.card?.line, 80)};
+        if (card.name) asset.card = card; else delete asset.card;
+      }
       if (typeof b.credit === 'string') asset.credit = b.credit.slice(0, 400);
       if (typeof b.rightsNote === 'string') asset.rightsNote = b.rightsNote.slice(0, 600);
       if (b.rights !== undefined) {

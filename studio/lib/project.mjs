@@ -210,6 +210,7 @@ export async function exportJob(project, {draft = false} = {}) {
       const size = probeSize(path.join(dest, asset.file));
       visuals.push({
         ...size, fit: ['auto', 'fill', 'fit'].includes(asset.fit) ? asset.fit : 'auto',
+        ...(asset.card?.name ? {card: asset.card} : {}),
         assetId: asset.id, src: `assets/studio/${project.id}/${asset.file}`, kind: asset.kind, label: asset.label,
         rights: asset.rights, rightsNote: asset.rightsNote || '', credit: asset.credit || '', origin: asset.origin,
         startSec: round3(sceneStart + slice * i), endSec: round3(sceneStart + slice * (i + 1)),

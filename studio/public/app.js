@@ -176,6 +176,7 @@ function assetCard(p, scene, a) {
     h('label', {}, 'On-screen label'), select(state.meta.labels, a.label, v => update({label: v})),
     h('label', {}, 'Rights status'), select(state.meta.rights, a.rights, v => update({rights: v})),
     h('label', {title: 'auto: photos fill the screen, landscape clips sit on a blurred background. fit: show the whole picture on a blurred background. fill: crop to fill.'}, 'Picture fit'), select(['auto', 'fit', 'fill'], a.fit || 'auto', v => update({fit: v})),
+    a.kind === 'video' ? null : playerCardFields(a, update),
     h('label', {}, 'Credit line'), h('input', {value: a.credit, onchange: e => update({credit: e.target.value})}),
     h('label', {}, 'Rights note (where permission comes from)'), h('input', {value: a.rightsNote, onchange: e => update({rightsNote: e.target.value})}),
     /^https?:\/\//i.test(a.sourceUrl || '') ? h('div', {class: 'muted'}, h('a', {href: a.sourceUrl, target: '_blank', rel: 'noreferrer', style: 'color:var(--gold)'}, 'source page')) : null,
@@ -326,4 +327,17 @@ function stockRow(p, scene) {
           setProject(await api('POST', `/api/projects/${p.id}/scenes/${scene.id}/stock`, {provider: r.provider, kind: r.kind, fileUrl: r.fileUrl, pageUrl: r.pageUrl, credit: r.credit, title: r.title}));
           toast('Added');
         })}, 'Use'))) : h('div', {class: 'muted'}, 'Nothing found. Try simpler words.'))) : null);
+}
+
+// ---- Player card: shows this picture as a framed card with name, role, status and one line of data ----
+function playerCardFields(a, update) {
+  const c = {name: '', role: '', status: '', line: '', ...(a.card || {})};
+  const save = () => update({card: {name: c.name, role: c.role, status: c.status, line: c.line}});
+  const status = h('select', {onchange: e => { c.status = e.target.value; save(); }}, ['', 'OUT', 'DOUBT', 'AVAILABLE', 'PREDICTED'].map(o => h('option', {value: o}, o || 'no status')));
+  status.value = c.status;
+  return h('details', {style: 'margin-top:6px'}, h('summary', {}, 'Player card' + (c.name ? ': ' + c.name : '') + ' (optional)'),
+    h('label', {}, 'Name'), h('input', {value: c.name, placeholder: 'e.g. Declan Rice', onchange: e => { c.name = e.target.value; save(); }}),
+    h('label', {}, 'Role / number'), h('input', {value: c.role, placeholder: 'e.g. Midfielder · 41', onchange: e => { c.role = e.target.value; save(); }}),
+    h('label', {}, 'Status chip'), status,
+    h('label', {}, 'One line of data'), h('input', {value: c.line, placeholder: 'e.g. Minor hamstring concern', onchange: e => { c.line = e.target.value; save(); }}));
 }
