@@ -140,7 +140,9 @@ export const DgbnFaceless = ({config}) => {
   const durationSec = Number(config.durationSec || 0);
   const mainFrames = Math.max(1, Math.round(durationSec * fps));
   const visuals = config.visuals || [];
-  if (config.qualityPolicy === 'PRODUCTION' && (!config.audio?.voiceoverSrc || !visuals.length)) {
+  const presenter = config.presenter;
+  const layout = presenter?.scenes?.find(s => frame >= Math.round(s.startSec * fps) && frame < Math.round(s.endSec * fps))?.layout || 'presenter';
+  if (config.qualityPolicy === 'PRODUCTION' && (!config.audio?.voiceoverSrc || (!visuals.length && !presenter?.src))) {
     throw new Error('DGBN production needs approved narration and at least one reviewed visual');
   }
   const shots = buildShots(visuals, mainFrames, fps);
@@ -158,14 +160,16 @@ export const DgbnFaceless = ({config}) => {
 
   return <AbsoluteFill style={{background:'#080807', color:'#fff', fontFamily:'Arial, Helvetica, sans-serif'}}>
     {config.audio?.voiceoverSrc && <Sequence from={0} durationInFrames={mainFrames}><Audio src={resolveSrc(config.audio.voiceoverSrc)} volume={1} /></Sequence>}
-    {shots.map((shot, index) => (
+    {presenter?.src && frame < mainFrames && <OffthreadVideo src={resolveSrc(presenter.src)} muted style={{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover'}} />}
+    {(!presenter || layout !== 'presenter') && shots.map((shot, index) => (
       <Sequence key={index} from={shot.start} durationInFrames={Math.max(1, shot.end - shot.start + (index < shots.length - 1 ? FADE_FRAMES : 0))}>
         <Shot shot={{...shot, accent: ACCENT}} fps={fps} />
       </Sequence>
     ))}
-    {current?.visual.label?.includes('AI-GENERATED') && <div style={{position:'absolute',top:56,right:64,background:'#101010df',padding:'10px 16px',fontSize:26,fontWeight:800,color:ACCENT}}>AI-GENERATED ILLUSTRATION</div>}
-    {['ILLUSTRATIVE IMAGE', 'ILLUSTRATIVE FOOTAGE', 'FILE FOOTAGE', 'ARCHIVE'].includes(current?.visual.label) && frame < mainFrames && <div style={{position:'absolute',top:60,right:64,background:'#101010c0',padding:'6px 12px',fontSize:20,fontWeight:700,letterSpacing:1,color:'#ddd'}}>{current.visual.label}</div>}
-    {current?.visual.credit?.trim() && frame < mainFrames && <div style={{position:'absolute',bottom:262,left:48,right:200,fontSize:23,fontWeight:600,color:'rgba(255,255,255,.82)',textShadow:'0 1px 5px #000, 0 0 10px #000',
+    {presenter?.src && layout === 'pip' && frame < mainFrames && <OffthreadVideo src={resolveSrc(presenter.src)} muted style={{position:'absolute',right:48,bottom:580,width:340,height:490,objectFit:'cover',borderRadius:20,border:'4px solid '+ACCENT}} />}
+    {(!presenter || layout !== 'presenter') && current?.visual.label?.includes('AI-GENERATED') && <div style={{position:'absolute',top:56,right:64,background:'#101010df',padding:'10px 16px',fontSize:26,fontWeight:800,color:ACCENT}}>AI-GENERATED ILLUSTRATION</div>}
+    {(!presenter || layout !== 'presenter') && ['ILLUSTRATIVE IMAGE', 'ILLUSTRATIVE FOOTAGE', 'FILE FOOTAGE', 'ARCHIVE'].includes(current?.visual.label) && frame < mainFrames && <div style={{position:'absolute',top:60,right:64,background:'#101010c0',padding:'6px 12px',fontSize:20,fontWeight:700,letterSpacing:1,color:'#ddd'}}>{current.visual.label}</div>}
+    {(!presenter || layout !== 'presenter') && current?.visual.credit?.trim() && frame < mainFrames && <div style={{position:'absolute',bottom:262,left:48,right:200,fontSize:23,fontWeight:600,color:'rgba(255,255,255,.82)',textShadow:'0 1px 5px #000, 0 0 10px #000',
       whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{current.visual.kind === 'video' ? 'Video' : 'Photo'}: {current.visual.credit.trim().slice(0, 90)}</div>}
     {config.draft && <div style={{position:'absolute',bottom:60,left:64,right:64,textAlign:'center',background:'#b00020e6',padding:'10px',fontSize:26,fontWeight:900,letterSpacing:2}}>DRAFT - NOT FOR PUBLICATION</div>}
     <div style={{position:'absolute',top:0,left:0,right:0,height:12,background:ACCENT}} />

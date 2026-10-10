@@ -111,7 +111,8 @@ function renderMain() {
     h('h3', {}, 'Storyboard'),
     stockKeysBox(),
     p.scenes.length ? p.scenes.map((s, i) => sceneCard(p, s, i)) : h('div', {class: 'muted'}, 'Write the script, then split it into scenes.'),
-    narrationBox(p),
+    productionBox(p),
+    (p.productionMode || 'FACELESS') === 'FACELESS' ? narrationBox(p) : null,
     h('div', {id: 'exportBox'}),
   );
   renderExport();
@@ -136,6 +137,8 @@ function sceneCard(p, scene, i) {
   return h('div', {class: 'box scene'},
     h('div', {class: 'muted'}, 'Scene ' + (i + 1)),
     h('div', {class: 'text'}, scene.text),
+    p.productionMode && p.productionMode !== 'FACELESS' ? h('div', {}, h('label', {}, 'Scene layout'),
+      select(['presenter', 'broll', 'pip'], scene.layout || 'presenter', guard(async layout => setProject(await api('PUT', `/api/projects/${p.id}/scenes/${scene.id}/layout`, {layout}))))) : null,
     h('div', {class: 'assets'}, scene.assets.length ? scene.assets.map(a => assetCard(p, scene, a)) : h('div', {class: 'blocker'}, 'No asset yet.')),
     h('div', {class: 'row'},
       h('input', {class: 'grow', placeholder: 'Search Wikimedia Commons…', value: cs.q, oninput: e => cs.q = e.target.value,
@@ -246,7 +249,7 @@ function startPolling() {
 (async function init() {
   try {
     state.meta = await api('GET', '/api/health');
-    state.meta = {brands: state.meta.brands, storyTypes: state.meta.storyTypes, labels: state.meta.labels, rights: state.meta.rights};
+    // Keep all capability metadata returned by the server.
     await loadProjects();
   } catch (e) { toast(e.message, true); }
 })();
@@ -340,4 +343,24 @@ function playerCardFields(a, update) {
     h('label', {}, 'Role / number'), h('input', {value: c.role, placeholder: 'e.g. Midfielder · 41', onchange: e => { c.role = e.target.value; save(); }}),
     h('label', {}, 'Status chip'), status,
     h('label', {}, 'One line of data'), h('input', {value: c.line, placeholder: 'e.g. Minor hamstring concern', onchange: e => { c.line = e.target.value; save(); }}));
+}
+
+function productionBox(p) {
+  const mode = p.productionMode || 'FACELESS';
+  const names = {FACELESS: 'Faceless', PRESENTER: 'Presenter / avatar recording', REAL_CAMERA: 'Real camera recording'};
+  const choice = select(Object.keys(names), mode, guard(async productionMode => setProject(await api('PUT', '/api/projects/' + p.id, {productionMode}))));
+  [...choice.options].forEach(o => o.textContent = names[o.value]);
+  const input = h('input', {type: 'file', accept: '.mp4,.webm,.mov'});
+  return h('div', {class: 'box'}, h('h3', {}, 'Production mode'), choice,
+    mode !== 'FACELESS' ? h('div', {},
+      h('p', {class: 'muted'}, 'Upload one continuous recording of this script, with spoken audio. Set each scene to presenter, B-roll, or picture-in-picture. The recording continues underneath all visuals.'),
+      input, h('button', {onclick: guard(async () => {
+        const f = input.files[0]; if (!f) throw new Error('Choose a presenter video');
+        toast('Uploading presenter…');
+        setProject(await api('POST', `/api/projects/${p.id}/presenter?name=${encodeURIComponent(f.name)}`, undefined, {body: f, type: f.type}));
+      })}, 'Upload presenter'),
+      p.presenter ? h('div', {},
+        h('video', {controls: true, src: `/files/${p.id}/${p.presenter.file}`, style: 'max-width:320px;width:100%'}),
+        h('label', {}, 'Recording review'),
+        select(['DRAFT', 'APPROVED'], p.presenter.status, guard(async status => setProject(await api('PUT', `/api/projects/${p.id}/presenter`, {status}))))) : null) : null);
 }
