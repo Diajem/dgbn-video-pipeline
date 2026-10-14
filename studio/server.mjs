@@ -9,7 +9,7 @@ import crypto from 'node:crypto';
 import {spawn, execFile} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {
-  HttpError, ROOT, LABELS, RIGHTS, STORY_TYPES, BRANDS, FORMATS, formatOf, sourcesText, newId, validId, assetsDir, projectDir,
+  HttpError, ROOT, MODES, LAYOUTS, modeOf, LABELS, RIGHTS, STORY_TYPES, BRANDS, FORMATS, formatOf, sourcesText, newId, validId, assetsDir, projectDir,
   loadProject, saveProject, listProjects, createProject, splitScenes, gateProject, exportJob,
 } from './lib/project.mjs';
 import {VOICES, getKey, saveKey, clearKey, narrate} from './lib/google-voice.mjs';
@@ -96,7 +96,7 @@ async function api(req, res, url, p) {
   const method = req.method;
   let m;
 
-  if (p === '/api/health') return send(res, 200, {ok: true, labels: LABELS, rights: RIGHTS, storyTypes: STORY_TYPES, brands: BRANDS, formats: FORMATS});
+  if (p === '/api/health') return send(res, 200, {ok: true, labels: LABELS, rights: RIGHTS, storyTypes: STORY_TYPES, brands: BRANDS, formats: FORMATS, productionModes: MODES});
   if (p === '/api/projects' && method === 'GET') return send(res, 200, await listProjects());
   if (p === '/api/projects' && method === 'POST') return send(res, 200, await createProject(await readJson(req)));
 
@@ -126,7 +126,12 @@ async function api(req, res, url, p) {
       if (STORY_TYPES.includes(b.storyType)) project.storyType = b.storyType;
       if (FORMATS.includes(b.format)) project.format = b.format;
       if (typeof b.headline === 'string') project.headline = b.headline.slice(0, 200);
-      if (typeof b.script === 'string') project.script = b.script.slice(0, 20000);
+      if (MODES.includes(b.productionMode)) project.productionMode = b.productionMode;
+      if (typeof b.script === 'string' && b.script.slice(0, 20000) !== project.script) {
+        project.script = b.script.slice(0, 20000);
+        if (project.audio) project.audio.status = 'DRAFT';
+        if (project.presenter) project.presenter.status = 'DRAFT';
+      }
       if (typeof b.sourceText === 'string') project.sourceText = b.sourceText.slice(0, 100000);
       return send(res, 200, await saveProject(project));
     }
@@ -210,6 +215,46 @@ async function api(req, res, url, p) {
         if (b.rights === 'cleared' && !String(asset.rightsNote || '').trim()) throw new HttpError(400, 'Add a rights note saying where permission comes from before marking this cleared');
         asset.rights = asset.label === AI_LABEL ? 'ai_labelled' : b.rights;
       }
+      return send(res, 200, await saveProject(project));
+    }
+  }
+
+  if ((m = p.match(/^\/api\/projects\/([a-f0-9]{12})\/scenes\/(s[a-f0-9]{6})\/layout$/)) && method === 'PUT') {
+    const project = await loadProject(m[1]);
+    const b = await readJson(req);
+    if (!LAYOUTS.includes(b.layout)) throw new HttpError(400, 'Unknown scene layout');
+    sceneOf(project, m[2]).layout = b.layout;
+    return send(res, 200, await saveProject(project));
+  }
+  if ((m = p.match(/^\/api\/projects\/([a-f0-9]{12})\/presenter$/))) {
+    const project = await loadProject(m[1]);
+    if (method === 'POST') {
+      const name = String(url.searchParams.get('name') || '');
+      const ext = path.extname(name).toLowerCase();
+      if (MEDIA[ext]?.[0] !== 'video') throw new HttpError(400, 'Upload an MP4, WebM or MOV presenter recording');
+      const file = 'presenter-' + newId(3) + ext;
+      await fs.mkdir(assetsDir(project.id), {recursive: true});
+      const target = path.join(assetsDir(project.id), file);
+      await streamToFile(req, target, 300 * 1024 * 1024);
+      try {
+        const output = await new Promise((resolve, reject) => execFile('ffprobe', ['-v', 'error', '-show_streams', '-of', 'json', target], {maxBuffer: 2000000}, (e, stdout) => e ? reject(e) : resolve(stdout)));
+        const streams = JSON.parse(output).streams || [];
+        if (!streams.some(s => s.codec_type === 'video') || !streams.some(s => s.codec_type === 'audio')) throw new Error('Missing video or audio');
+      } catch {
+        await fs.unlink(target).catch(() => {});
+        throw new HttpError(400, 'Presenter recording must contain both video and spoken audio');
+      }
+      const previous = project.presenter?.file;
+      project.presenter = {file, status: 'DRAFT', name: name.slice(0, 120)};
+      await saveProject(project);
+      if (previous) await fs.unlink(path.join(assetsDir(project.id), previous)).catch(() => {});
+      return send(res, 200, project);
+    }
+    if (method === 'PUT') {
+      const b = await readJson(req);
+      if (!project.presenter) throw new HttpError(400, 'Upload a presenter recording first');
+      if (!['DRAFT', 'APPROVED'].includes(b.status)) throw new HttpError(400, 'Unknown review status');
+      project.presenter.status = b.status;
       return send(res, 200, await saveProject(project));
     }
   }
@@ -317,7 +362,7 @@ async function api(req, res, url, p) {
       const outName = `studio-${id}-${result.mode}-${new Date().toISOString().replace(/\D/g, '').slice(2, 14)}.mp4`;
       const state = {status: 'running', mode: result.mode, startedAt: new Date().toISOString(), output: null, log: '', warnings: result.warnings};
       renderState.set(id, state);
-      const child = spawn('npx', ['remotion', 'render', 'src/index.jsx', 'DGBNFaceless9x16', path.join(RENDERS, outName), `--props=${result.propsPath}`],
+      const child = spawn('npx', ['remotion', 'render', 'src/index.jsx', result.composition, path.join(RENDERS, outName), `--props=${result.propsPath}`],
         {cwd: path.join(ROOT, 'video-studio', 'remotion'), shell: true, windowsHide: true});
       const keep = chunk => { state.log = (state.log + chunk.toString()).slice(-4000); };
       child.stdout.on('data', keep);

@@ -15,6 +15,9 @@ const VALIDATOR = path.join(ROOT, 'scripts', 'validate-dgbn-faceless.mjs');
 export const LABELS = ['EDITORIAL IMAGE', 'ILLUSTRATIVE IMAGE', 'ILLUSTRATIVE FOOTAGE', 'FILE FOOTAGE', 'ARCHIVE', 'AI-GENERATED ILLUSTRATION', 'GRAPHIC'];
 export const RIGHTS = ['cleared', 'ai_labelled', 'needs_permission', 'unknown'];
 export const STORY_TYPES = ['present', 'past', 'football', 'data', 'graphic'];
+export const MODES = ['FACELESS', 'PRESENTER', 'REAL_CAMERA'];
+export const modeOf = p => MODES.includes(p?.productionMode) ? p.productionMode : 'FACELESS';
+export const LAYOUTS = ['presenter', 'broll', 'pip'];
 export const BRANDS = ['DGBN', 'DSN'];
 // short = Shorts/Reels (no on-screen credits, unresolved rights warn), long = credits card at the end, website = strict.
 export const FORMATS = ['short', 'long', 'website'];
@@ -70,7 +73,7 @@ export async function createProject({title, brand, storyType, format, sourceText
     storyType: STORY_TYPES.includes(storyType) ? storyType : 'present',
     format: FORMATS.includes(format) ? format : 'short',
     headline: String(headline || '').slice(0, 200), script: '', sourceText, sourceUrl, candidates,
-    scenes: [], audio: null, createdAt: new Date().toISOString(),
+    productionMode: 'FACELESS', presenter: null, scenes: [], audio: null, createdAt: new Date().toISOString(),
   };
   return saveProject(project);
 }
@@ -95,7 +98,7 @@ export function splitScenes(script, existing = []) {
       else groups.push(current.join(' '));
     }
   }
-  return groups.map((text, i) => ({id: existing[i]?.id || 's' + newId(3), text, assets: existing[i]?.assets || []}));
+  return groups.map((text, i) => ({id: existing[i]?.id || 's' + newId(3), text, layout: existing[i]?.layout || 'presenter', assets: existing[i]?.assets || []}));
 }
 
 function copiedFromSource(script, source, n = 10) {
@@ -112,13 +115,19 @@ function copiedFromSource(script, source, n = 10) {
 export function gateProject(project, {draft = false} = {}) {
   const blockers = [], warnings = [];
   const format = formatOf(project);
+  const presenterMode = modeOf(project) !== 'FACELESS';
+  if (presenterMode && !project.presenter?.file) blockers.push('Upload a continuous presenter video with audio.');
+  if (presenterMode && !draft && project.presenter?.status !== 'APPROVED') blockers.push('Review and approve the presenter recording for final export.');
+  if (presenterMode && project.scenes.some(s => ['broll', 'pip'].includes(s.layout) && !s.assets.length)) blockers.push('Each B-roll or picture-in-picture scene needs an image or clip.');
   if (!project.headline?.trim()) blockers.push('Add a headline.');
   if (!project.script?.trim()) blockers.push('Add a script.');
   if (!project.scenes.length) blockers.push('Split the script into scenes.');
-  if (project.scenes.length && !project.scenes.some(sc => sc.assets.length)) blockers.push('Add at least one image or clip. Scenes without their own picture keep the previous one on screen.');
+  const normalise = t => String(t || '').replace(/\s+/g, ' ').trim();
+  if (presenterMode && normalise(project.scenes.map(s => s.text).join(' ')) !== normalise(project.script)) blockers.push('The script changed. Split it into scenes again before rendering.');
+  if (!presenterMode && project.scenes.length && !project.scenes.some(sc => sc.assets.length)) blockers.push('Add at least one image or clip. Scenes without their own picture keep the previous one on screen.');
   project.scenes.forEach((scene, i) => {
     const n = i + 1;
-    if (!scene.assets.length && project.scenes.some(sc => sc.assets.length)) warnings.push(`Scene ${n} has no picture of its own, so the previous picture stays on screen. Add one if you want a change.`);
+    if (!presenterMode && !scene.assets.length && project.scenes.some(sc => sc.assets.length)) warnings.push(`Scene ${n} has no picture of its own, so the previous picture stays on screen. Add one if you want a change.`);
     for (const asset of scene.assets) {
       const where = `Scene ${n}, ${asset.file}`;
       const ai = asset.label === AI_LABEL;
@@ -135,8 +144,8 @@ export function gateProject(project, {draft = false} = {}) {
       if (ai && project.storyType === 'football') warnings.push(`${where}: football reports should use real images of the people and places. Do not generate likenesses of real people.`);
     }
   });
-  if (!project.audio?.file) blockers.push('Add narration (upload audio, or use the draft voice for a draft render).');
-  else if (!draft && project.audio.status !== 'APPROVED') blockers.push('Narration must be marked APPROVED for a final export. The draft voice is for draft renders only.');
+  if (!presenterMode && !project.audio?.file) blockers.push('Add narration (upload audio, or use the draft voice for a draft render).');
+  else if (!presenterMode && !draft && project.audio.status !== 'APPROVED') blockers.push('Narration must be marked APPROVED for a final export. The draft voice is for draft renders only.');
   if (project.sourceText && copiedFromSource(project.script, project.sourceText)) warnings.push('The script repeats a long run of words from the source article. Rewrite it in your own words.');
   return {blockers, warnings};
 }
@@ -186,8 +195,10 @@ export async function exportJob(project, {draft = false} = {}) {
   await fs.rm(dest, {recursive: true, force: true});
   await fs.mkdir(dest, {recursive: true});
 
-  const audioExt = path.extname(project.audio.file);
-  await fs.copyFile(path.join(assetsDir(project.id), project.audio.file), path.join(dest, 'narration' + audioExt));
+  const presenterMode = modeOf(project) !== 'FACELESS';
+  const narration = presenterMode ? project.presenter : project.audio;
+  const audioExt = path.extname(narration.file);
+  await fs.copyFile(path.join(assetsDir(project.id), narration.file), path.join(dest, 'narration' + audioExt));
   const durationSec = round3(probeDuration(path.join(dest, 'narration' + audioExt)));
 
   const totalWords = project.scenes.reduce((sum, s) => sum + Math.max(1, wordCount(s.text)), 0);
@@ -195,10 +206,13 @@ export async function exportJob(project, {draft = false} = {}) {
   let lastAssets = null;
   const firstAsset = project.scenes.flatMap(sc => sc.assets)[0];
   const visuals = [];
+  const presenterScenes = [];
   for (const scene of project.scenes) {
     const sceneStart = durationSec * cursor / totalWords;
     cursor += Math.max(1, wordCount(scene.text));
     const sceneEnd = durationSec * cursor / totalWords;
+    presenterScenes.push({startSec: round3(sceneStart), endSec: round3(sceneEnd), layout: LAYOUTS.includes(scene.layout) ? scene.layout : 'presenter'});
+    if (presenterMode && !scene.assets.length) continue;
     if (scene.assets.length) lastAssets = scene.assets;
     const sceneAssets = scene.assets.length ? scene.assets : (lastAssets || [firstAsset]);
     const slice = (sceneEnd - sceneStart) / sceneAssets.length;
@@ -217,13 +231,15 @@ export async function exportJob(project, {draft = false} = {}) {
       });
     }
   }
-  visuals[visuals.length - 1].endSec = durationSec;
+  if (visuals.length && !presenterMode) visuals[visuals.length - 1].endSec = durationSec;
 
   const job = {
     version: 'DGBN_FACELESS_V1', brand: project.brand, storyId: project.id,
     sourceScriptArtifactId: `studio-${project.id}-script`, narrationArtifactId: `studio-${project.id}-audio`,
     headline: project.headline, script: project.script, durationSec, staged: true,
-    audio: {voiceoverSrc: `assets/studio/${project.id}/narration${audioExt}`, voiceoverStatus: project.audio.status},
+    audio: {voiceoverSrc: `assets/studio/${project.id}/narration${audioExt}`, voiceoverStatus: narration.status},
+    productionMode: modeOf(project),
+    ...(presenterMode ? {presenter: {src: `assets/studio/${project.id}/narration${audioExt}`, scenes: presenterScenes}} : {}),
     visuals, qualityPolicy: draft ? 'DRAFT' : 'PRODUCTION', draft,
     format, aiAssisted: true,
     credits: format === 'long' ? [...new Set(project.scenes.flatMap(sc => sc.assets.map(a => a.credit?.trim()).filter(Boolean)))].slice(0, 12) : [],
@@ -237,10 +253,10 @@ export async function exportJob(project, {draft = false} = {}) {
   await fs.writeFile(propsPath, JSON.stringify({config: job}) + '\n', 'utf8');
 
   try {
-    execFileSync('node', [VALIDATOR, jobPath], {cwd: ROOT, env: {...process.env, ALLOW_DRAFT: draft ? '1' : ''}, encoding: 'utf8', stdio: 'pipe'});
+    if (!presenterMode) execFileSync('node', [VALIDATOR, jobPath], {cwd: ROOT, env: {...process.env, ALLOW_DRAFT: draft ? '1' : ''}, encoding: 'utf8', stdio: 'pipe'});
   } catch (error) {
     const text = String(error.stderr || error.message).split('\n').find(l => /validation failed/i.test(l)) || String(error.message);
     return {ok: false, blockers: [text.trim()], warnings};
   }
-  return {ok: true, jobPath, propsPath, mode, durationSec, warnings};
+  return {ok: true, composition: presenterMode ? 'StudioPresenter9x16' : 'DGBNFaceless9x16', jobPath, propsPath, mode, durationSec, warnings};
 }
