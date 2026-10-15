@@ -104,13 +104,14 @@ function renderMain() {
       h('label', {}, 'Script (your own words, British English)'), scriptBox,
       h('div', {class: 'row', style: 'margin-top:8px'},
         h('button', {class: 'primary', onclick: guard(async () => { await api('PUT', '/api/projects/' + p.id, {script: scriptBox.value}); setProject(await api('POST', `/api/projects/${p.id}/split`)); })}, 'Split into scenes'),
+        p.productionMode === 'REAL_CAMERA' ? h('button', {onclick: guard(async () => setProject(await api('POST', `/api/projects/${p.id}/split`, {noScript: true})))}, 'Use recording without script') : null,
         h('span', {class: 'muted'}, 'Re-splitting keeps assets by scene position.'))),
     p.sourceText ? h('details', {class: 'box'}, h('summary', {}, 'Source material' + (p.sourceUrl ? ' – ' + p.sourceUrl : '')),
       h('textarea', {value: p.sourceText, onchange: fieldSave('sourceText')})) : null,
     p.candidates?.length ? candidatesBox(p) : null,
     h('h3', {}, 'Storyboard'),
     stockKeysBox(),
-    p.scenes.length ? p.scenes.map((s, i) => sceneCard(p, s, i)) : h('div', {class: 'muted'}, 'Write the script, then split it into scenes.'),
+    p.scenes.length ? p.scenes.map((s, i) => sceneCard(p, s, i)) : h('div', {class: 'muted'}, p.productionMode === 'REAL_CAMERA' ? 'Split a script or use the recording without a script.' : 'Write the script, then split it into scenes.'),
     productionBox(p),
     (p.productionMode || 'FACELESS') === 'FACELESS' ? narrationBox(p) : null,
     h('div', {id: 'exportBox'}),
@@ -353,7 +354,7 @@ function productionBox(p) {
   const input = h('input', {type: 'file', accept: '.mp4,.webm,.mov'});
   return h('div', {class: 'box'}, h('h3', {}, 'Production mode'), choice,
     mode !== 'FACELESS' ? h('div', {},
-      h('p', {class: 'muted'}, 'Upload one continuous recording of this script, with spoken audio. Set each scene to presenter, B-roll, or picture-in-picture. The recording continues underneath all visuals.'),
+      h('p', {class: 'muted'}, mode === 'REAL_CAMERA' && !p.script?.trim() ? 'Upload one continuous camera recording with audio. No script or generated captions are needed; the recording plays full screen.' : 'Upload one continuous recording of this script, with spoken audio. Set each scene to presenter, B-roll, or picture-in-picture. The recording continues underneath all visuals.'),
       input, h('button', {onclick: guard(async () => {
         const f = input.files[0]; if (!f) throw new Error('Choose a presenter video');
         toast('Uploading presenter…');

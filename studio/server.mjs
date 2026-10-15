@@ -139,7 +139,13 @@ async function api(req, res, url, p) {
 
   if ((m = p.match(/^\/api\/projects\/([a-f0-9]{12})\/split$/)) && method === 'POST') {
     const project = await loadProject(m[1]);
-    project.scenes = splitScenes(project.script, project.scenes);
+    const b = await readJson(req);
+    if (b.noScript) {
+      if (project.productionMode !== 'REAL_CAMERA') throw new HttpError(400, 'Script-free recording is available in Real camera mode');
+      project.script = '';
+      project.scenes = [{id: project.scenes[0]?.id || 's' + newId(3), text: '', layout: 'presenter', assets: []}];
+      if (project.presenter) project.presenter.status = 'DRAFT';
+    } else project.scenes = splitScenes(project.script, project.scenes);
     return send(res, 200, await saveProject(project));
   }
 

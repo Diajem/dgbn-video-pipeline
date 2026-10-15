@@ -28,3 +28,10 @@ test('re-splitting retains layout choices', () => {
   const scenes = splitScenes('One paragraph.\n\nSecond paragraph.', [{id:'s123456',layout:'pip',assets:[]}]);
   assert.equal(scenes[0].layout, 'pip');
 });
+test('real camera recording can render with one scene and no script', () => {
+  const p = project(); p.productionMode = 'REAL_CAMERA'; p.script = '';
+  p.scenes = [{id: 's123456', text: '', layout: 'presenter', assets: []}];
+  assert.deepEqual(gateProject(p).blockers, []);
+  p.scenes.push({...p.scenes[0], id: 's654321'});
+  assert.ok(gateProject(p).blockers.some(b => b.includes('one continuous')));
+});
