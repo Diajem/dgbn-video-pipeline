@@ -21,8 +21,8 @@ test('scene boundaries sit in the pause between words', () => {
   assert.deepEqual(b[0], {startSec: 0, endSec: 2.8});
   assert.deepEqual(b[1], {startSec: 2.8, endSec: 7});
 });
-test('a transcript replaces the need for a typed script', () => {
-  const p = {headline: 'x', script: '', scenes: [], productionMode: 'REAL_CAMERA', presenter: {file: 'a.mp4', status: 'APPROVED', transcript: {words}}};
+test('a presenter recording without a script points to Transcribe', () => {
+  const p = {headline: 'x', script: '', scenes: [], productionMode: 'PRESENTER', presenter: {file: 'a.mp4', status: 'APPROVED', transcript: {words}}};
   assert.ok(gateProject(p).blockers.some(b => b.includes('Transcribe')));
 });
 test('missing transcript only warns', () => {
