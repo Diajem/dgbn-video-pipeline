@@ -15,7 +15,7 @@ import {
 import {VOICES, getKey, saveKey, clearKey, narrate} from './lib/google-voice.mjs';
 import {importUrl, searchCommons, downloadImage, licenceRights} from './lib/sources.mjs';
 import {PROVIDERS, stockStatus, saveStockKey, clearStockKey, searchStock, stockHostOk, downloadStock, stockAssetFields} from './lib/stock.mjs';
-import {wanStatus, saveWan, clearWanKey, checkWan, startWanTest, wanTestStatus} from './lib/wan.mjs';
+import {wanStatus, saveWan, clearWanKey, checkWan, startWanTest, wanTestStatus, wanClips, wanClipPath} from './lib/wan.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.STUDIO_PORT || 4177);
@@ -357,7 +357,20 @@ async function api(req, res, url, p) {
   if (p === '/api/wan' && method === 'PUT') { const b = await readJson(req); await saveWan(b); return send(res, 200, await wanStatus()); }
   if (p === '/api/wan' && method === 'DELETE') { await clearWanKey(); return send(res, 200, await wanStatus()); }
   if (p === '/api/wan/check' && method === 'POST') return send(res, 200, await checkWan());
-  if (p === '/api/wan/test' && method === 'POST') return send(res, 200, await startWanTest());
+  if (p === '/api/wan/test' && method === 'POST') { const b = await readJson(req).catch(() => ({})); return send(res, 200, await startWanTest({prompt: b.prompt})); }
+  if (p === '/api/wan/clips' && method === 'GET') return send(res, 200, {clips: await wanClips()});
+  if ((m = p.match(/^\/api\/projects\/([a-f0-9]{12})\/scenes\/(s[a-f0-9]{6})\/wan-clip$/)) && method === 'POST') {
+    const project = await loadProject(m[1]);
+    const scene = sceneOf(project, m[2]);
+    const b = await readJson(req);
+    const src = await wanClipPath(String(b.file || ''));
+    const id = 'a' + newId(3);
+    const file = id + '.mp4';
+    await fs.mkdir(assetsDir(project.id), {recursive: true});
+    await fs.copyFile(src, path.join(assetsDir(project.id), file));
+    scene.assets.push(newAsset('video', file, {id, origin: 'ai', rights: 'ai_labelled', label: AI_LABEL, notes: 'Wan AI-generated motion clip'}));
+    return send(res, 200, await saveProject(project));
+  }
   if (p === '/api/wan/test' && method === 'GET') return send(res, 200, wanTestStatus());
 
   if (p === '/api/stock' && method === 'GET') return send(res, 200, {providers: PROVIDERS, configured: await stockStatus()});

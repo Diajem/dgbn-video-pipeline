@@ -76,3 +76,10 @@ test('test clip: refuses to start without a key, runs once at a time, reports do
   assert.equal(wanTestStatus().state, 'failed');
   assert.ok(!JSON.stringify(wanTestStatus()).includes(KEY));
 });
+
+test('spend guard and clip names', async () => {
+  const {wanClips, wanClipPath} = await import('../lib/wan.mjs');
+  await assert.rejects(wanClipPath('../secrets.json'), /Unknown clip/);
+  await assert.rejects(wanClipPath('nope.mp4'), /not found/);
+  assert.ok(Array.isArray(await wanClips()));
+});

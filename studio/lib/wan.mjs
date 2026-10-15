@@ -90,6 +90,7 @@ export async function checkWan(fetchImpl = fetch) {
 // ---- One-off paid test clip (capped: one clip, 5 seconds, 720p, no sound) ----
 const TEST_DIR = path.join(HERE, '..', 'data', 'wan-tests');
 const TEST_PROMPT = 'Slow wide shot of a dusty rural road in South Africa at dawn in 1913, a Black family carrying bundles walking away from the camera, long soft shadows, painterly historical illustration style, gentle camera push forward, no text, no logos, no close-up faces.';
+const MAX_CLIPS = 6; // spend guard: the first test clip plus five more
 let test = {state: 'idle'};
 
 export function wanTestStatus() { return {...test}; }
@@ -98,6 +99,7 @@ export async function startWanTest({prompt, run = null} = {}) {
   if (test.state === 'running') throw Object.assign(new Error('A test clip is already being made'), {status: 409});
   const {apiKey, workspaceId, region} = await wanConfig();
   if (!apiKey || !workspaceId) throw Object.assign(new Error('Save the Wan key and workspace first'), {status: 400});
+  if (!run && (await wanClips()).length >= MAX_CLIPS) throw Object.assign(new Error(`Spend guard: ${MAX_CLIPS} clips already made. Ask before making more.`), {status: 400});
   process.env.WAN_3_API_KEY = apiKey; process.env.WAN_3_WORKSPACE_ID = workspaceId; process.env.WAN_3_REGION = region;
   const text = String(prompt || TEST_PROMPT).slice(0, 800);
   const file = path.join(TEST_DIR, `wan-test-${Date.now()}.mp4`);
@@ -113,4 +115,14 @@ export async function startWanTest({prompt, run = null} = {}) {
   runner().then(r => { test = {...test, state: 'done', finishedAt: new Date().toISOString(), file: path.basename(r.file || file), bytes: r.bytes}; })
     .catch(e => { test = {...test, state: 'failed', finishedAt: new Date().toISOString(), error: String(e.message || e).replace(/sk-[A-Za-z0-9_\-.:]+/g, 'sk-…')}; });
   return wanTestStatus();
+}
+
+export async function wanClips() {
+  try { return (await fs.readdir(TEST_DIR)).filter(f => /^[\w.-]+\.mp4$/.test(f)).sort(); } catch { return []; }
+}
+export async function wanClipPath(name) {
+  if (!/^[\w.-]+\.mp4$/.test(String(name))) throw Object.assign(new Error('Unknown clip'), {status: 400});
+  const file = path.join(TEST_DIR, name);
+  try { await fs.access(file); } catch { throw Object.assign(new Error('Clip not found'), {status: 404}); }
+  return file;
 }
