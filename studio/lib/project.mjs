@@ -120,10 +120,11 @@ export function gateProject(project, {draft = false} = {}) {
   if (presenterMode && !draft && project.presenter?.status !== 'APPROVED') blockers.push('Review and approve the presenter recording for final export.');
   if (presenterMode && project.scenes.some(s => ['broll', 'pip'].includes(s.layout) && !s.assets.length)) blockers.push('Each B-roll or picture-in-picture scene needs an image or clip.');
   if (!project.headline?.trim()) blockers.push('Add a headline.');
-  if (!project.script?.trim()) blockers.push('Add a script.');
+  if (!project.script?.trim() && modeOf(project) !== 'REAL_CAMERA') blockers.push('Add a script.');
   if (!project.scenes.length) blockers.push('Split the script into scenes.');
   const normalise = t => String(t || '').replace(/\s+/g, ' ').trim();
   if (presenterMode && normalise(project.scenes.map(s => s.text).join(' ')) !== normalise(project.script)) blockers.push('The script changed. Split it into scenes again before rendering.');
+  if (modeOf(project) === 'REAL_CAMERA' && !project.script?.trim() && project.scenes.length !== 1) blockers.push('Without a script, use one continuous camera scene.');
   if (!presenterMode && project.scenes.length && !project.scenes.some(sc => sc.assets.length)) blockers.push('Add at least one image or clip. Scenes without their own picture keep the previous one on screen.');
   project.scenes.forEach((scene, i) => {
     const n = i + 1;
@@ -172,7 +173,9 @@ function probeSize(file) {
 
 // Plain text for the video description: the AI-assisted note, then every credit and rights note.
 export function sourcesText(project) {
-  const lines = ['Made with AI assistance: AI-assisted script, voice and visuals.', ''];
+  const lines = [modeOf(project) === 'REAL_CAMERA' && !project.script?.trim()
+    ? 'Real-camera recording edited in Diajem Video Studio.'
+    : 'Made with AI assistance: AI-assisted script, voice and visuals.', ''];
   if (project.sourceUrl) lines.push('Story source: ' + project.sourceUrl, '');
   lines.push('Images and clips:');
   project.scenes.forEach((scene, i) => scene.assets.forEach(a => {
