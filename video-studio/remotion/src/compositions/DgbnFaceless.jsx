@@ -38,10 +38,36 @@ export const buildWordChunks = (script, totalFrames) => {
   return chunks;
 };
 
+// Captions timed to the real speech: words carry start/end seconds from the transcript.
+export const buildTimedChunks = (words, fps) => {
+  const list = (words || []).filter(w => w && w.text && Number.isFinite(Number(w.start)));
+  if (!list.length) return [];
+  const timed = list.map((w, i) => {
+    const start = Math.round(Number(w.start) * fps);
+    const next = list[i + 1] ? Math.round(Number(list[i + 1].start) * fps) : null;
+    const spoken = Math.max(start + 1, Math.round(Number(w.end) * fps));
+    // Hold a word until the next one starts unless there is a real pause (more than 0.4 s).
+    const end = next !== null && next - spoken <= Math.round(.4 * fps) ? Math.max(next, start + 1) : spoken;
+    return {text: String(w.text), start, end};
+  });
+  const chunks = [];
+  let cur = [];
+  const flush = () => { if (cur.length) { chunks.push({words: cur, start: cur[0].start, end: cur[cur.length - 1].end}); cur = []; } };
+  for (const w of timed) {
+    cur.push(w);
+    const letters = cur.reduce((n, x) => n + x.text.length, 0);
+    const hard = /[.!?]["”’)]?$/.test(w.text), soft = /[,;:–—]["”’)]?$/.test(w.text);
+    if (cur.length >= 4 || letters > 24 || hard || (soft && cur.length >= 2)) flush();
+  }
+  flush();
+  return chunks;
+};
+
 // How a picture sits in the 9:16 frame. Photos fill and move (Ken Burns); landscape clips sit on a blurred copy of themselves.
-export const fitMode = visual => {
+export const fitMode = (visual, landscape = false) => {
   if (visual.fit === 'fit' || visual.fit === 'fill') return visual.fit;
   const ratio = visual.width && visual.height ? visual.width / visual.height : null;
+  if (landscape) return ratio && ratio < 0.9 ? 'fit' : 'fill';   // wide frame: tall pictures sit whole on a blurred copy
   return visual.kind === 'video' && ratio && ratio > 0.9 ? 'fit' : 'fill';
 };
 
@@ -112,7 +138,7 @@ const Shot = ({shot, fps}) => {
   const eased = t * t * (3 - 2 * t);
   const transform = `translate(${x0 + (x1 - x0) * eased}%, ${y0 + (y1 - y0) * eased}%) scale(${s0 + (s1 - s0) * eased})`;
   const {visual} = shot;
-  const mode = fitMode(visual);
+  const mode = fitMode(visual, shot.landscape);
   const src = resolveSrc(visual.src);
   const startFrom = Math.round(shot.videoOffset * fps);
   if (visual.card?.name && visual.kind !== 'video') return <AbsoluteFill style={{opacity}}><PlayerCard visual={visual} src={src} eased={eased} accent={shot.accent} /></AbsoluteFill>;
@@ -133,7 +159,9 @@ const Shot = ({shot, fps}) => {
 };
 
 export const DgbnFaceless = ({config}) => {
-  const {fps} = useVideoConfig();
+  const {fps, width, height} = useVideoConfig();
+  const landscape = width > height;
+  const L = (portrait, wide) => landscape ? wide : portrait;
   const brand = config.brand === 'DSN' ? 'DSN' : 'DGBN';
   const ACCENT = BRAND_ACCENT[brand];
   const frame = useCurrentFrame();
@@ -141,15 +169,23 @@ export const DgbnFaceless = ({config}) => {
   const mainFrames = Math.max(1, Math.round(durationSec * fps));
   const visuals = config.visuals || [];
   const presenter = config.presenter;
-  const layout = presenter?.scenes?.find(s => frame >= Math.round(s.startSec * fps) && frame < Math.round(s.endSec * fps))?.layout || 'presenter';
+  const currentScene = presenter?.scenes?.find(s => frame >= Math.round(s.startSec * fps) && frame < Math.round(s.endSec * fps));
+  const layout = currentScene?.layout || 'presenter';
+  // The full-screen recording is only decoded while it can be seen: in presenter scenes and during the crossfade into a cutaway.
+  const showFullPresenter = layout === 'presenter' || (currentScene && frame < Math.round(currentScene.startSec * fps) + FADE_FRAMES + 2);
   if (config.qualityPolicy === 'PRODUCTION' && (!config.audio?.voiceoverSrc || (!visuals.length && !presenter?.src))) {
     throw new Error('DGBN production needs approved narration and at least one reviewed visual');
   }
+  // A portrait recording in a wide frame (or the reverse) is shown whole over a blurred copy, not cropped.
+  const presenterRatio = presenter?.width && presenter?.height ? presenter.width / presenter.height : null;
+  const presenterContained = !!presenterRatio && (landscape ? presenterRatio < 1.2 : presenterRatio > 1.2 && config.presenterFit === 'whole');
   const shots = buildShots(visuals, mainFrames, fps);
   const current = shots.find(s => frame >= s.start && frame < s.end) || shots[shots.length - 1];
 
   // Word-by-word captions: three or four words at a time, the spoken word highlighted.
-  const chunks = buildWordChunks(config.script, mainFrames);
+  const chunks = config.captionWords?.length
+    ? buildTimedChunks(config.captionWords.map(w => ({text: w.text, start: w.start, end: w.end})), fps)
+    : buildWordChunks(config.script, mainFrames);
   const chunk = chunks.find(c => frame >= c.start && frame < c.end);
   const activeWord = chunk?.words.find(w => frame >= w.start && frame < w.end) || chunk?.words[chunk.words.length - 1];
   const pop = chunk ? interpolate(frame - chunk.start, [0, 4], [0, 1], clamp) : 1;
@@ -160,29 +196,37 @@ export const DgbnFaceless = ({config}) => {
 
   return <AbsoluteFill style={{background:'#080807', color:'#fff', fontFamily:'Arial, Helvetica, sans-serif'}}>
     {config.audio?.voiceoverSrc && <Sequence from={0} durationInFrames={mainFrames}><Audio src={resolveSrc(config.audio.voiceoverSrc)} volume={1} /></Sequence>}
-    {presenter?.src && frame < mainFrames && <OffthreadVideo src={resolveSrc(presenter.src)} muted style={{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover'}} />}
+    {presenter?.src && frame < mainFrames && showFullPresenter && (presenterContained
+      ? <>
+          {/* blurred backdrop drawn at quarter size then scaled up: same look, a fraction of the blur cost */}
+          <div style={{position:'absolute',left:0,top:0,width:'25%',height:'25%',transformOrigin:'0 0',transform:'scale(4.8) translate(-4%,-4%)',filter:'blur(8px) brightness(.5)'}}>
+            <OffthreadVideo src={resolveSrc(presenter.src)} muted style={{width:'100%',height:'100%',objectFit:'cover'}} />
+          </div>
+          <OffthreadVideo src={resolveSrc(presenter.src)} muted style={{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'contain'}} />
+        </>
+      : <OffthreadVideo src={resolveSrc(presenter.src)} muted style={{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover'}} />)}
     {(!presenter || layout !== 'presenter') && shots.map((shot, index) => (
       <Sequence key={index} from={shot.start} durationInFrames={Math.max(1, shot.end - shot.start + (index < shots.length - 1 ? FADE_FRAMES : 0))}>
-        <Shot shot={{...shot, accent: ACCENT}} fps={fps} />
+        <Shot shot={{...shot, accent: ACCENT, landscape}} fps={fps} />
       </Sequence>
     ))}
-    {presenter?.src && layout === 'pip' && frame < mainFrames && <OffthreadVideo src={resolveSrc(presenter.src)} muted style={{position:'absolute',right:48,bottom:580,width:340,height:490,objectFit:'cover',borderRadius:20,border:'4px solid '+ACCENT}} />}
+    {presenter?.src && layout === 'pip' && frame < mainFrames && <OffthreadVideo src={resolveSrc(presenter.src)} muted style={{position:'absolute',right:L(48,64),bottom:L(580,150),width:L(340,300),height:L(490,430),objectFit:'cover',borderRadius:20,border:'4px solid '+ACCENT}} />}
     {(!presenter || layout !== 'presenter') && current?.visual.label?.includes('AI-GENERATED') && <div style={{position:'absolute',top:56,right:64,background:'#101010df',padding:'10px 16px',fontSize:26,fontWeight:800,color:ACCENT}}>AI-GENERATED ILLUSTRATION</div>}
     {(!presenter || layout !== 'presenter') && ['ILLUSTRATIVE IMAGE', 'ILLUSTRATIVE FOOTAGE', 'FILE FOOTAGE', 'ARCHIVE'].includes(current?.visual.label) && frame < mainFrames && <div style={{position:'absolute',top:60,right:64,background:'#101010c0',padding:'6px 12px',fontSize:20,fontWeight:700,letterSpacing:1,color:'#ddd'}}>{current.visual.label}</div>}
-    {(!presenter || layout !== 'presenter') && current?.visual.credit?.trim() && frame < mainFrames && <div style={{position:'absolute',bottom:262,left:48,right:200,fontSize:23,fontWeight:600,color:'rgba(255,255,255,.82)',textShadow:'0 1px 5px #000, 0 0 10px #000',
+    {(!presenter || layout !== 'presenter') && current?.visual.credit?.trim() && frame < mainFrames && <div style={{position:'absolute',bottom:L(262,140),left:48,right:200,fontSize:23,fontWeight:600,color:'rgba(255,255,255,.82)',textShadow:'0 1px 5px #000, 0 0 10px #000',
       whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{current.visual.kind === 'video' ? 'Video' : 'Photo'}: {current.visual.credit.trim().slice(0, 90)}</div>}
-    {config.draft && <div style={{position:'absolute',bottom:60,left:64,right:64,textAlign:'center',background:'#b00020e6',padding:'10px',fontSize:26,fontWeight:900,letterSpacing:2}}>DRAFT - NOT FOR PUBLICATION</div>}
+    {config.draft && <div style={{position:'absolute',bottom:L(60,24),left:L(64,560),right:L(64,560),textAlign:'center',background:'#b00020e6',padding:L('10px','6px'),fontSize:L(26,22),fontWeight:900,letterSpacing:2}}>DRAFT - NOT FOR PUBLICATION</div>}
     <div style={{position:'absolute',top:0,left:0,right:0,height:12,background:ACCENT}} />
     <div style={{position:'absolute',top:12,left:0,height:6,width:`${progress * 100}%`,background:'rgba(255,255,255,.75)'}} />
-    <div style={{position:'absolute',top:62,left:64,fontWeight:900,letterSpacing:4,fontSize:35,textShadow:'0 2px 8px #000'}}>{brand}</div>
-    <div style={{position:'absolute',top:150,left:48,right:48,background:ACCENT,color:'#0b0b0b',borderRadius:10,padding:'18px 26px',fontWeight:900,lineHeight:1.08,textTransform:'uppercase',
-      fontSize:String(config.headline || '').length > 80 ? 38 : String(config.headline || '').length > 48 ? 46 : 56,boxShadow:'0 8px 28px rgba(0,0,0,.5)',
+    <div style={{position:'absolute',top:L(62,36),left:64,fontWeight:900,letterSpacing:4,fontSize:L(35,28),textShadow:'0 2px 8px #000'}}>{brand}</div>
+    <div style={{position:'absolute',top:L(150,100),left:L(48,64),right:L(48,'auto'),maxWidth:L('none',1240),background:ACCENT,color:'#0b0b0b',borderRadius:10,padding:L('18px 26px','12px 22px'),fontWeight:900,lineHeight:1.08,textTransform:'uppercase',
+      fontSize:(String(config.headline || '').length > 80 ? 38 : String(config.headline || '').length > 48 ? 46 : 56) * L(1,.72),boxShadow:'0 8px 28px rgba(0,0,0,.5)',
       opacity:headlineIn,transform:`translateY(${(1 - headlineIn) * -30}px)`}}>{config.headline}</div>
-    {frame < mainFrames && chunk && <div style={{position:'absolute',bottom:330,left:48,right:48,textAlign:'center',fontSize:76,fontWeight:900,lineHeight:1.12,
-      transform:`scale(${.9 + .1 * pop})`,opacity:.25 + .75 * pop,WebkitTextStroke:'10px #000',paintOrder:'stroke fill',textShadow:'0 6px 22px rgba(0,0,0,.85)'}}>
+    {frame < mainFrames && chunk && <div style={{position:'absolute',bottom:L(330,110),left:L(48,160),right:L(48,160),textAlign:'center',fontSize:L(76,64),fontWeight:900,lineHeight:1.12,
+      transform:`scale(${.9 + .1 * pop})`,opacity:.25 + .75 * pop,WebkitTextStroke:L('10px #000','8px #000'),paintOrder:'stroke fill',textShadow:'0 6px 22px rgba(0,0,0,.85)'}}>
       {chunk.words.map((w, i) => <span key={i} style={{color: w === activeWord ? ACCENT : '#fff'}}>{w.text}{i < chunk.words.length - 1 ? ' ' : ''}</span>)}
     </div>}
-    {format === 'long' && config.credits?.length > 0 && frame >= creditsFrom && frame < mainFrames && <div style={{position:'absolute',bottom:150,left:64,right:64,fontSize:24,lineHeight:1.35,color:'#e6e6e6',textShadow:'0 1px 6px #000',
+    {format === 'long' && config.credits?.length > 0 && frame >= creditsFrom && frame < mainFrames && <div style={{position:'absolute',bottom:L(150,170),left:64,right:64,fontSize:24,lineHeight:1.35,color:'#e6e6e6',textShadow:'0 1px 6px #000',
       opacity:interpolate(frame, [creditsFrom, creditsFrom + 12], [0, 1], clamp)}}>
       <div style={{fontWeight:900,letterSpacing:2,marginBottom:4}}>CREDITS</div>{config.credits.map((c, i) => <div key={i}>{c}</div>)}</div>}
     <Sequence from={mainFrames + Math.round(.4*fps)} durationInFrames={Math.max(1,Math.round(1.5*fps))}>

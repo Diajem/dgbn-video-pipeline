@@ -9,7 +9,7 @@ import crypto from 'node:crypto';
 import {spawn, execFile} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {
-  HttpError, ROOT, MODES, LAYOUTS, modeOf, LABELS, RIGHTS, STORY_TYPES, BRANDS, FORMATS, formatOf, sourcesText, newId, validId, assetsDir, projectDir,
+  HttpError, ROOT, MODES, LAYOUTS, ORIENTATIONS, modeOf, LABELS, RIGHTS, STORY_TYPES, BRANDS, FORMATS, formatOf, sourcesText, newId, validId, assetsDir, projectDir,
   loadProject, saveProject, listProjects, createProject, splitScenes, gateProject, exportJob,
 } from './lib/project.mjs';
 import {VOICES, getKey, saveKey, clearKey, narrate} from './lib/google-voice.mjs';
@@ -41,6 +41,21 @@ const MEDIA = {
 };
 const STATIC = {'.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8'};
 const renderState = new Map();
+const transcribeState = new Map();
+const TRANSCRIBE_DIR = path.join(HERE, 'transcribe');
+const TRANSCRIBE_MODEL = 'onnx-community/whisper-small_timestamped';
+
+// Run a child process, keeping the tail of its output in state.log.
+function runLogged(state, command, args, options) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, args, {...options, windowsHide: true});
+    const keep = chunk => { state.log = (state.log + chunk.toString()).slice(-3000); };
+    child.stdout.on('data', keep);
+    child.stderr.on('data', keep);
+    child.on('error', reject);
+    child.on('close', resolve);
+  });
+}
 
 // Requests that change one project run one at a time, so two quick edits cannot overwrite each other.
 const projectQueues = new Map();
@@ -127,6 +142,7 @@ async function api(req, res, url, p) {
       if (FORMATS.includes(b.format)) project.format = b.format;
       if (typeof b.headline === 'string') project.headline = b.headline.slice(0, 200);
       if (MODES.includes(b.productionMode)) project.productionMode = b.productionMode;
+      if (ORIENTATIONS.includes(b.orientation)) project.orientation = b.orientation;
       if (typeof b.script === 'string' && b.script.slice(0, 20000) !== project.script) {
         project.script = b.script.slice(0, 20000);
         if (project.audio) project.audio.status = 'DRAFT';
@@ -262,6 +278,54 @@ async function api(req, res, url, p) {
       if (!['DRAFT', 'APPROVED'].includes(b.status)) throw new HttpError(400, 'Unknown review status');
       project.presenter.status = b.status;
       return send(res, 200, await saveProject(project));
+    }
+  }
+
+  // Local speech-to-text: gives every spoken word a time, and writes the script when there is none.
+  if ((m = p.match(/^\/api\/projects\/([a-f0-9]{12})\/transcribe$/))) {
+    const id = m[1];
+    if (method === 'GET') return send(res, 200, transcribeState.get(id) || {status: 'idle'});
+    if (method === 'POST') {
+      if (transcribeState.get(id)?.status === 'running') throw new HttpError(409, 'A transcription is already running for this project');
+      const project = await loadProject(id);
+      if (!project.presenter?.file) throw new HttpError(400, 'Upload a recording first');
+      const b = await readJson(req);
+      const language = typeof b.language === 'string' && /^[a-z]{2,20}$/i.test(b.language) ? b.language.toLowerCase() : 'english';
+      const state = {status: 'running', step: 'starting', startedAt: new Date().toISOString(), log: ''};
+      transcribeState.set(id, state);
+      const mediaFile = path.join(assetsDir(id), project.presenter.file);
+      const presenterFile = project.presenter.file;
+      (async () => {
+        try {
+          const installed = await fs.stat(path.join(TRANSCRIBE_DIR, 'node_modules', '@huggingface', 'transformers')).then(() => true, () => false);
+          if (!installed) {
+            state.step = 'installing the speech tools (first run only)';
+            const code = await runLogged(state, 'npm', ['install', '--no-audit', '--no-fund'], {cwd: TRANSCRIBE_DIR, shell: true});
+            if (code !== 0) throw new Error('Installing the speech tools failed.');
+          }
+          state.step = 'transcribing (the first run also downloads the speech model)';
+          const outFile = path.join(projectDir(id), 'transcript.json');
+          const code = await runLogged(state, process.execPath, [path.join(TRANSCRIBE_DIR, 'transcribe.mjs'), mediaFile, outFile, TRANSCRIBE_MODEL, language], {cwd: TRANSCRIBE_DIR});
+          if (code !== 0) throw new Error('Transcription failed.');
+          const t = JSON.parse(await fs.readFile(outFile, 'utf8'));
+          if (!Array.isArray(t.words) || !t.words.length) throw new Error('No speech was found in the recording.');
+          await withProjectLock(id, async () => {
+            const fresh = await loadProject(id);
+            if (fresh.presenter?.file !== presenterFile) throw new Error('The recording changed while transcribing. Run it again.');
+            fresh.presenter.transcript = {text: t.text, words: t.words, model: t.model, language, durationSec: t.durationSec, createdAt: new Date().toISOString()};
+            if (!fresh.script.trim()) {
+              fresh.script = t.text.slice(0, 20000);
+              fresh.scenes = splitScenes(fresh.script, fresh.scenes);
+              fresh.presenter.status = 'DRAFT';
+            }
+            await saveProject(fresh);
+          });
+          state.status = 'done'; state.step = 'done'; state.finishedAt = new Date().toISOString();
+        } catch (error) {
+          state.status = 'failed'; state.error = error.message; state.finishedAt = new Date().toISOString();
+        }
+      })();
+      return send(res, 202, state);
     }
   }
 

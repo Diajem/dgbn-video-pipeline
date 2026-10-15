@@ -352,7 +352,11 @@ function productionBox(p) {
   const choice = select(Object.keys(names), mode, guard(async productionMode => setProject(await api('PUT', '/api/projects/' + p.id, {productionMode}))));
   [...choice.options].forEach(o => o.textContent = names[o.value]);
   const input = h('input', {type: 'file', accept: '.mp4,.webm,.mov'});
+  const shapes = {PORTRAIT: '9:16 vertical (Shorts, Reels, TikTok)', LANDSCAPE: '16:9 horizontal (YouTube, documentary)'};
+  const shape = select(Object.keys(shapes), p.orientation || 'PORTRAIT', guard(async orientation => setProject(await api('PUT', '/api/projects/' + p.id, {orientation}))));
+  [...shape.options].forEach(o => o.textContent = shapes[o.value]);
   return h('div', {class: 'box'}, h('h3', {}, 'Production mode'), choice,
+    h('label', {}, 'Output shape'), shape,
     mode !== 'FACELESS' ? h('div', {},
       h('p', {class: 'muted'}, mode === 'REAL_CAMERA' && !p.script?.trim() ? 'Upload one continuous camera recording with audio. No script or generated captions are needed; the recording plays full screen.' : 'Upload one continuous recording of this script, with spoken audio. Set each scene to presenter, B-roll, or picture-in-picture. The recording continues underneath all visuals.'),
       input, h('button', {onclick: guard(async () => {
@@ -363,5 +367,32 @@ function productionBox(p) {
       p.presenter ? h('div', {},
         h('video', {controls: true, src: `/files/${p.id}/${p.presenter.file}`, style: 'max-width:320px;width:100%'}),
         h('label', {}, 'Recording review'),
-        select(['DRAFT', 'APPROVED'], p.presenter.status, guard(async status => setProject(await api('PUT', `/api/projects/${p.id}/presenter`, {status}))))) : null) : null);
+        select(['DRAFT', 'APPROVED'], p.presenter.status, guard(async status => setProject(await api('PUT', `/api/projects/${p.id}/presenter`, {status})))),
+        transcribeControls(p)) : null) : null);
+}
+
+// Speech-to-text on this computer: times every spoken word, and writes the script if there is none yet.
+function transcribeControls(p) {
+  const t = p.presenter.transcript;
+  const note = h('div', {class: 'muted', id: 'transcribeNote', style: 'margin-top:6px'},
+    t ? `Transcript ready: ${t.words.length} words timed to the speech. Captions and scene changes follow the recording.` : 'No transcript yet. Without one, captions and scenes use estimated timing and a script is needed.');
+  const button = h('button', {id: 'transcribeBtn', onclick: guard(async () => {
+    await api('POST', `/api/projects/${p.id}/transcribe`, {});
+    pollTranscribe(p.id);
+  })}, t ? 'Transcribe again' : 'Transcribe recording');
+  return h('div', {style: 'margin-top:10px'}, button, note);
+}
+function pollTranscribe(id) {
+  clearInterval(state.tpoll);
+  const tick = guard(async () => {
+    const s = await api('GET', `/api/projects/${id}/transcribe`);
+    const note = $('#transcribeNote'), button = $('#transcribeBtn');
+    if (button) button.disabled = s.status === 'running';
+    if (s.status === 'running') { if (note) note.textContent = 'Working: ' + s.step + '. This can take a few minutes the first time.'; return; }
+    clearInterval(state.tpoll);
+    if (s.status === 'failed') { if (note) note.textContent = 'Transcription failed: ' + s.error; toast(s.error || 'Transcription failed', true); return; }
+    if (s.status === 'done' && state.project?.id === id) { setProject(await api('GET', '/api/projects/' + id)); toast('Transcript ready'); }
+  });
+  state.tpoll = setInterval(tick, 2500);
+  tick();
 }

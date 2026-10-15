@@ -18,6 +18,8 @@ export const STORY_TYPES = ['present', 'past', 'football', 'data', 'graphic'];
 export const MODES = ['FACELESS', 'PRESENTER', 'REAL_CAMERA'];
 export const modeOf = p => MODES.includes(p?.productionMode) ? p.productionMode : 'FACELESS';
 export const LAYOUTS = ['presenter', 'broll', 'pip'];
+export const ORIENTATIONS = ['PORTRAIT', 'LANDSCAPE'];
+export const orientationOf = p => p?.orientation === 'LANDSCAPE' ? 'LANDSCAPE' : 'PORTRAIT';
 export const BRANDS = ['DGBN', 'DSN'];
 // short = Shorts/Reels (no on-screen credits, unresolved rights warn), long = credits card at the end, website = strict.
 export const FORMATS = ['short', 'long', 'website'];
@@ -73,12 +75,46 @@ export async function createProject({title, brand, storyType, format, sourceText
     storyType: STORY_TYPES.includes(storyType) ? storyType : 'present',
     format: FORMATS.includes(format) ? format : 'short',
     headline: String(headline || '').slice(0, 200), script: '', sourceText, sourceUrl, candidates,
-    productionMode: 'FACELESS', presenter: null, scenes: [], audio: null, createdAt: new Date().toISOString(),
+    productionMode: 'FACELESS', orientation: 'PORTRAIT', presenter: null, scenes: [], audio: null, createdAt: new Date().toISOString(),
   };
   return saveProject(project);
 }
 
+const round3 = n => Math.round(n * 1000) / 1000;
 const wordCount = text => String(text || '').trim().split(/\s+/).filter(Boolean).length;
+
+// ---- Transcript timing -------------------------------------------------------------------------------------------
+// The transcript gives every spoken word a start and end time (seconds). The script the editor keeps may differ a little
+// (corrected spellings, names), so each script word borrows the timing of the transcript word at the same relative position.
+// When the counts match exactly the mapping is one to one.
+export function alignWords(script, transcriptWords) {
+  const tokens = String(script || '').split(/\s+/).filter(Boolean);
+  const N = transcriptWords.length, M = tokens.length;
+  if (!N || !M) return [];
+  const startOf = i => transcriptWords[Math.min(N - 1, Math.round(i * N / M))].start;
+  return tokens.map((text, i) => {
+    const start = M === N ? transcriptWords[i].start : startOf(i);
+    let end = M === N ? transcriptWords[i].end : (i + 1 < M ? startOf(i + 1) : transcriptWords[N - 1].end);
+    if (!(end > start)) end = start + 0.2;
+    return {text, start: round3(start), end: round3(end)};
+  });
+}
+
+// Scene boundaries (seconds) from the transcript: a boundary sits in the middle of the pause between two words.
+export function sceneBounds(scenes, transcriptWords, durationSec) {
+  const N = transcriptWords.length;
+  const counts = scenes.map(s => Math.max(1, wordCount(s.text)));
+  const total = counts.reduce((a, b) => a + b, 0);
+  let cum = 0, prev = 0;
+  return scenes.map((scene, i) => {
+    cum += counts[i];
+    const idx = i === scenes.length - 1 ? N : Math.min(N, Math.max(0, Math.round(cum * N / total)));
+    const boundary = k => k <= 0 ? 0 : k >= N ? durationSec : (transcriptWords[k - 1].end + transcriptWords[k].start) / 2;
+    const out = {startSec: round3(boundary(prev)), endSec: round3(boundary(idx))};
+    prev = idx;
+    return out;
+  });
+}
 
 // Split a script into scenes of roughly 15-30 words, keeping any assets already attached by position.
 export function splitScenes(script, existing = []) {
@@ -120,7 +156,8 @@ export function gateProject(project, {draft = false} = {}) {
   if (presenterMode && !draft && project.presenter?.status !== 'APPROVED') blockers.push('Review and approve the presenter recording for final export.');
   if (presenterMode && project.scenes.some(s => ['broll', 'pip'].includes(s.layout) && !s.assets.length)) blockers.push('Each B-roll or picture-in-picture scene needs an image or clip.');
   if (!project.headline?.trim()) blockers.push('Add a headline.');
-  if (!project.script?.trim() && modeOf(project) !== 'REAL_CAMERA') blockers.push('Add a script.');
+  if (!project.script?.trim() && modeOf(project) !== 'REAL_CAMERA') blockers.push(presenterMode ? 'Add a script, or press "Transcribe recording" to create one from the speech.' : 'Add a script.');
+  if (presenterMode && project.presenter?.file && !project.presenter.transcript?.words?.length) warnings.push('No transcript yet. Captions and scene changes use estimated timing. Press "Transcribe recording" to time them to the real speech.');
   if (!project.scenes.length) blockers.push('Split the script into scenes.');
   const normalise = t => String(t || '').replace(/\s+/g, ' ').trim();
   if (presenterMode && normalise(project.scenes.map(s => s.text).join(' ')) !== normalise(project.script)) blockers.push('The script changed. Split it into scenes again before rendering.');
@@ -157,8 +194,6 @@ function probeDuration(file) {
   if (!(seconds > 3 && seconds < 600)) throw new HttpError(400, 'Narration must be between 3 seconds and 10 minutes long.');
   return seconds;
 }
-
-const round3 = n => Math.round(n * 1000) / 1000;
 
 function probeSize(file) {
   try {
@@ -204,16 +239,19 @@ export async function exportJob(project, {draft = false} = {}) {
   await fs.copyFile(path.join(assetsDir(project.id), narration.file), path.join(dest, 'narration' + audioExt));
   const durationSec = round3(probeDuration(path.join(dest, 'narration' + audioExt)));
 
+  const transcriptWords = presenterMode ? (project.presenter?.transcript?.words || []) : [];
+  const timed = transcriptWords.length > 0;
+  const bounds = timed ? sceneBounds(project.scenes, transcriptWords, durationSec) : null;
   const totalWords = project.scenes.reduce((sum, s) => sum + Math.max(1, wordCount(s.text)), 0);
   let cursor = 0;
   let lastAssets = null;
   const firstAsset = project.scenes.flatMap(sc => sc.assets)[0];
   const visuals = [];
   const presenterScenes = [];
-  for (const scene of project.scenes) {
-    const sceneStart = durationSec * cursor / totalWords;
+  for (const [sceneIndex, scene] of project.scenes.entries()) {
+    const sceneStart = timed ? bounds[sceneIndex].startSec : durationSec * cursor / totalWords;
     cursor += Math.max(1, wordCount(scene.text));
-    const sceneEnd = durationSec * cursor / totalWords;
+    const sceneEnd = timed ? bounds[sceneIndex].endSec : durationSec * cursor / totalWords;
     presenterScenes.push({startSec: round3(sceneStart), endSec: round3(sceneEnd), layout: LAYOUTS.includes(scene.layout) ? scene.layout : 'presenter'});
     if (presenterMode && !scene.assets.length) continue;
     if (scene.assets.length) lastAssets = scene.assets;
@@ -241,8 +279,9 @@ export async function exportJob(project, {draft = false} = {}) {
     sourceScriptArtifactId: `studio-${project.id}-script`, narrationArtifactId: `studio-${project.id}-audio`,
     headline: project.headline, script: project.script, durationSec, staged: true,
     audio: {voiceoverSrc: `assets/studio/${project.id}/narration${audioExt}`, voiceoverStatus: narration.status},
-    productionMode: modeOf(project),
-    ...(presenterMode ? {presenter: {src: `assets/studio/${project.id}/narration${audioExt}`, scenes: presenterScenes}} : {}),
+    productionMode: modeOf(project), orientation: orientationOf(project),
+    ...(timed ? {captionWords: alignWords(project.script, transcriptWords)} : {}),
+    ...(presenterMode ? {presenter: {src: `assets/studio/${project.id}/narration${audioExt}`, scenes: presenterScenes, ...probeSize(path.join(dest, 'narration' + audioExt))}} : {}),
     visuals, qualityPolicy: draft ? 'DRAFT' : 'PRODUCTION', draft,
     format, aiAssisted: true,
     credits: format === 'long' ? [...new Set(project.scenes.flatMap(sc => sc.assets.map(a => a.credit?.trim()).filter(Boolean)))].slice(0, 12) : [],
@@ -261,5 +300,6 @@ export async function exportJob(project, {draft = false} = {}) {
     const text = String(error.stderr || error.message).split('\n').find(l => /validation failed/i.test(l)) || String(error.message);
     return {ok: false, blockers: [text.trim()], warnings};
   }
-  return {ok: true, composition: presenterMode ? 'StudioPresenter9x16' : 'DGBNFaceless9x16', jobPath, propsPath, mode, durationSec, warnings};
+  const shape = orientationOf(project) === 'LANDSCAPE' ? '16x9' : '9x16';
+  return {ok: true, composition: (presenterMode ? 'StudioPresenter' : 'DGBNFaceless') + shape, jobPath, propsPath, mode, durationSec, warnings};
 }

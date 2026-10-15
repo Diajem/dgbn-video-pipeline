@@ -75,6 +75,29 @@ export const DgbnRoot = () => (
       }}
     />
     <Composition
+      id="StudioPresenter16x9"
+      component={DgbnFaceless}
+      width={1920}
+      height={1080}
+      fps={FPS}
+      durationInFrames={FPS * 60}
+      defaultProps={{config: dgbnFacelessConfig}}
+      calculateMetadata={({props}) => ({durationInFrames: Math.max(1, Math.ceil(FPS * (Number(props.config.durationSec) + 1.9))), fps: FPS})}
+    />
+    <Composition
+      id="DGBNFaceless16x9"
+      component={DgbnFaceless}
+      width={1920}
+      height={1080}
+      fps={FPS}
+      durationInFrames={FPS * 60}
+      defaultProps={{config:dgbnFacelessConfig}}
+      calculateMetadata={({props}) => {
+        const seconds = Number(props?.config?.durationSec || 60);
+        return {durationInFrames:Math.max(1,Math.ceil(FPS * (seconds + 1.9))),fps:FPS};
+      }}
+    />
+    <Composition
       id="CinematicStoryMaster9x16"
       component={CinematicStoryMaster}
       width={1080}
