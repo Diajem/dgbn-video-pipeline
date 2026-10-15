@@ -111,6 +111,7 @@ function renderMain() {
     p.candidates?.length ? candidatesBox(p) : null,
     h('h3', {}, 'Storyboard'),
     stockKeysBox(),
+    wanKeyBox(),
     p.scenes.length ? p.scenes.map((s, i) => sceneCard(p, s, i)) : h('div', {class: 'muted'}, p.productionMode === 'REAL_CAMERA' ? 'Split a script or use the recording without a script.' : 'Write the script, then split it into scenes.'),
     productionBox(p),
     (p.productionMode || 'FACELESS') === 'FACELESS' ? narrationBox(p) : null,
@@ -280,6 +281,34 @@ function googleVoiceBox(p) {
   return box;
 }
 
+
+// ---- Wan motion clips (Alibaba) ----
+function wanKeyBox() {
+  const box = h('details', {class: 'box'}, h('summary', {}, 'Wan motion clips (Alibaba) – key'));
+  const body = h('div', {class: 'muted'}, 'Checking…');
+  box.append(body);
+  const draw = info => {
+    body.textContent = '';
+    body.className = '';
+    const ws = h('input', {placeholder: 'Workspace ID (starts ws-)', autocomplete: 'off', value: info.workspaceId || '', style: 'min-width:260px;width:auto;flex:1'});
+    const region = h('select', {}, ...info.regions.map(r => h('option', {value: r, selected: r === info.region}, r)));
+    if (info.keySaved) {
+      body.append(h('div', {class: 'row'}, h('span', {}, 'Wan key: saved'),
+        h('button', {class: 'small', onclick: guard(async () => { toast('Checking…'); const r = await api('POST', '/api/wan/check'); toast(r.message); })}, 'Check connection (free)'),
+        h('button', {class: 'small', onclick: guard(async () => { if (confirm('Remove the saved Wan key from this computer?')) draw(await api('DELETE', '/api/wan')); })}, 'Remove key')));
+      body.append(h('div', {class: 'row'}, h('span', {}, 'Workspace:'), ws, region,
+        h('button', {class: 'small', onclick: guard(async () => { draw(await api('PUT', '/api/wan', {workspaceId: ws.value, region: region.value})); toast('Saved'); })}, 'Save')));
+    } else {
+      const key = h('input', {type: 'password', placeholder: 'Paste your Alibaba API key (starts sk-)', autocomplete: 'off', style: 'min-width:280px;width:auto;flex:1'});
+      body.append(h('div', {class: 'row'}, h('span', {}, 'Key:'), key),
+        h('div', {class: 'row'}, h('span', {}, 'Workspace:'), ws, region),
+        h('div', {class: 'row'}, h('button', {onclick: guard(async () => { draw(await api('PUT', '/api/wan', {apiKey: key.value, workspaceId: ws.value, region: region.value})); key.value = ''; toast('Wan key saved'); })}, 'Save key')));
+    }
+    body.append(h('div', {class: 'muted'}, 'Saved only on this computer. “Check connection” asks Alibaba whether the key works and generates nothing, so it costs nothing.'));
+  };
+  api('GET', '/api/wan').then(info => { draw(info); box.open = !info.keySaved; }).catch(e => { body.textContent = 'Wan settings unavailable: ' + e.message; });
+  return box;
+}
 
 // ---- Stock photos and clips (Pexels, Pixabay) ----
 function stockKeysBox() {
