@@ -61,3 +61,18 @@ test('clearing removes the key but keeps the workspace', async () => {
   assert.equal(s.keySaved, false);
   assert.equal(s.workspaceId, 'ws-p622q5ojsvpqbvxl');
 });
+
+test('test clip: refuses to start without a key, runs once at a time, reports done or failed and hides keys in errors', async () => {
+  const {startWanTest, wanTestStatus} = await import('../lib/wan.mjs');
+  await assert.rejects(startWanTest(), /Save the Wan key/);
+  await saveWan({apiKey: KEY});
+  let release; const gate = new Promise(r => { release = r; });
+  const first = await startWanTest({run: async () => { await gate; return {file: 'x/clip.mp4', bytes: 123}; }});
+  assert.equal(first.state, 'running');
+  await assert.rejects(startWanTest({run: async () => ({})}), /already being made/);
+  release(); await new Promise(r => setTimeout(r, 20));
+  assert.deepEqual([wanTestStatus().state, wanTestStatus().file, wanTestStatus().bytes], ['done', 'clip.mp4', 123]);
+  await startWanTest({run: async () => { throw new Error('bad key ' + KEY); }}); await new Promise(r => setTimeout(r, 20));
+  assert.equal(wanTestStatus().state, 'failed');
+  assert.ok(!JSON.stringify(wanTestStatus()).includes(KEY));
+});

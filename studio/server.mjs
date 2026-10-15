@@ -15,7 +15,7 @@ import {
 import {VOICES, getKey, saveKey, clearKey, narrate} from './lib/google-voice.mjs';
 import {importUrl, searchCommons, downloadImage, licenceRights} from './lib/sources.mjs';
 import {PROVIDERS, stockStatus, saveStockKey, clearStockKey, searchStock, stockHostOk, downloadStock, stockAssetFields} from './lib/stock.mjs';
-import {wanStatus, saveWan, clearWanKey, checkWan} from './lib/wan.mjs';
+import {wanStatus, saveWan, clearWanKey, checkWan, startWanTest, wanTestStatus} from './lib/wan.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.STUDIO_PORT || 4177);
@@ -357,6 +357,8 @@ async function api(req, res, url, p) {
   if (p === '/api/wan' && method === 'PUT') { const b = await readJson(req); await saveWan(b); return send(res, 200, await wanStatus()); }
   if (p === '/api/wan' && method === 'DELETE') { await clearWanKey(); return send(res, 200, await wanStatus()); }
   if (p === '/api/wan/check' && method === 'POST') return send(res, 200, await checkWan());
+  if (p === '/api/wan/test' && method === 'POST') return send(res, 200, await startWanTest());
+  if (p === '/api/wan/test' && method === 'GET') return send(res, 200, wanTestStatus());
 
   if (p === '/api/stock' && method === 'GET') return send(res, 200, {providers: PROVIDERS, configured: await stockStatus()});
   if ((m = p.match(/^\/api\/stock\/(pexels|pixabay)$/)) && method === 'PUT') { const b = await readJson(req); await saveStockKey(m[1], b.apiKey); return send(res, 200, {configured: await stockStatus()}); }

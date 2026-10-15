@@ -86,3 +86,31 @@ export async function checkWan(fetchImpl = fetch) {
   // Anything else (typically 404, task not found) means the key was accepted.
   return {ok: true, message: 'Connected. Alibaba accepted the key. Nothing was generated and nothing was charged.'};
 }
+
+// ---- One-off paid test clip (capped: one clip, 5 seconds, 720p, no sound) ----
+const TEST_DIR = path.join(HERE, '..', 'data', 'wan-tests');
+const TEST_PROMPT = 'Slow wide shot of a dusty rural road in South Africa at dawn in 1913, a Black family carrying bundles walking away from the camera, long soft shadows, painterly historical illustration style, gentle camera push forward, no text, no logos, no close-up faces.';
+let test = {state: 'idle'};
+
+export function wanTestStatus() { return {...test}; }
+
+export async function startWanTest({prompt, run = null} = {}) {
+  if (test.state === 'running') throw Object.assign(new Error('A test clip is already being made'), {status: 409});
+  const {apiKey, workspaceId, region} = await wanConfig();
+  if (!apiKey || !workspaceId) throw Object.assign(new Error('Save the Wan key and workspace first'), {status: 400});
+  process.env.WAN_3_API_KEY = apiKey; process.env.WAN_3_WORKSPACE_ID = workspaceId; process.env.WAN_3_REGION = region;
+  const text = String(prompt || TEST_PROMPT).slice(0, 800);
+  const file = path.join(TEST_DIR, `wan-test-${Date.now()}.mp4`);
+  test = {state: 'running', startedAt: new Date().toISOString(), prompt: text};
+  const runner = run || (async () => {
+    const {submitWan3Shot, pollWan3Task, downloadVideo} = await import('../../scripts/wan3-client.mjs');
+    const submitted = await submitWan3Shot({job: {aspectRatio: '16:9'}, shot: {shotId: 'studio-test', prompt: text, resolution: '720P', durationSec: 5, audio: false}});
+    test.taskId = submitted.taskId;
+    const done = await pollWan3Task(submitted);
+    const saved = await downloadVideo(done.videoUrl, file);
+    return {file, bytes: saved.bytes};
+  });
+  runner().then(r => { test = {...test, state: 'done', finishedAt: new Date().toISOString(), file: path.basename(r.file || file), bytes: r.bytes}; })
+    .catch(e => { test = {...test, state: 'failed', finishedAt: new Date().toISOString(), error: String(e.message || e).replace(/sk-[A-Za-z0-9_\-.:]+/g, 'sk-…')}; });
+  return wanTestStatus();
+}
