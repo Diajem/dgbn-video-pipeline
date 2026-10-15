@@ -10,4 +10,8 @@ Outputs remain 1080×1920, with the existing DGBN/DSN treatment and end cards. L
 
 Changing the script resets audio and presenter review. Split the new script again and upload or review the matching recording.
 
+## Unscripted real-camera recording
+
+Select **Real camera recording**, then **Use recording without script**. Studio makes one continuous presenter scene. Upload a camera video with an audio track, review it, mark it approved and render. The finished video retains the camera audio and brand overlays, without generated captions. For scene changes, captions or B-roll timed to the spoken words, provide a matching script and split it into scenes. Choosing the script-free option clears the previous script and storyboard and resets recording approval.
+
 Validation: node --test studio/tests/presenter.test.mjs
