@@ -1,9 +1,11 @@
 // Project model, storyboard, rights gate and job export for the Video Studio.
 import fs from 'node:fs/promises';
+import fssync from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
+import {findClip, probeClip, SLOTS} from './brand-clips.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const ROOT = path.resolve(HERE, '..', '..');
@@ -20,7 +22,12 @@ export const modeOf = p => MODES.includes(p?.productionMode) ? p.productionMode 
 export const LAYOUTS = ['presenter', 'broll', 'pip'];
 export const ORIENTATIONS = ['PORTRAIT', 'LANDSCAPE'];
 export const orientationOf = p => p?.orientation === 'LANDSCAPE' ? 'LANDSCAPE' : 'PORTRAIT';
-export const BRANDS = ['DGBN', 'DSN'];
+// Brand names, colours and taglines live in config/brands.json, shared with the Remotion templates.
+export const BRAND_INFO = JSON.parse(fssync.readFileSync(path.join(ROOT, 'config', 'brands.json'), 'utf8'));
+export const BRANDS = Object.keys(BRAND_INFO);
+// Each brand runs a morning and an evening bulletin; each edition can have its own intro and outro clips.
+export const EDITIONS = ['MORNING', 'EVENING'];
+export const editionOf = p => EDITIONS.includes(p?.edition) ? p.edition : 'MORNING';
 // short = Shorts/Reels (no on-screen credits, unresolved rights warn), long = credits card at the end, website = strict.
 export const FORMATS = ['short', 'long', 'website'];
 export const formatOf = project => FORMATS.includes(project?.format) ? project.format : 'short';
@@ -62,16 +69,16 @@ export async function listProjects() {
     if (!entry.isDirectory() || !validId(entry.name)) continue;
     try {
       const p = await loadProject(entry.name);
-      out.push({id: p.id, title: p.title, brand: p.brand, storyType: p.storyType, updatedAt: p.updatedAt, scenes: p.scenes.length});
+      out.push({id: p.id, title: p.title, brand: p.brand, edition: editionOf(p), storyType: p.storyType, updatedAt: p.updatedAt, scenes: p.scenes.length});
     } catch { /* skip unreadable */ }
   }
   return out.sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
 }
 
-export async function createProject({title, brand, storyType, format, sourceText = '', sourceUrl = '', headline = '', candidates = []}) {
+export async function createProject({title, brand, edition, storyType, format, sourceText = '', sourceUrl = '', headline = '', candidates = []}) {
   const project = {
     id: newId(), title: String(title || 'Untitled video').slice(0, 140),
-    brand: BRANDS.includes(brand) ? brand : 'DGBN',
+    brand: BRANDS.includes(brand) ? brand : 'DGBN', edition: EDITIONS.includes(edition) ? edition : 'MORNING', bookends: true,
     storyType: STORY_TYPES.includes(storyType) ? storyType : 'present',
     format: FORMATS.includes(format) ? format : 'short',
     headline: String(headline || '').slice(0, 200), script: '', sourceText, sourceUrl, candidates,
@@ -178,7 +185,6 @@ export function gateProject(project, {draft = false} = {}) {
         else blockers.push(`${where}: rights are ${state}.`);
       }
       if (format !== 'short' && !asset.credit?.trim() && asset.origin !== 'own' && !ai && asset.label !== 'GRAPHIC') warnings.push(`${where}: no credit line set.`);
-      if (ai && project.storyType === 'present') warnings.push(`${where}: this is a present-day story. Make sure the AI visual cannot be mistaken for real footage of the event.`);
       if (ai && project.storyType === 'football') warnings.push(`${where}: football reports should use real images of the people and places. Do not generate likenesses of real people.`);
     }
   });
@@ -186,6 +192,19 @@ export function gateProject(project, {draft = false} = {}) {
   else if (!presenterMode && !draft && project.audio.status !== 'APPROVED') blockers.push('Narration must be marked APPROVED for a final export. The draft voice is for draft renders only.');
   if (project.sourceText && copiedFromSource(project.script, project.sourceText)) warnings.push('The script repeats a long run of words from the source article. Rewrite it in your own words.');
   return {blockers, warnings};
+}
+
+// Brand intro/outro clips used by this project, or a warning when the slot is empty. Off when the editor turns bookends off.
+export async function bookendClips(project) {
+  const clips = {}, warnings = [];
+  if (project.bookends === false) return {clips, warnings};
+  const brand = BRAND_INFO[project.brand] ? project.brand : 'DGBN', edition = editionOf(project);
+  for (const slot of SLOTS) {
+    const file = await findClip(brand, edition, slot);
+    if (file) clips[slot] = file;
+    else warnings.push(`No ${slot} clip uploaded for ${BRAND_INFO[brand].name} (${edition.toLowerCase()} edition), so the video ${slot === 'intro' ? 'starts straight on the story' : 'ends on the standard end card'}.`);
+  }
+  return {clips, warnings};
 }
 
 function probeDuration(file) {
@@ -226,6 +245,8 @@ export function sourcesText(project) {
 export async function exportJob(project, {draft = false} = {}) {
   const format = formatOf(project);
   const {blockers, warnings} = gateProject(project, {draft});
+  const bookends = await bookendClips(project);
+  warnings.push(...bookends.warnings);
   if (blockers.length) return {ok: false, blockers, warnings};
 
   const dest = path.join(PUBLIC_ASSETS, project.id);
@@ -274,8 +295,16 @@ export async function exportJob(project, {draft = false} = {}) {
   }
   if (visuals.length && !presenterMode) visuals[visuals.length - 1].endSec = durationSec;
 
+  const clipFields = {};
+  for (const [slot, file] of Object.entries(bookends.clips)) {
+    const name = slot + path.extname(file).toLowerCase();
+    await fs.copyFile(file, path.join(dest, name));
+    const {durationSec: seconds, width, height} = await probeClip(path.join(dest, name));
+    clipFields[slot] = {src: `assets/studio/${project.id}/${name}`, durationSec: seconds, width, height};
+  }
+
   const job = {
-    version: 'DGBN_FACELESS_V1', brand: project.brand, storyId: project.id,
+    version: 'DGBN_FACELESS_V1', brand: project.brand, edition: editionOf(project), storyId: project.id, ...clipFields,
     sourceScriptArtifactId: `studio-${project.id}-script`, narrationArtifactId: `studio-${project.id}-audio`,
     headline: project.headline, script: project.script, durationSec, staged: true,
     audio: {voiceoverSrc: `assets/studio/${project.id}/narration${audioExt}`, voiceoverStatus: narration.status},

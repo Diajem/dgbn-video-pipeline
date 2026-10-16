@@ -9,9 +9,11 @@ import crypto from 'node:crypto';
 import {spawn, execFile} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {
-  HttpError, ROOT, MODES, LAYOUTS, ORIENTATIONS, modeOf, LABELS, RIGHTS, STORY_TYPES, BRANDS, FORMATS, formatOf, sourcesText, newId, validId, assetsDir, projectDir,
-  loadProject, saveProject, listProjects, createProject, splitScenes, gateProject, exportJob,
+  HttpError, ROOT, MODES, LAYOUTS, ORIENTATIONS, modeOf, LABELS, RIGHTS, STORY_TYPES, BRANDS, BRAND_INFO, EDITIONS, FORMATS, formatOf, sourcesText, newId, validId, assetsDir, projectDir,
+  loadProject, saveProject, listProjects, createProject, splitScenes, gateProject, exportJob, bookendClips, orientationOf,
 } from './lib/project.mjs';
+import {listClips, storeClip, removeClip, assertSlot, clipPath, CLIPS_DIR, CLIP_EXTS} from './lib/brand-clips.mjs';
+import {gptImageStatus, saveGptImage, clearGptImageKey, checkGptImage, generateGptImage, QUALITIES} from './lib/gpt-image.mjs';
 import {VOICES, getKey, saveKey, clearKey, narrate} from './lib/google-voice.mjs';
 import {importUrl, searchCommons, downloadImage, licenceRights} from './lib/sources.mjs';
 import {PROVIDERS, stockStatus, saveStockKey, clearStockKey, searchStock, stockHostOk, downloadStock, stockAssetFields} from './lib/stock.mjs';
@@ -112,7 +114,7 @@ async function api(req, res, url, p) {
   const method = req.method;
   let m;
 
-  if (p === '/api/health') return send(res, 200, {ok: true, labels: LABELS, rights: RIGHTS, storyTypes: STORY_TYPES, brands: BRANDS, formats: FORMATS, productionModes: MODES});
+  if (p === '/api/health') return send(res, 200, {ok: true, labels: LABELS, rights: RIGHTS, storyTypes: STORY_TYPES, brands: BRANDS, brandInfo: BRAND_INFO, editions: EDITIONS, formats: FORMATS, productionModes: MODES});
   if (p === '/api/projects' && method === 'GET') return send(res, 200, await listProjects());
   if (p === '/api/projects' && method === 'POST') return send(res, 200, await createProject(await readJson(req)));
 
@@ -120,7 +122,7 @@ async function api(req, res, url, p) {
     const body = await readJson(req);
     const page = await importUrl(String(body.url || ''));
     const project = await createProject({
-      title: page.title || 'Imported article', brand: body.brand, storyType: body.storyType,
+      title: page.title || 'Imported article', brand: body.brand, edition: body.edition, storyType: body.storyType,
       sourceText: page.text, sourceUrl: page.sourceUrl, headline: '', candidates: page.images.map(image => ({url: image})),
     });
     return send(res, 200, project);
@@ -139,6 +141,8 @@ async function api(req, res, url, p) {
       const b = await readJson(req);
       if (typeof b.title === 'string') project.title = b.title.slice(0, 140);
       if (BRANDS.includes(b.brand)) project.brand = b.brand;
+      if (EDITIONS.includes(b.edition)) project.edition = b.edition;
+      if (typeof b.bookends === 'boolean') project.bookends = b.bookends;
       if (STORY_TYPES.includes(b.storyType)) project.storyType = b.storyType;
       if (FORMATS.includes(b.format)) project.format = b.format;
       if (typeof b.headline === 'string') project.headline = b.headline.slice(0, 200);
@@ -373,6 +377,44 @@ async function api(req, res, url, p) {
   }
   if (p === '/api/wan/test' && method === 'GET') return send(res, 200, wanTestStatus());
 
+  // Brand intro / outro clips, one per brand, edition and slot.
+  if (p === '/api/brand-clips' && method === 'GET') return send(res, 200, {clips: await listClips()});
+  if ((m = p.match(/^\/api\/brand-clips\/([A-Z_]+)\/(MORNING|EVENING)\/(intro|outro)$/))) {
+    const [, brand, edition, slot] = m;
+    assertSlot(brand, edition, slot);
+    if (method === 'DELETE') { await removeClip(brand, edition, slot); return send(res, 200, {clips: await listClips()}); }
+    if (method === 'POST') {
+      const ext = path.extname(String(url.searchParams.get('name') || '')).toLowerCase();
+      if (!CLIP_EXTS.includes(ext)) throw new HttpError(400, 'Upload an MP4, WebM or MOV clip');
+      await fs.mkdir(CLIPS_DIR, {recursive: true});
+      const temp = path.join(CLIPS_DIR, `.upload-${newId(4)}${ext}`);
+      await streamToFile(req, temp, 300 * 1024 * 1024);
+      const info = await storeClip(brand, edition, slot, temp, ext);
+      return send(res, 200, {clips: await listClips(), info});
+    }
+  }
+
+  // GPT Image: the last-resort picture when Commons, stock and cards have nothing suitable.
+  if (p === '/api/gpt-image' && method === 'GET') return send(res, 200, await gptImageStatus());
+  if (p === '/api/gpt-image' && method === 'PUT') { await saveGptImage(await readJson(req)); return send(res, 200, await gptImageStatus()); }
+  if (p === '/api/gpt-image' && method === 'DELETE') { await clearGptImageKey(); return send(res, 200, await gptImageStatus()); }
+  if (p === '/api/gpt-image/check' && method === 'POST') return send(res, 200, await checkGptImage());
+  if ((m = p.match(/^\/api\/projects\/([a-f0-9]{12})\/scenes\/(s[a-f0-9]{6})\/gpt-image$/)) && method === 'POST') {
+    const b = await readJson(req);
+    const quality = QUALITIES.includes(b.quality) ? b.quality : 'medium';
+    const project = await loadProject(m[1]);
+    const scene = sceneOf(project, m[2]);
+    // Requests for one project run one at a time, so the project cannot change while the picture is generated.
+    const image = await generateGptImage({prompt: b.prompt, orientation: orientationOf(project), quality});
+    const id = 'a' + newId(3);
+    const file = id + image.ext;
+    await fs.mkdir(assetsDir(project.id), {recursive: true});
+    await fs.writeFile(path.join(assetsDir(project.id), file), image.buffer);
+    scene.assets.push(newAsset('image', file, {id, origin: 'ai', rights: 'ai_labelled', label: AI_LABEL, credit: `AI-generated image (OpenAI ${image.model})`,
+      notes: 'GPT image: ' + String(b.prompt || '').slice(0, 140), aiPrompt: image.prompt, aiModel: image.model, aiQuality: quality}));
+    return send(res, 200, await saveProject(project));
+  }
+
   if (p === '/api/stock' && method === 'GET') return send(res, 200, {providers: PROVIDERS, configured: await stockStatus()});
   if ((m = p.match(/^\/api\/stock\/(pexels|pixabay)$/)) && method === 'PUT') { const b = await readJson(req); await saveStockKey(m[1], b.apiKey); return send(res, 200, {configured: await stockStatus()}); }
   if ((m = p.match(/^\/api\/stock\/(pexels|pixabay)$/)) && method === 'DELETE') { await clearStockKey(m[1]); return send(res, 200, {configured: await stockStatus()}); }
@@ -431,7 +473,10 @@ async function api(req, res, url, p) {
 
   if ((m = p.match(/^\/api\/projects\/([a-f0-9]{12})\/check$/)) && method === 'POST') {
     const b = await readJson(req);
-    return send(res, 200, gateProject(await loadProject(m[1]), {draft: !!b.draft}));
+    const project = await loadProject(m[1]);
+    const result = gateProject(project, {draft: !!b.draft});
+    result.warnings.push(...(await bookendClips(project)).warnings);
+    return send(res, 200, result);
   }
 
   if ((m = p.match(/^\/api\/projects\/([a-f0-9]{12})\/export$/)) && method === 'POST') {
@@ -521,6 +566,7 @@ const server = http.createServer(async (req, res) => {
     }
     let m;
     if ((m = p.match(/^\/files\/([a-f0-9]{12})\/([\w.-]+)$/))) return await serveFile(req, res, path.join(assetsDir(m[1]), m[2]), MEDIA);
+    if ((m = p.match(/^\/brand-clips\/([\w-]+\.(?:mp4|webm|mov))$/))) return await serveFile(req, res, clipPath(m[1]), MEDIA);
     if ((m = p.match(/^\/renders\/(studio-[a-f0-9]{12}-(?:draft|final)(?:-\d{12})?\.mp4)$/))) return await serveFile(req, res, path.join(RENDERS, m[1]), MEDIA);
     const name = p === '/' ? 'index.html' : p.slice(1);
     if (/^[\w.-]+$/.test(name) && STATIC[path.extname(name)]) return await serveFile(req, res, path.join(PUBLIC, name), STATIC, false);

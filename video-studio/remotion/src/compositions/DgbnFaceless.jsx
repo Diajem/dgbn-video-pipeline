@@ -1,9 +1,9 @@
 import React from 'react';
 import {AbsoluteFill, Audio, Img, OffthreadVideo, Sequence, interpolate, staticFile, useCurrentFrame, useVideoConfig} from 'remotion';
-import {BrandedEndCard} from '../components/BrandedEndCard.jsx';
+import {BrandedEndCard, brandInfo} from '../components/BrandedEndCard.jsx';
 
 const resolveSrc = (src) => /^(https?:|data:|blob:)/i.test(src || '') ? src : staticFile(String(src || '').replace(/^\//, ''));
-const BRAND_ACCENT = {DGBN: '#d7a62a', DSN: '#ff2633'};
+const OUTRO_GAP_SEC = 0.4;  // pause between the last word and the outro or end card
 const SHOT_SECONDS = 5.5;   // aim for a cut roughly every five to six seconds
 const FADE_FRAMES = 10;     // crossfade between shots
 const clamp = {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'};
@@ -158,12 +158,43 @@ const Shot = ({shot, fps}) => {
   </AbsoluteFill>;
 };
 
+// Total length: optional brand intro, the story, then either the brand outro clip or the end card.
+export const facelessDurationSec = (config) => (Number(config?.intro?.durationSec) || 0) + Number(config?.durationSec || 60)
+  + (config?.outro ? OUTRO_GAP_SEC + (Number(config.outro.durationSec) || 0) : 1.9);
+
+// A pre-rendered brand intro or outro (e.g. the avatar clip). It keeps its own sound.
+// When its shape differs from the frame, it sits whole on black rather than being cropped.
+const BrandClip = ({clip}) => {
+  const {width, height} = useVideoConfig();
+  const ratio = clip.width && clip.height ? clip.width / clip.height : null;
+  const sameShape = !ratio || Math.abs(ratio - width / height) < 0.1;
+  return <AbsoluteFill style={{background:'#000'}}>
+    <OffthreadVideo src={resolveSrc(clip.src)} style={{width:'100%',height:'100%',objectFit:sameShape ? 'cover' : 'contain'}} />
+  </AbsoluteFill>;
+};
+
 export const DgbnFaceless = ({config}) => {
+  const {fps} = useVideoConfig();
+  const introFrames = config.intro ? Math.max(1, Math.round(Number(config.intro.durationSec) * fps)) : 0;
+  const mainFrames = Math.max(1, Math.round(Number(config.durationSec || 0) * fps));
+  const gapFrames = Math.round(OUTRO_GAP_SEC * fps);
+  return <AbsoluteFill style={{background:'#080807'}}>
+    {config.intro && <Sequence from={0} durationInFrames={introFrames}><BrandClip clip={config.intro} /></Sequence>}
+    <Sequence from={introFrames} durationInFrames={config.outro ? mainFrames + gapFrames : Infinity}>
+      <FacelessStory config={config} />
+    </Sequence>
+    {config.outro && <Sequence from={introFrames + mainFrames + gapFrames} durationInFrames={Math.max(1, Math.round(Number(config.outro.durationSec) * fps))}>
+      <BrandClip clip={config.outro} />
+    </Sequence>}
+  </AbsoluteFill>;
+};
+
+const FacelessStory = ({config}) => {
   const {fps, width, height} = useVideoConfig();
   const landscape = width > height;
   const L = (portrait, wide) => landscape ? wide : portrait;
-  const brand = config.brand === 'DSN' ? 'DSN' : 'DGBN';
-  const ACCENT = BRAND_ACCENT[brand];
+  const brand = brandInfo(config.brand);
+  const ACCENT = brand.accent;
   const frame = useCurrentFrame();
   const durationSec = Number(config.durationSec || 0);
   const mainFrames = Math.max(1, Math.round(durationSec * fps));
@@ -218,7 +249,7 @@ export const DgbnFaceless = ({config}) => {
     {config.draft && <div style={{position:'absolute',bottom:L(60,24),left:L(64,560),right:L(64,560),textAlign:'center',background:'#b00020e6',padding:L('10px','6px'),fontSize:L(26,22),fontWeight:900,letterSpacing:2}}>DRAFT - NOT FOR PUBLICATION</div>}
     <div style={{position:'absolute',top:0,left:0,right:0,height:12,background:ACCENT}} />
     <div style={{position:'absolute',top:12,left:0,height:6,width:`${progress * 100}%`,background:'rgba(255,255,255,.75)'}} />
-    <div style={{position:'absolute',top:L(62,36),left:64,fontWeight:900,letterSpacing:4,fontSize:L(35,28),textShadow:'0 2px 8px #000'}}>{brand}</div>
+    <div style={{position:'absolute',top:L(62,36),left:64,fontWeight:900,letterSpacing:4,fontSize:L(35,28),textShadow:'0 2px 8px #000'}}>{brand.tag}</div>
     <div style={{position:'absolute',top:L(150,100),left:L(48,64),right:L(48,'auto'),maxWidth:L('none',1240),background:ACCENT,color:'#0b0b0b',borderRadius:10,padding:L('18px 26px','12px 22px'),fontWeight:900,lineHeight:1.08,textTransform:'uppercase',
       fontSize:(String(config.headline || '').length > 80 ? 38 : String(config.headline || '').length > 48 ? 46 : 56) * L(1,.72),boxShadow:'0 8px 28px rgba(0,0,0,.5)',
       opacity:headlineIn,transform:`translateY(${(1 - headlineIn) * -30}px)`}}>{config.headline}</div>
@@ -229,8 +260,8 @@ export const DgbnFaceless = ({config}) => {
     {format === 'long' && config.credits?.length > 0 && frame >= creditsFrom && frame < mainFrames && <div style={{position:'absolute',bottom:L(150,170),left:64,right:64,fontSize:24,lineHeight:1.35,color:'#e6e6e6',textShadow:'0 1px 6px #000',
       opacity:interpolate(frame, [creditsFrom, creditsFrom + 12], [0, 1], clamp)}}>
       <div style={{fontWeight:900,letterSpacing:2,marginBottom:4}}>CREDITS</div>{config.credits.map((c, i) => <div key={i}>{c}</div>)}</div>}
-    <Sequence from={mainFrames + Math.round(.4*fps)} durationInFrames={Math.max(1,Math.round(1.5*fps))}>
-      <BrandedEndCard brand={brand} />
-    </Sequence>
+    {!config.outro && <Sequence from={mainFrames + Math.round(OUTRO_GAP_SEC*fps)} durationInFrames={Math.max(1,Math.round(1.5*fps))}>
+      <BrandedEndCard brand={config.brand} />
+    </Sequence>}
   </AbsoluteFill>;
 };

@@ -11,7 +11,15 @@ const AI_LABEL = 'AI-GENERATED ILLUSTRATION';
 const relaxedRights = ['short', 'long'].includes(job.studio?.format);
 const draftAllowed = process.env.ALLOW_DRAFT === '1' && job.draft === true && job.qualityPolicy === 'DRAFT';
 
-if (job.version !== 'DGBN_FACELESS_V1' || !['DGBN', 'DSN'].includes(job.brand)) fail('wrong job version or brand');
+const BRANDS = Object.keys(JSON.parse(fs.readFileSync(new URL('../config/brands.json', import.meta.url), 'utf8')));
+
+if (job.version !== 'DGBN_FACELESS_V1' || !BRANDS.includes(job.brand)) fail('wrong job version or brand');
+for (const slot of ['intro', 'outro']) {
+  const clip = job[slot];
+  if (clip === undefined) continue;
+  if (!/^assets\/studio\/[a-f0-9]{12}\/(intro|outro)\.(mp4|webm|mov)$/.test(String(clip?.src || ''))) fail(slot + ' clip path is invalid');
+  if (!(Number(clip.durationSec) >= 0.5 && Number(clip.durationSec) <= 30)) fail(slot + ' clip must be between 0.5 and 30 seconds');
+}
 if (job.qualityPolicy !== 'PRODUCTION' && !draftAllowed) fail('only production jobs may be rendered by this workflow');
 if (!job.storyId || !job.sourceScriptArtifactId || !job.narrationArtifactId) fail('approved source lineage is missing');
 if (!job.script || !job.headline || !job.audio?.voiceoverSrc) fail('script and narration are required');

@@ -19,11 +19,15 @@ function h(tag, attrs, ...kids) {
   }
   return el;
 }
-const select = (options, value, onchange, attrs) => {
-  const el = h('select', {onchange: e => onchange(e.target.value), ...attrs}, options.map(o => h('option', {value: o}, o)));
+const select = (options, value, onchange, attrs, names = {}) => {
+  const el = h('select', {onchange: e => onchange(e.target.value), ...attrs}, options.map(o => h('option', {value: o}, names[o] || o)));
   el.value = value;
   return el;
 };
+const brandName = id => state.meta.brandInfo?.[id]?.name || id;
+const brandSelect = (value, onchange) => select(state.meta.brands, value, onchange, {}, Object.fromEntries(state.meta.brands.map(b => [b, brandName(b)])));
+const EDITION_NAMES = {MORNING: 'Morning edition', EVENING: 'Evening edition'};
+const editionSelect = (value, onchange) => select(state.meta.editions || ['MORNING', 'EVENING'], value || 'MORNING', onchange, {}, EDITION_NAMES);
 
 let toastTimer;
 function toast(message, isError) {
@@ -59,13 +63,14 @@ function setProject(p) { state.project = p; renderMain(); loadProjects(); }
 function renderSide() {
   const side = $('#side');
   side.replaceChildren();
-  const f = {title: '', brand: 'DGBN', storyType: 'present', url: ''};
+  const f = {title: '', brand: 'DGBN', edition: new Date().getHours() < 14 ? 'MORNING' : 'EVENING', storyType: 'present', url: ''};
   put(side, 
     h('h2', {}, 'New video'),
     h('label', {}, 'Title'), h('input', {oninput: e => f.title = e.target.value, placeholder: 'e.g. Kingston flood response'}),
-    h('label', {}, 'Brand'), select(state.meta.brands, f.brand, v => f.brand = v),
+    h('label', {}, 'Brand'), brandSelect(f.brand, v => f.brand = v),
+    h('label', {}, 'Edition'), editionSelect(f.edition, v => f.edition = v),
     h('label', {}, 'Story type'), select(state.meta.storyTypes, f.storyType, v => f.storyType = v),
-    h('div', {class: 'muted'}, 'present = current event (real material only) · data = statistics/population (generated maps and visuals are fine); past = history/culture · football · graphic'),
+    h('div', {class: 'muted'}, 'present = current event (real or licensed pictures first; an AI image only when Commons, stock and cards have nothing suitable) · data = statistics/population (generated maps and visuals are fine); past = history/culture · football · graphic'),
     h('div', {class: 'row', style: 'margin-top:10px'},
       h('button', {class: 'primary', onclick: guard(async () => { setProject(await api('POST', '/api/projects', f)); })}, 'Start from script / uploads')),
     h('h3', {}, 'Or import an article URL'),
@@ -74,7 +79,7 @@ function renderSide() {
     h('button', {onclick: guard(async () => { toast('Importing...'); setProject(await api('POST', '/api/import-url', f)); toast('Imported'); })}, 'Import URL'),
     h('h3', {}, 'Projects'),
     state.projects.length ? state.projects.map(p => h('button', {class: 'proj' + (state.project?.id === p.id ? ' active' : ''), onclick: guard(() => openProject(p.id))},
-      p.title, h('div', {class: 'muted'}, `${p.brand} · ${p.scenes} scenes`))) : h('div', {class: 'muted'}, 'None yet.'),
+      p.title, h('div', {class: 'muted'}, `${brandName(p.brand)} · ${EDITION_NAMES[p.edition] || 'Morning edition'} · ${p.scenes} scenes`))) : h('div', {class: 'muted'}, 'None yet.'),
   );
 }
 
@@ -97,9 +102,13 @@ function renderMain() {
     h('div', {class: 'box'},
       h('div', {class: 'row'},
         h('div', {class: 'grow'}, h('label', {}, 'Title'), h('input', {value: p.title, onchange: fieldSave('title')})),
-        h('div', {}, h('label', {}, 'Brand'), select(state.meta.brands, p.brand, guard(async v => { state.project = await api('PUT', '/api/projects/' + p.id, {brand: v}); renderMain(); }))),
+        h('div', {}, h('label', {}, 'Brand'), brandSelect(p.brand, guard(async v => { state.project = await api('PUT', '/api/projects/' + p.id, {brand: v}); renderMain(); }))),
+        h('div', {}, h('label', {}, 'Edition'), editionSelect(p.edition, guard(async v => { state.project = await api('PUT', '/api/projects/' + p.id, {edition: v}); renderMain(); }))),
         h('div', {}, h('label', {}, 'Story type'), select(state.meta.storyTypes, p.storyType, guard(async v => { state.project = await api('PUT', '/api/projects/' + p.id, {storyType: v}); renderMain(); }))),
         h('div', {}, h('label', {title: 'short = Shorts/Reels: no on-screen credits, unresolved rights only warn. long = credits card at the end. website = strict rules.'}, 'Format'), select(state.meta.formats || ['short', 'long', 'website'], p.format || 'short', guard(async v => { state.project = await api('PUT', '/api/projects/' + p.id, {format: v}); renderMain(); })))),
+      h('label', {class: 'row', style: 'gap:6px;margin-top:8px'}, h('input', {type: 'checkbox', style: 'width:auto', checked: p.bookends !== false,
+        onchange: guard(async e => { state.project = await api('PUT', '/api/projects/' + p.id, {bookends: e.target.checked}); renderMain(); })}),
+        'Add this brand and edition’s intro and outro clips'),
       h('label', {}, 'Headline (shown on screen)'), h('input', {value: p.headline, onchange: fieldSave('headline')}),
       h('label', {}, 'Script (your own words, British English)'), scriptBox,
       h('div', {class: 'row', style: 'margin-top:8px'},
@@ -110,8 +119,9 @@ function renderMain() {
       h('textarea', {value: p.sourceText, onchange: fieldSave('sourceText')})) : null,
     p.candidates?.length ? candidatesBox(p) : null,
     h('h3', {}, 'Storyboard'),
+    brandClipsBox(),
     stockKeysBox(),
-    wanKeyBox(),
+    gptKeyBox(),
     p.scenes.length ? p.scenes.map((s, i) => sceneCard(p, s, i)) : h('div', {class: 'muted'}, p.productionMode === 'REAL_CAMERA' ? 'Split a script or use the recording without a script.' : 'Write the script, then split it into scenes.'),
     productionBox(p),
     (p.productionMode || 'FACELESS') === 'FACELESS' ? narrationBox(p) : null,
@@ -155,6 +165,7 @@ function sceneCard(p, scene, i) {
         h('div', {}, h('span', {class: 'badge b-' + r.rights}, r.rights === 'cleared' ? 'usable with credit' : 'needs permission'), ' ', r.licence || 'licence unknown'),
         h('button', {class: 'small', onclick: guard(async () => { setProject(await api('POST', `/api/projects/${p.id}/scenes/${scene.id}/assets`, {type: 'commons', url: r.thumbUrl, pageUrl: r.pageUrl, credit: r.credit, licence: r.licence, title: r.title})); toast('Added'); })}, 'Use'))) : h('div', {class: 'muted'}, 'No usable images found.'))) : null,
     stockRow(p, scene),
+    gptRow(p, scene),
     h('div', {class: 'row', style: 'margin-top:8px'},
       fileInput,
       select(['own', 'ai', 'other'], origin, v => origin = v, {title: 'own = your material · ai = AI-generated · other = from someone else (rights unknown)'}),
@@ -424,4 +435,82 @@ function pollTranscribe(id) {
   });
   state.tpoll = setInterval(tick, 2500);
   tick();
+}
+
+// ---- Brand intro and outro clips: uploaded once per brand and edition, added to every render ----
+function brandClipsBox() {
+  const box = h('details', {class: 'box'}, h('summary', {}, 'Brand intro and outro clips'));
+  const body = h('div', {class: 'muted'}, 'Checking…');
+  box.append(body);
+  const draw = clips => {
+    body.textContent = '';
+    body.className = '';
+    body.append(h('div', {class: 'muted'}, 'Upload each clip once (for example the avatar intro, 10–15 seconds, and a 5-second outro). Every video for that brand and edition then starts and ends with it. Clips keep their own sound. Up to 30 seconds each.'));
+    for (const brand of state.meta.brands) for (const edition of state.meta.editions || ['MORNING', 'EVENING']) {
+      const row = h('div', {class: 'row', style: 'margin-top:8px;align-items:flex-start'}, h('strong', {style: 'min-width:230px'}, `${brandName(brand)} · ${EDITION_NAMES[edition]}`));
+      for (const slot of ['intro', 'outro']) {
+        const clip = clips.find(c => c.brand === brand && c.edition === edition && c.slot === slot);
+        const input = h('input', {type: 'file', accept: '.mp4,.webm,.mov', style: 'max-width:200px'});
+        const base = `/api/brand-clips/${brand}/${edition}/${slot}`;
+        row.append(h('div', {style: 'min-width:220px'}, h('div', {class: 'muted'}, slot === 'intro' ? 'Intro' : 'Outro'),
+          clip ? h('video', {src: '/brand-clips/' + clip.file + '?v=' + encodeURIComponent(clip.updatedAt), controls: true, preload: 'metadata', style: 'width:200px;border-radius:6px'}) : h('div', {class: 'muted'}, 'None yet'),
+          h('div', {class: 'row'}, input, h('button', {class: 'small', onclick: guard(async () => {
+            const f = input.files[0];
+            if (!f) throw new Error('Choose a clip first');
+            toast('Uploading…');
+            const r = await api('POST', `${base}?name=${encodeURIComponent(f.name)}`, undefined, {body: f, type: f.type});
+            toast(`${slot === 'intro' ? 'Intro' : 'Outro'} saved (${Math.round(r.info.durationSec)}s${r.info.hasAudio ? '' : ', no sound'})`);
+            draw(r.clips);
+          })}, clip ? 'Replace' : 'Upload'),
+          clip ? h('button', {class: 'small', onclick: guard(async () => { if (confirm('Remove this clip?')) draw((await api('DELETE', base)).clips); })}, 'Remove') : null)));
+      }
+      body.append(row);
+    }
+  };
+  api('GET', '/api/brand-clips').then(r => draw(r.clips)).catch(e => { body.textContent = 'Brand clips unavailable: ' + e.message; });
+  return box;
+}
+
+// ---- GPT Image (OpenAI): last-resort pictures, always labelled AI-generated ----
+function gptKeyBox() {
+  const box = h('details', {class: 'box'}, h('summary', {}, 'AI images (OpenAI GPT Image) – key'));
+  const body = h('div', {class: 'muted'}, 'Checking…');
+  box.append(body);
+  const draw = info => {
+    body.textContent = '';
+    body.className = '';
+    const model = h('input', {value: info.model, autocomplete: 'off', style: 'width:auto;min-width:160px'});
+    if (info.keySaved) {
+      body.append(h('div', {class: 'row'}, h('span', {}, 'OpenAI key: saved'),
+        h('button', {class: 'small', onclick: guard(async () => { toast('Checking…'); toast((await api('POST', '/api/gpt-image/check')).message); })}, 'Check connection (free)'),
+        h('button', {class: 'small', onclick: guard(async () => { if (confirm('Remove the saved OpenAI key from this computer?')) draw(await api('DELETE', '/api/gpt-image')); })}, 'Remove key')));
+    } else {
+      const key = h('input', {type: 'password', placeholder: 'Paste your OpenAI API key (starts sk-)', autocomplete: 'off', style: 'min-width:280px;width:auto;flex:1'});
+      body.append(h('div', {class: 'row'}, h('span', {}, 'Key:'), key,
+        h('button', {onclick: guard(async () => { draw(await api('PUT', '/api/gpt-image', {apiKey: key.value})); key.value = ''; toast('OpenAI key saved'); })}, 'Save key')));
+    }
+    body.append(h('div', {class: 'row'}, h('span', {}, 'Model:'), model,
+      h('button', {class: 'small', onclick: guard(async () => { draw(await api('PUT', '/api/gpt-image', {model: model.value})); toast('Model saved'); })}, 'Save model')),
+      h('div', {class: 'muted'}, 'Saved only on this computer. “Check connection” asks OpenAI whether the key and model work and generates nothing, so it costs nothing. Each generated picture is charged by OpenAI.'));
+  };
+  api('GET', '/api/gpt-image').then(info => { draw(info); box.open = !info.keySaved; }).catch(e => { body.textContent = 'AI image settings unavailable: ' + e.message; });
+  return box;
+}
+
+function gptRow(p, scene) {
+  let prompt = '', quality = 'medium';
+  const button = h('button', {}, 'Generate AI image');
+  button.addEventListener('click', guard(async () => {
+    if (prompt.trim().length < 5) throw new Error('Describe the picture first');
+    button.disabled = true;
+    toast('Generating the AI image… this can take up to a minute');
+    try { setProject(await api('POST', `/api/projects/${p.id}/scenes/${scene.id}/gpt-image`, {prompt, quality})); toast('AI image added'); }
+    finally { button.disabled = false; }
+  }));
+  return h('div', {},
+    h('div', {class: 'row', style: 'margin-top:8px'},
+      h('input', {class: 'grow', placeholder: 'Last resort: describe an AI image (when Commons, stock and cards have nothing suitable)…', oninput: e => prompt = e.target.value}),
+      select(['low', 'medium', 'high'], quality, v => quality = v, {style: 'width:auto', title: 'Higher quality costs more per picture'}, {low: 'Low quality', medium: 'Medium quality', high: 'High quality'}),
+      button),
+    p.storyType === 'present' || p.storyType === 'football' ? h('div', {class: 'muted'}, 'Shown on screen as AI-GENERATED ILLUSTRATION. Describe a scene or symbol, not a real person; the Studio also tells the generator not to draw identifiable people, logos or writing.') : null);
 }
