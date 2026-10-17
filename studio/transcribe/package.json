@@ -1,0 +1,1 @@
+{"name":"studio-transcribe","private":true,"type":"module","dependencies":{"@huggingface/transformers":"3.7.2"}}

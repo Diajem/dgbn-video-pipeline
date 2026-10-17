@@ -1,0 +1,39 @@
+{
+  "DGBN": {
+    "name": "DGBN Africa News",
+    "tag": "DGBN AFRICA",
+    "network": "DIAJEM GLOBAL BLACK NEWS",
+    "tagline": "OUR PEOPLE. OUR STORY. OUR OWN WAY.",
+    "covers": "Africa, including Nigeria",
+    "accent": "#d7a62a",
+    "background": "linear-gradient(160deg,#070707 0%,#15120a 100%)"
+  },
+  "DGBN_CARIBBEAN": {
+    "name": "DGBN Caribbean News",
+    "tag": "DGBN CARIBBEAN",
+    "network": "DIAJEM GLOBAL BLACK NEWS",
+    "tagline": "OUR PEOPLE. OUR STORY. OUR OWN WAY.",
+    "covers": "The Caribbean, including Jamaica",
+    "accent": "#1fb5a8",
+    "background": "linear-gradient(160deg,#060909 0%,#0b1716 100%)"
+  },
+  "DGBN_DIASPORA": {
+    "name": "DGBN Diaspora News",
+    "tag": "DGBN DIASPORA",
+    "network": "DIAJEM GLOBAL BLACK NEWS",
+    "tagline": "OUR PEOPLE. OUR STORY. OUR OWN WAY.",
+    "covers": "The global Black diaspora",
+    "accent": "#e0663a",
+    "background": "linear-gradient(160deg,#090706 0%,#1a0f0a 100%)"
+  },
+  "DSN": {
+    "name": "DSN Sports News",
+    "tag": "DSN",
+    "network": "DIAJEM SPORTS NETWORK",
+    "tagline": "FOOTBALL TALKS BIGGER",
+    "covers": "Sport",
+    "accent": "#ff2633",
+    "background": "linear-gradient(160deg,#090a0d 0%,#16181d 100%)",
+    "logo": "brand/dsn-logo-official.jpg"
+  }
+}
