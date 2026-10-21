@@ -257,9 +257,17 @@ const FacelessStory = ({config}) => {
       transform:`scale(${.9 + .1 * pop})`,opacity:.25 + .75 * pop,WebkitTextStroke:L('10px #000','8px #000'),paintOrder:'stroke fill',textShadow:'0 6px 22px rgba(0,0,0,.85)'}}>
       {chunk.words.map((w, i) => <span key={i} style={{color: w === activeWord ? ACCENT : '#fff'}}>{w.text}{i < chunk.words.length - 1 ? ' ' : ''}</span>)}
     </div>}
-    {format === 'long' && config.credits?.length > 0 && frame >= creditsFrom && frame < mainFrames && <div style={{position:'absolute',bottom:L(150,170),left:64,right:64,fontSize:24,lineHeight:1.35,color:'#e6e6e6',textShadow:'0 1px 6px #000',
-      opacity:interpolate(frame, [creditsFrom, creditsFrom + 12], [0, 1], clamp)}}>
-      <div style={{fontWeight:900,letterSpacing:2,marginBottom:4}}>CREDITS</div>{config.credits.map((c, i) => <div key={i}>{c}</div>)}</div>}
+    {/* End credits: a dark panel in the upper part of the frame, in columns when the list is long, so it never sits on the captions. */}
+    {format === 'long' && config.credits?.length > 0 && frame >= creditsFrom && frame < mainFrames && (() => {
+      const n = config.credits.length;
+      const cols = n > 16 ? 3 : n > 6 ? 2 : 1;
+      const size = n > 30 ? 17 : n > 16 ? 19 : 22;
+      return <div style={{position:'absolute',top:L(300,190),left:64,right:64,padding:'18px 26px',background:'rgba(8,8,7,.82)',borderRadius:12,
+        fontSize:size,lineHeight:1.32,color:'#e6e6e6',opacity:interpolate(frame, [creditsFrom, creditsFrom + 12], [0, 1], clamp)}}>
+        <div style={{fontWeight:900,letterSpacing:2,marginBottom:8,color:ACCENT}}>CREDITS</div>
+        <div style={{columnCount:cols,columnGap:36}}>{config.credits.map((c, i) => <div key={i} style={{breakInside:'avoid',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{c}</div>)}</div>
+      </div>;
+    })()}
     {!config.outro && <Sequence from={mainFrames + Math.round(OUTRO_GAP_SEC*fps)} durationInFrames={Math.max(1,Math.round(1.5*fps))}>
       <BrandedEndCard brand={config.brand} />
     </Sequence>}

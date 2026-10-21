@@ -313,7 +313,7 @@ export async function exportJob(project, {draft = false} = {}) {
     ...(presenterMode ? {presenter: {src: `assets/studio/${project.id}/narration${audioExt}`, scenes: presenterScenes, ...probeSize(path.join(dest, 'narration' + audioExt))}} : {}),
     visuals, qualityPolicy: draft ? 'DRAFT' : 'PRODUCTION', draft,
     format, aiAssisted: true,
-    credits: format === 'long' ? [...new Set(project.scenes.flatMap(sc => sc.assets.map(a => a.credit?.trim()).filter(Boolean)))].slice(0, 12) : [],
+    credits: format === 'long' ? [...new Set(project.scenes.flatMap(sc => sc.assets.map(a => a.credit?.trim()).filter(Boolean)))].slice(0, 48) : [],
     studio: {projectId: project.id, format, storyType: project.storyType, sourceUrl: project.sourceUrl || null, exportedAt: new Date().toISOString()},
   };
   await fs.mkdir(JOBS, {recursive: true});
