@@ -59,6 +59,10 @@ npm run hyperframes:skills
 npm run hyperframes:doctor
 ```
 
+## Documentaries
+
+Long-form documentaries (several chapters joined into one film) have their own fast path through the Video Studio: see [docs/documentary-workflow.md](docs/documentary-workflow.md).
+
 ## Editorial principle
 
 The renderer does **not** decide whether a story is true. It accepts a production manifest that already contains verification state, sources, risk flags and approval policy. Sensitive or insufficiently verified jobs must remain draft-only.
