@@ -199,7 +199,10 @@ export async function bookendClips(project) {
   const clips = {}, warnings = [];
   if (project.bookends === false) return {clips, warnings};
   const brand = BRAND_INFO[project.brand] ? project.brand : 'DGBN', edition = editionOf(project);
+  const part = project.part || 'only';
   for (const slot of SLOTS) {
+    // A chapter in the middle of a series has no intro or outro; the first has only the intro, the last only the outro.
+    if ((slot === 'intro' && (part === 'middle' || part === 'last')) || (slot === 'outro' && (part === 'middle' || part === 'first'))) continue;
     const file = await findClip(brand, edition, slot);
     if (file) clips[slot] = file;
     else warnings.push(`No ${slot} clip uploaded for ${BRAND_INFO[brand].name} (${edition.toLowerCase()} edition), so the video ${slot === 'intro' ? 'starts straight on the story' : 'ends on the standard end card'}.`);
@@ -312,8 +315,8 @@ export async function exportJob(project, {draft = false} = {}) {
     ...(timed ? {captionWords: alignWords(project.script, transcriptWords)} : {}),
     ...(presenterMode ? {presenter: {src: `assets/studio/${project.id}/narration${audioExt}`, scenes: presenterScenes, ...probeSize(path.join(dest, 'narration' + audioExt))}} : {}),
     visuals, qualityPolicy: draft ? 'DRAFT' : 'PRODUCTION', draft,
-    format, aiAssisted: true,
-    credits: format === 'long' ? [...new Set(project.scenes.flatMap(sc => sc.assets.map(a => a.credit?.trim()).filter(Boolean)))].slice(0, 48) : [],
+    format, aiAssisted: true, part: project.part || 'only',
+    credits: format === 'long' && ['only', 'last'].includes(project.part || 'only') ? [...new Set([...(Array.isArray(project.extraCredits) ? project.extraCredits.map(String) : []), ...project.scenes.flatMap(sc => sc.assets.map(a => a.credit?.trim()).filter(Boolean))])].slice(0, 80) : [],
     studio: {projectId: project.id, format, storyType: project.storyType, sourceUrl: project.sourceUrl || null, exportedAt: new Date().toISOString()},
   };
   await fs.mkdir(JOBS, {recursive: true});

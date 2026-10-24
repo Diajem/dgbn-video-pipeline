@@ -160,7 +160,7 @@ const Shot = ({shot, fps}) => {
 
 // Total length: optional brand intro, the story, then either the brand outro clip or the end card.
 export const facelessDurationSec = (config) => (Number(config?.intro?.durationSec) || 0) + Number(config?.durationSec || 60)
-  + (config?.outro ? OUTRO_GAP_SEC + (Number(config.outro.durationSec) || 0) : 1.9);
+  + (config?.outro ? OUTRO_GAP_SEC + (Number(config.outro.durationSec) || 0) : (['first', 'middle'].includes(config?.part) ? 0 : 1.9));
 
 // A pre-rendered brand intro or outro (e.g. the avatar clip). It keeps its own sound.
 // When its shape differs from the frame, it sits whole on black rather than being cropped.
@@ -222,7 +222,10 @@ const FacelessStory = ({config}) => {
   const pop = chunk ? interpolate(frame - chunk.start, [0, 4], [0, 1], clamp) : 1;
   const format = config.format || 'website';
   const creditsFrom = mainFrames - Math.round(4 * fps);
-  const headlineIn = interpolate(frame, [0, 14], [0, 1], clamp);
+  const multiPart = !!config.part && config.part !== 'only';
+  const headlineIn = multiPart
+    ? interpolate(frame, [0, 14, Math.round(6 * fps), Math.round(7 * fps)], [0, 1, 1, 0], clamp)
+    : interpolate(frame, [0, 14], [0, 1], clamp);
   const progress = Math.min(1, frame / mainFrames);
 
   return <AbsoluteFill style={{background:'#080807', color:'#fff', fontFamily:'Arial, Helvetica, sans-serif'}}>
@@ -244,7 +247,7 @@ const FacelessStory = ({config}) => {
     {presenter?.src && layout === 'pip' && frame < mainFrames && <OffthreadVideo src={resolveSrc(presenter.src)} muted style={{position:'absolute',right:L(48,64),bottom:L(580,150),width:L(340,300),height:L(490,430),objectFit:'cover',borderRadius:20,border:'4px solid '+ACCENT}} />}
     {(!presenter || layout !== 'presenter') && current?.visual.label?.includes('AI-GENERATED') && <div style={{position:'absolute',top:56,right:64,background:'#101010df',padding:'10px 16px',fontSize:26,fontWeight:800,color:ACCENT}}>AI-GENERATED ILLUSTRATION</div>}
     {(!presenter || layout !== 'presenter') && ['ILLUSTRATIVE IMAGE', 'ILLUSTRATIVE FOOTAGE', 'FILE FOOTAGE', 'ARCHIVE'].includes(current?.visual.label) && frame < mainFrames && <div style={{position:'absolute',top:60,right:64,background:'#101010c0',padding:'6px 12px',fontSize:20,fontWeight:700,letterSpacing:1,color:'#ddd'}}>{current.visual.label}</div>}
-    {(!presenter || layout !== 'presenter') && current?.visual.credit?.trim() && frame < mainFrames && <div style={{position:'absolute',bottom:L(262,140),left:48,right:200,fontSize:23,fontWeight:600,color:'rgba(255,255,255,.82)',textShadow:'0 1px 5px #000, 0 0 10px #000',
+    {(!presenter || layout !== 'presenter') && current?.visual.credit?.trim() && frame < mainFrames && <div style={{position:'absolute',bottom:L(262,38),left:48,right:config.draft ? 1400 : 200,fontSize:L(23,21),fontWeight:600,color:'rgba(255,255,255,.82)',textShadow:'0 1px 5px #000, 0 0 10px #000',
       whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{current.visual.kind === 'video' ? 'Video' : 'Photo'}: {current.visual.credit.trim().slice(0, 90)}</div>}
     {config.draft && <div style={{position:'absolute',bottom:L(60,24),left:L(64,560),right:L(64,560),textAlign:'center',background:'#b00020e6',padding:L('10px','6px'),fontSize:L(26,22),fontWeight:900,letterSpacing:2}}>DRAFT - NOT FOR PUBLICATION</div>}
     <div style={{position:'absolute',top:0,left:0,right:0,height:12,background:ACCENT}} />
@@ -268,7 +271,7 @@ const FacelessStory = ({config}) => {
         <div style={{columnCount:cols,columnGap:36}}>{config.credits.map((c, i) => <div key={i} style={{breakInside:'avoid',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{c}</div>)}</div>
       </div>;
     })()}
-    {!config.outro && <Sequence from={mainFrames + Math.round(OUTRO_GAP_SEC*fps)} durationInFrames={Math.max(1,Math.round(1.5*fps))}>
+    {!config.outro && !['first', 'middle'].includes(config.part) && <Sequence from={mainFrames + Math.round(OUTRO_GAP_SEC*fps)} durationInFrames={Math.max(1,Math.round(1.5*fps))}>
       <BrandedEndCard brand={config.brand} />
     </Sequence>}
   </AbsoluteFill>;

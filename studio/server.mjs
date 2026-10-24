@@ -143,6 +143,8 @@ async function api(req, res, url, p) {
       if (BRANDS.includes(b.brand)) project.brand = b.brand;
       if (EDITIONS.includes(b.edition)) project.edition = b.edition;
       if (typeof b.bookends === 'boolean') project.bookends = b.bookends;
+      if (['only', 'first', 'middle', 'last'].includes(b.part)) project.part = b.part;
+      if (Array.isArray(b.extraCredits)) project.extraCredits = b.extraCredits.map(c => String(c).slice(0, 140)).slice(0, 200);
       if (STORY_TYPES.includes(b.storyType)) project.storyType = b.storyType;
       if (FORMATS.includes(b.format)) project.format = b.format;
       if (typeof b.headline === 'string') project.headline = b.headline.slice(0, 200);
