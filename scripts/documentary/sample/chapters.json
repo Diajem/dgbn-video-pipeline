@@ -1,0 +1,68 @@
+{
+ "meta": {
+  "title": "DGBN Workflow Sample",
+  "slug": "workflow-sample",
+  "brand": "DGBN",
+  "format": "long",
+  "orientation": "LANDSCAPE",
+  "voice": "en-GB-Chirp3-HD-Charon",
+  "cardNote": "Figures as stated in the narration script.",
+  "summary": "A two-chapter sample used to test the documentary workflow.",
+  "sources": [
+   "Robben Island Museum",
+   "UNESCO World Heritage Centre"
+  ],
+  "extraCredits": []
+ },
+ "chapters": [
+  {
+   "n": 1,
+   "title": "DGBN Workflow Sample - Chapter 1: Robben Island",
+   "short": "Robben Island",
+   "headline": "The island that held Mandela.",
+   "storyType": "past",
+   "scenes": [
+    {
+     "text": "Robben Island lies off the coast near Cape Town. For three decades it held South Africa's political prisoners, Nelson Mandela among them.",
+     "visuals": [
+      {
+       "t": "commons",
+       "q": "Robben Island prison"
+      }
+     ]
+    },
+    {
+     "text": "Mandela spent eighteen of his twenty-seven years in prison there.",
+     "visuals": [
+      {
+       "t": "card",
+       "big": "18 years",
+       "sub": "Mandela's time on Robben Island",
+       "small": "Source: Robben Island Museum"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "n": 2,
+   "title": "DGBN Workflow Sample - Chapter 2: The Museum",
+   "short": "The Museum",
+   "headline": "From prison to museum.",
+   "storyType": "past",
+   "scenes": [
+    {
+     "text": "Today the island is a museum. In 1999 it became a World Heritage Site.",
+     "visuals": [
+      {
+       "t": "card",
+       "big": "1999",
+       "sub": "Robben Island becomes a World Heritage Site",
+       "small": "Source: UNESCO World Heritage Centre"
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

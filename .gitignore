@@ -15,3 +15,8 @@ renders/
 runtime-assets/
 avatar-service/work/
 avatar-service/output/
+studio/data/
+video-studio/remotion/public/assets/studio/
+video-studio/remotion/public/assets/local-test/
+documentaries/
+__pycache__/

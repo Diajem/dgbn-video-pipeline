@@ -5,7 +5,7 @@ import {DgbnBulletin} from './compositions/DgbnBulletin.jsx';
 import {DgbnNewsFlash} from './compositions/DgbnNewsFlash.jsx';
 import {DgbnNewsCard} from './compositions/DgbnNewsCard.jsx';
 import {DsnShortMaster} from './compositions/DsnShortMaster.jsx';
-import {DgbnFaceless} from './compositions/DgbnFaceless.jsx';
+import {DgbnFaceless, facelessDurationSec} from './compositions/DgbnFaceless.jsx';
 import {CinematicStoryMaster} from './compositions/CinematicStoryMaster.jsx';
 import {DsnThumbnailMaster} from './compositions/DsnThumbnailMaster.jsx';
 import dsnShortConfig from '../../../jobs/samples/dsn-short-master-v1.json';
@@ -66,6 +66,16 @@ export const DgbnRoot = () => (
       }}
     />
     <Composition
+      id="StudioPresenter9x16"
+      component={DgbnFaceless}
+      width={1080}
+      height={1920}
+      fps={FPS}
+      durationInFrames={FPS * 60}
+      defaultProps={{config: dgbnFacelessConfig}}
+      calculateMetadata={({props}) => ({durationInFrames: Math.max(1, Math.ceil(FPS * facelessDurationSec(props.config))), fps: FPS})}
+    />
+    <Composition
       id="DGBNFaceless9x16"
       component={DgbnFaceless}
       width={1080}
@@ -73,10 +83,27 @@ export const DgbnRoot = () => (
       fps={FPS}
       durationInFrames={FPS * 60}
       defaultProps={{config:dgbnFacelessConfig}}
-      calculateMetadata={({props}) => {
-        const seconds = Number(props?.config?.durationSec || 60);
-        return {durationInFrames:Math.max(1,Math.ceil(FPS * (seconds + 1.9))),fps:FPS};
-      }}
+      calculateMetadata={({props}) => ({durationInFrames: Math.max(1, Math.ceil(FPS * facelessDurationSec(props?.config))), fps: FPS})}
+    />
+    <Composition
+      id="StudioPresenter16x9"
+      component={DgbnFaceless}
+      width={1920}
+      height={1080}
+      fps={FPS}
+      durationInFrames={FPS * 60}
+      defaultProps={{config: dgbnFacelessConfig}}
+      calculateMetadata={({props}) => ({durationInFrames: Math.max(1, Math.ceil(FPS * facelessDurationSec(props.config))), fps: FPS})}
+    />
+    <Composition
+      id="DGBNFaceless16x9"
+      component={DgbnFaceless}
+      width={1920}
+      height={1080}
+      fps={FPS}
+      durationInFrames={FPS * 60}
+      defaultProps={{config:dgbnFacelessConfig}}
+      calculateMetadata={({props}) => ({durationInFrames: Math.max(1, Math.ceil(FPS * facelessDurationSec(props?.config))), fps: FPS})}
     />
     <Composition
       id="CinematicStoryMaster9x16"
