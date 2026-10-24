@@ -158,8 +158,12 @@ const Shot = ({shot, fps}) => {
   </AbsoluteFill>;
 };
 
-// Total length: optional brand intro, the story, then either the brand outro clip or the end card.
-export const facelessDurationSec = (config) => (Number(config?.intro?.durationSec) || 0) + Number(config?.durationSec || 60)
+// Long-format credits get their own silent screen after the last spoken word, never over the story.
+const CREDITS_SEC = 6;
+const creditsSec = (config) => config?.format === 'long' && config?.credits?.length > 0 ? CREDITS_SEC : 0;
+
+// Total length: optional brand intro, the story, the credits screen, then either the brand outro clip or the end card.
+export const facelessDurationSec = (config) => (Number(config?.intro?.durationSec) || 0) + Number(config?.durationSec || 60) + creditsSec(config)
   + (config?.outro ? OUTRO_GAP_SEC + (Number(config.outro.durationSec) || 0) : (['first', 'middle'].includes(config?.part) ? 0 : 1.9));
 
 // A pre-rendered brand intro or outro (e.g. the avatar clip). It keeps its own sound.
@@ -178,12 +182,13 @@ export const DgbnFaceless = ({config}) => {
   const introFrames = config.intro ? Math.max(1, Math.round(Number(config.intro.durationSec) * fps)) : 0;
   const mainFrames = Math.max(1, Math.round(Number(config.durationSec || 0) * fps));
   const gapFrames = Math.round(OUTRO_GAP_SEC * fps);
+  const creditsFrames = Math.round(creditsSec(config) * fps);
   return <AbsoluteFill style={{background:'#080807'}}>
     {config.intro && <Sequence from={0} durationInFrames={introFrames}><BrandClip clip={config.intro} /></Sequence>}
-    <Sequence from={introFrames} durationInFrames={config.outro ? mainFrames + gapFrames : Infinity}>
+    <Sequence from={introFrames} durationInFrames={config.outro ? mainFrames + creditsFrames + gapFrames : Infinity}>
       <FacelessStory config={config} />
     </Sequence>
-    {config.outro && <Sequence from={introFrames + mainFrames + gapFrames} durationInFrames={Math.max(1, Math.round(Number(config.outro.durationSec) * fps))}>
+    {config.outro && <Sequence from={introFrames + mainFrames + creditsFrames + gapFrames} durationInFrames={Math.max(1, Math.round(Number(config.outro.durationSec) * fps))}>
       <BrandClip clip={config.outro} />
     </Sequence>}
   </AbsoluteFill>;
@@ -221,7 +226,8 @@ const FacelessStory = ({config}) => {
   const activeWord = chunk?.words.find(w => frame >= w.start && frame < w.end) || chunk?.words[chunk.words.length - 1];
   const pop = chunk ? interpolate(frame - chunk.start, [0, 4], [0, 1], clamp) : 1;
   const format = config.format || 'website';
-  const creditsFrom = mainFrames - Math.round(4 * fps);
+  const creditsFrom = mainFrames;
+  const creditsFrames = Math.round(creditsSec(config) * fps);
   const multiPart = !!config.part && config.part !== 'only';
   const headlineIn = multiPart
     ? interpolate(frame, [0, 14, Math.round(6 * fps), Math.round(7 * fps)], [0, 1, 1, 0], clamp)
@@ -260,18 +266,19 @@ const FacelessStory = ({config}) => {
       transform:`scale(${.9 + .1 * pop})`,opacity:.25 + .75 * pop,WebkitTextStroke:L('10px #000','8px #000'),paintOrder:'stroke fill',textShadow:'0 6px 22px rgba(0,0,0,.85)'}}>
       {chunk.words.map((w, i) => <span key={i} style={{color: w === activeWord ? ACCENT : '#fff'}}>{w.text}{i < chunk.words.length - 1 ? ' ' : ''}</span>)}
     </div>}
-    {/* End credits: a dark panel in the upper part of the frame, in columns when the list is long, so it never sits on the captions. */}
-    {format === 'long' && config.credits?.length > 0 && frame >= creditsFrom && frame < mainFrames && (() => {
+    {/* End credits: their own screen after the narration, in columns when the list is long, with the AI-assisted note as one line. */}
+    {creditsFrames > 0 && frame >= creditsFrom && frame < creditsFrom + creditsFrames && (() => {
       const n = config.credits.length;
       const cols = n > 16 ? 3 : n > 6 ? 2 : 1;
-      const size = n > 30 ? 17 : n > 16 ? 19 : 22;
-      return <div style={{position:'absolute',top:L(300,190),left:64,right:64,padding:'18px 26px',background:'rgba(8,8,7,.82)',borderRadius:12,
-        fontSize:size,lineHeight:1.32,color:'#e6e6e6',opacity:interpolate(frame, [creditsFrom, creditsFrom + 12], [0, 1], clamp)}}>
-        <div style={{fontWeight:900,letterSpacing:2,marginBottom:8,color:ACCENT}}>CREDITS</div>
-        <div style={{columnCount:cols,columnGap:36}}>{config.credits.map((c, i) => <div key={i} style={{breakInside:'avoid',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{c}</div>)}</div>
-      </div>;
+      const size = n > 30 ? 18 : n > 16 ? 20 : 24;
+      return <AbsoluteFill style={{background:'#080807',justifyContent:'center',padding:L('120px 56px','70px 90px'),
+        fontSize:size,lineHeight:1.34,color:'#e6e6e6',opacity:interpolate(frame, [creditsFrom, creditsFrom + 12], [0, 1], clamp)}}>
+        <div style={{fontWeight:900,letterSpacing:3,fontSize:size * 1.6,marginBottom:6,color:ACCENT}}>CREDITS</div>
+        {config.aiAssisted && <div style={{fontSize:size * 1.15,fontWeight:700,marginBottom:18,color:'#fff'}}>An AI-assisted documentary</div>}
+        <div style={{columnCount:cols,columnGap:40}}>{config.credits.map((c, i) => <div key={i} style={{breakInside:'avoid',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{c}</div>)}</div>
+      </AbsoluteFill>;
     })()}
-    {!config.outro && !['first', 'middle'].includes(config.part) && <Sequence from={mainFrames + Math.round(OUTRO_GAP_SEC*fps)} durationInFrames={Math.max(1,Math.round(1.5*fps))}>
+    {!config.outro && !['first', 'middle'].includes(config.part) && <Sequence from={mainFrames + creditsFrames + Math.round(OUTRO_GAP_SEC*fps)} durationInFrames={Math.max(1,Math.round(1.5*fps))}>
       <BrandedEndCard brand={config.brand} />
     </Sequence>}
   </AbsoluteFill>;
