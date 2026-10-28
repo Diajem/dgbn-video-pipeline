@@ -115,7 +115,7 @@ npm run doc -- --dir documentaries/my-film build
 
 One Studio project per chapter: script, headline, scenes, cards (made in the house style and uploaded as GRAPHIC with a rights note), Commons photos (at 1280px, credited, licence checked) and clips (labelled and credited), plus the free draft Windows voice. Chapters are marked first / middle / last, so only the first gets the brand intro and only the last gets the outro and the credits. Before the last chapter renders, every credit used anywhere in the film (plus `extraCredits`) is copied onto it, so the end roll covers the whole film.
 
-Build one chapter with `build 3`. If you change a chapter's plan after building it, run `build 3 --rebuild` to replace its pictures in the new order. Once the script is final, add the real voice with `build --voice google` (this is the paid step).
+Build one chapter with `build 3`. If you change a chapter's plan after building it, run `build 3 --rebuild` to replace its pictures in the new order. Once the script is final, add the real voice with `build --voice google` (this is the paid step), or `build --voice pocket` for local Carabau/Charles/Jane narration. Set `meta.narrator` (or a chapter's `narrator`) to `carabau`, `charles`, or `jane`. See [Narration voices](narration-voices.md) for the one-time local setup.
 
 ### 5. Draft renders and frame sheets
 

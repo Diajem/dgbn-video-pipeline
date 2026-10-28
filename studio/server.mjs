@@ -15,6 +15,7 @@ import {
 import {listClips, storeClip, removeClip, assertSlot, clipPath, CLIPS_DIR, CLIP_EXTS} from './lib/brand-clips.mjs';
 import {gptImageStatus, saveGptImage, clearGptImageKey, checkGptImage, generateGptImage, QUALITIES} from './lib/gpt-image.mjs';
 import {VOICES, getKey, saveKey, clearKey, narrate} from './lib/google-voice.mjs';
+import {DEFAULT_NARRATOR, requireNarrator, pocketStatus, narratePocket} from './lib/pocket-voice.mjs';
 import {importUrl, searchCommons, downloadImage, licenceRights} from './lib/sources.mjs';
 import {PROVIDERS, stockStatus, saveStockKey, clearStockKey, searchStock, stockHostOk, downloadStock, stockAssetFields} from './lib/stock.mjs';
 import {wanStatus, saveWan, clearWanKey, checkWan, startWanTest, wanTestStatus, wanClips, wanClipPath} from './lib/wan.mjs';
@@ -150,6 +151,11 @@ async function api(req, res, url, p) {
       if (typeof b.headline === 'string') project.headline = b.headline.slice(0, 200);
       if (MODES.includes(b.productionMode)) project.productionMode = b.productionMode;
       if (ORIENTATIONS.includes(b.orientation)) project.orientation = b.orientation;
+      if (b.narratorId !== undefined) {
+        requireNarrator(b.narratorId);
+        if (b.narratorId !== project.narratorId && project.audio?.origin === 'pocket-tts') project.audio.status = 'DRAFT';
+        project.narratorId = b.narratorId;
+      }
       if (typeof b.script === 'string' && b.script.slice(0, 20000) !== project.script) {
         project.script = b.script.slice(0, 20000);
         if (project.audio) project.audio.status = 'DRAFT';
@@ -354,6 +360,10 @@ async function api(req, res, url, p) {
       if (!project.audio) throw new HttpError(400, 'No narration yet');
       if (!['DRAFT', 'APPROVED'].includes(b.status)) throw new HttpError(400, 'Status must be DRAFT or APPROVED');
       if (b.status === 'APPROVED' && project.audio.origin === 'draft-voice') throw new HttpError(400, 'The draft Windows voice cannot be approved for publication');
+      if (b.status === 'APPROVED' && project.audio.origin === 'pocket-tts') {
+        if (project.audio.voiceId !== (project.narratorId || DEFAULT_NARRATOR)) throw new HttpError(400, 'Generate narration with the selected voice before approving it');
+        if (project.audio.scriptSha256 !== crypto.createHash('sha256').update(project.script).digest('hex')) throw new HttpError(400, 'The script changed. Generate the updated narration before approving it');
+      }
       project.audio.status = b.status;
       return send(res, 200, await saveProject(project));
     }
@@ -437,6 +447,25 @@ async function api(req, res, url, p) {
   }
 
   if (p === '/api/voice/google' && method === 'GET') return send(res, 200, {configured: !!(await getKey()), voices: VOICES});
+  if (p === '/api/voice/pocket' && method === 'GET') return send(res, 200, await pocketStatus());
+  if ((m = p.match(/^\/api\/projects\/([a-f0-9]{12})\/audio\/pocket-voice$/)) && method === 'POST') {
+    const b = await readJson(req);
+    const project = await loadProject(m[1]);
+    const voiceId = b.voice || project.narratorId || DEFAULT_NARRATOR;
+    const voice = requireNarrator(voiceId);
+    const file = 'narration-' + newId(3) + '.wav';
+    const dir = assetsDir(project.id);
+    await fs.mkdir(dir, {recursive: true});
+    let info;
+    try { info = await narratePocket(project.script, voiceId, path.join(dir, file)); }
+    catch (error) { await fs.unlink(path.join(dir, file)).catch(() => {}); throw error; }
+    const previous = project.audio?.file;
+    project.narratorId = voiceId;
+    project.audio = {file, status: 'DRAFT', origin: 'pocket-tts', name: voice.label, ...info};
+    const saved = await saveProject(project);
+    if (previous) await fs.unlink(path.join(dir, previous)).catch(() => {});
+    return send(res, 200, saved);
+  }
   if (p === '/api/voice/google' && method === 'PUT') { const b = await readJson(req); await saveKey(b.apiKey); return send(res, 200, {configured: true}); }
   if (p === '/api/voice/google' && method === 'DELETE') { await clearKey(); return send(res, 200, {configured: !!(await getKey())}); }
 

@@ -211,11 +211,38 @@ function narrationBox(p) {
         setProject(await api('POST', `/api/projects/${p.id}/audio?name=${encodeURIComponent(f.name)}`, undefined, {body: f, type: f.type}));
       })}, 'Upload narration'),
       h('button', {onclick: guard(async () => { toast('Generating draft voice…'); setProject(await api('POST', `/api/projects/${p.id}/audio/draft-voice`)); toast('Draft voice ready'); })}, 'Draft voice (Windows)')),
+    pocketVoiceBox(p),
     googleVoiceBox(p),
     p.audio ? h('div', {style: 'margin-top:8px'},
       h('div', {class: 'muted'}, `${p.audio.name} · source: ${p.audio.origin} · status: ${p.audio.status}`),
       h('audio', {controls: true, src: `/files/${p.id}/${p.audio.file}`, style: 'width:100%;margin:6px 0'}),
       h('div', {class: 'row'}, h('span', {class: 'muted'}, 'Status:'), select(['DRAFT', 'APPROVED'], p.audio.status, guard(async v => { setProject(await api('PUT', `/api/projects/${p.id}/audio`, {status: v})); })))) : h('div', {class: 'blocker'}, 'No narration yet.'));
+}
+
+function pocketVoiceBox(p) {
+  const box = h('div', {class: 'notice', style: 'margin-top:10px'}, 'Checking local narration voices…');
+  const draw = info => {
+    box.replaceChildren();
+    const current = p.narratorId || info.defaultVoice;
+    const labels = Object.fromEntries(info.voices.map(v => [v.id, v.label + (v.ready ? '' : ' — setup needed')]));
+    const choice = select(info.voices.map(v => v.id), current, guard(async id => {
+      setProject(await api('PUT', `/api/projects/${p.id}`, {narratorId: id}));
+    }), {'aria-label': 'Narrator voice'}, labels);
+    const selected = info.voices.find(v => v.id === current);
+    const button = h('button', {disabled: !selected?.ready, onclick: guard(async () => {
+      button.disabled = true;
+      try {
+        toast('Generating narration with ' + (selected?.label || current) + '…');
+        setProject(await api('POST', `/api/projects/${p.id}/audio/pocket-voice`, {voice: choice.value}));
+        toast('Narration ready to listen and review');
+      } finally { button.disabled = false; }
+    })}, 'Generate local narration');
+    put(box, h('h4', {style: 'margin:0 0 8px'}, 'Narrator'), h('div', {class: 'row'}, choice, button),
+      h('p', {class: 'muted'}, 'Choose a voice for this video or story. Generated audio stays a draft until you listen and approve it.'));
+    if (!selected?.ready) put(box, h('p', {class: 'blocker'}, info.error || 'This voice needs the one-time Pocket TTS setup on this computer. See docs/narration-voices.md.'));
+  };
+  api('GET', '/api/voice/pocket').then(draw).catch(error => { box.textContent = 'Local narration unavailable: ' + error.message; });
+  return box;
 }
 
 // ---------- export / render ----------

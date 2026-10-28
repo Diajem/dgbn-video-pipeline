@@ -1,0 +1,14 @@
+{
+  "standardVersion": "carabau-clean-2026-10-28",
+  "model": "english_2026-10",
+  "defaultVoice": "carabau",
+  "temperature": 0.3,
+  "seed": 320,
+  "sentencePauseSeconds": 0.22,
+  "pronunciations": {"Benin": "Bee-nin", "Oba": "Urba"},
+  "voices": [
+    {"id": "carabau", "label": "Carabau — your approved voice", "gender": "male", "kind": "reference", "asset": "voices/carabau.wav", "gainDb": 5},
+    {"id": "charles", "label": "Charles — male narrator", "gender": "male", "kind": "preset", "asset": "voices/charles.safetensors", "gainDb": 0},
+    {"id": "jane", "label": "Jane — female narrator", "gender": "female", "kind": "preset", "asset": "voices/jane.safetensors", "gainDb": 0}
+  ]
+}

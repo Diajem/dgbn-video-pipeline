@@ -3,7 +3,7 @@ import os
 import commons, graphics, plan, studio
 from workdir import load_json
 
-VOICES = ("draft", "google", "none")
+VOICES = ("draft", "google", "pocket", "none")
 
 
 def card_note(wd, v):
@@ -87,11 +87,16 @@ def add_clip(wd, pid, sid, it, clips, videos):
 
 def voice(wd, ch, pid, kind):
     st = wd.state["chapters"][str(ch["n"])]
-    if kind == "none" or st.get("voice") == kind: return
+    narrator = ch.get("narrator", wd.meta.get("narrator", "carabau"))
+    if kind == "none": return
+    if st.get("voice") == kind and (kind != "pocket" or st.get("narrator") == narrator): return
     if kind == "google":
         v = wd.meta.get("voice")
         if not v: raise SystemExit("Set meta.voice in chapters.json (a Google voice id, e.g. en-GB-Chirp3-HD-Charon) to use --voice google")
         studio.call("POST", f"/api/projects/{pid}/audio/google-voice", {"voice": v}, timeout=900)
+    elif kind == "pocket":
+        studio.call("POST", f"/api/projects/{pid}/audio/pocket-voice", {"voice": narrator}, timeout=1200)
+        st["narrator"] = narrator
     else: studio.call("POST", f"/api/projects/{pid}/audio/draft-voice", {}, timeout=300)
     st["voice"] = kind; wd.save_state()
     print(f"  narration: {kind} voice", flush=True)
