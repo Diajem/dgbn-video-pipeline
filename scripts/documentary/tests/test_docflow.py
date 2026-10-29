@@ -1,7 +1,8 @@
 """Offline tests for the documentary tools (no Studio or network needed): python -m unittest discover scripts/documentary/tests"""
 import json, os, sys, tempfile, unittest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-import commons, graphics, plan
+import commons, graphics, plan, build
+from unittest.mock import patch
 from workdir import Workdir, load_json, short_title, timestamps
 
 SAMPLE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "sample", "chapters.json")
@@ -44,6 +45,23 @@ class PlanTest(unittest.TestCase):
         p = load_json(os.path.join(os.path.dirname(SAMPLE), "plan.json"))
         errors, _ = plan.problems(wd, p, {"c1s0v0": {"results": [{}]}}, {})
         self.assertEqual(errors, [])
+
+
+class NarratorTest(unittest.TestCase):
+    def test_chapter_narrator_change_regenerates_and_resume_keeps_the_choice(self):
+        wd = workdir({"meta": {"narrator": "carabau"}, "chapters": [
+            {"n": 1, "title": "Arrival", "headline": "Arrival", "narrator": "jane", "scenes": []}]})
+        wd.state["chapters"]["1"] = {"pid": "abcdef123456", "voice": "pocket", "narrator": "carabau"}
+        with patch.object(build.studio, "call") as call:
+            build.voice(wd, wd.chapters[0], "abcdef123456", "pocket")
+            call.assert_called_once_with("POST", "/api/projects/abcdef123456/audio/pocket-voice", {"voice": "jane", "style": "natural"}, timeout=1200)
+            build.voice(wd, wd.chapters[0], "abcdef123456", "pocket")
+            self.assertEqual(call.call_count, 1)
+            self.assertEqual(wd.state["chapters"]["1"]["narrator"], "jane")
+            wd.chapters[0]["narrationStyle"] = "news"
+            build.voice(wd, wd.chapters[0], "abcdef123456", "pocket")
+            self.assertEqual(call.call_count, 2)
+            self.assertEqual(wd.state["chapters"]["1"]["narrationStyle"], "news")
 
 
 class FilmTest(unittest.TestCase):

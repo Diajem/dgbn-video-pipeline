@@ -82,7 +82,7 @@ export async function createProject({title, brand, edition, storyType, format, s
     storyType: STORY_TYPES.includes(storyType) ? storyType : 'present',
     format: FORMATS.includes(format) ? format : 'short',
     headline: String(headline || '').slice(0, 200), script: '', sourceText, sourceUrl, candidates,
-    productionMode: 'FACELESS', orientation: 'PORTRAIT', presenter: null, scenes: [], audio: null, createdAt: new Date().toISOString(),
+    productionMode: 'FACELESS', orientation: 'PORTRAIT', presenter: null, scenes: [], audio: null, narratorId: 'carabau', narrationStyle: 'natural', createdAt: new Date().toISOString(),
   };
   return saveProject(project);
 }
@@ -317,7 +317,9 @@ export async function exportJob(project, {draft = false} = {}) {
     visuals, qualityPolicy: draft ? 'DRAFT' : 'PRODUCTION', draft,
     format, aiAssisted: true, part: project.part || 'only',
     credits: format === 'long' && ['only', 'last'].includes(project.part || 'only') ? [...new Set([...(Array.isArray(project.extraCredits) ? project.extraCredits.map(String) : []), ...project.scenes.flatMap(sc => sc.assets.map(a => a.credit?.trim()).filter(Boolean))])].slice(0, 80) : [],
-    studio: {projectId: project.id, format, storyType: project.storyType, sourceUrl: project.sourceUrl || null, exportedAt: new Date().toISOString()},
+    studio: {projectId: project.id, format, storyType: project.storyType, sourceUrl: project.sourceUrl || null, exportedAt: new Date().toISOString(),
+      ...(project.audio?.origin === 'pocket-tts' ? {narratorId: project.audio.voiceId, narrationStandard: project.audio.standardVersion,
+        narrationStyle: project.audio.styleId || 'natural', narrationStyleVersion: project.audio.styleVersion} : {})},
   };
   await fs.mkdir(JOBS, {recursive: true});
   const mode = draft ? 'draft' : 'final';
