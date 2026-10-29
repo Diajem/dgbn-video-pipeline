@@ -33,6 +33,14 @@ test('Storyhouse saves voice per episode, reuses unchanged audio and keeps prior
     assert.equal(edited.script, 'The king returned to Benin.');
     assert.equal(edited.narratorId, 'charles');
     assert.equal(calls, 3);
+    const news = await narrateEpisode({folder, style: 'news'}, synth);
+    assert.equal(news.narrationStyle, 'news');
+    assert.equal(news.audio.styleId, 'news');
+    assert.notEqual(news.audio.file, edited.audio.file);
+    assert.equal(calls, 4);
+    assert.equal((await narrateEpisode({folder}, synth)).reused, true);
+    assert.equal(calls, 4);
+    await fs.access(path.join(folder, 'audio', edited.audio.file));
     await assert.rejects(narrateEpisode({folder, voice: 'other'}, synth), /Choose Carabau/);
     const before = await fs.readFile(path.join(folder, 'episode.json'), 'utf8');
     await assert.rejects(narrateEpisode({folder, voice: 'carabau'}, async () => { throw new Error('worker failed'); }), /worker failed/);

@@ -15,7 +15,7 @@ import {
 import {listClips, storeClip, removeClip, assertSlot, clipPath, CLIPS_DIR, CLIP_EXTS} from './lib/brand-clips.mjs';
 import {gptImageStatus, saveGptImage, clearGptImageKey, checkGptImage, generateGptImage, QUALITIES} from './lib/gpt-image.mjs';
 import {VOICES, getKey, saveKey, clearKey, narrate} from './lib/google-voice.mjs';
-import {DEFAULT_NARRATOR, requireNarrator, pocketStatus, narratePocket} from './lib/pocket-voice.mjs';
+import {DEFAULT_NARRATOR, requireNarrator, requireNarrationStyle, pocketStatus, narratePocket} from './lib/pocket-voice.mjs';
 import {importUrl, searchCommons, downloadImage, licenceRights} from './lib/sources.mjs';
 import {PROVIDERS, stockStatus, saveStockKey, clearStockKey, searchStock, stockHostOk, downloadStock, stockAssetFields} from './lib/stock.mjs';
 import {wanStatus, saveWan, clearWanKey, checkWan, startWanTest, wanTestStatus, wanClips, wanClipPath} from './lib/wan.mjs';
@@ -155,6 +155,11 @@ async function api(req, res, url, p) {
         requireNarrator(b.narratorId);
         if (b.narratorId !== project.narratorId && project.audio?.origin === 'pocket-tts') project.audio.status = 'DRAFT';
         project.narratorId = b.narratorId;
+      }
+      if (b.narrationStyle !== undefined) {
+        requireNarrationStyle(b.narrationStyle);
+        if (b.narrationStyle !== (project.narrationStyle || 'natural') && project.audio?.origin === 'pocket-tts') project.audio.status = 'DRAFT';
+        project.narrationStyle = b.narrationStyle;
       }
       if (typeof b.script === 'string' && b.script.slice(0, 20000) !== project.script) {
         project.script = b.script.slice(0, 20000);
@@ -362,6 +367,7 @@ async function api(req, res, url, p) {
       if (b.status === 'APPROVED' && project.audio.origin === 'draft-voice') throw new HttpError(400, 'The draft Windows voice cannot be approved for publication');
       if (b.status === 'APPROVED' && project.audio.origin === 'pocket-tts') {
         if (project.audio.voiceId !== (project.narratorId || DEFAULT_NARRATOR)) throw new HttpError(400, 'Generate narration with the selected voice before approving it');
+        if ((project.audio.styleId || 'natural') !== (project.narrationStyle || 'natural')) throw new HttpError(400, 'Generate narration with the selected style before approving it');
         if (project.audio.scriptSha256 !== crypto.createHash('sha256').update(project.script).digest('hex')) throw new HttpError(400, 'The script changed. Generate the updated narration before approving it');
       }
       project.audio.status = b.status;
@@ -453,14 +459,17 @@ async function api(req, res, url, p) {
     const project = await loadProject(m[1]);
     const voiceId = b.voice || project.narratorId || DEFAULT_NARRATOR;
     const voice = requireNarrator(voiceId);
+    const styleId = b.style || project.narrationStyle || 'natural';
+    requireNarrationStyle(styleId);
     const file = 'narration-' + newId(3) + '.wav';
     const dir = assetsDir(project.id);
     await fs.mkdir(dir, {recursive: true});
     let info;
-    try { info = await narratePocket(project.script, voiceId, path.join(dir, file)); }
+    try { info = await narratePocket(project.script, voiceId, path.join(dir, file), styleId); }
     catch (error) { await fs.unlink(path.join(dir, file)).catch(() => {}); throw error; }
     const previous = project.audio?.file;
     project.narratorId = voiceId;
+    project.narrationStyle = styleId;
     project.audio = {file, status: 'DRAFT', origin: 'pocket-tts', name: voice.label, ...info};
     const saved = await saveProject(project);
     if (previous) await fs.unlink(path.join(dir, previous)).catch(() => {});

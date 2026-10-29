@@ -22,3 +22,4 @@ documentaries/
 __pycache__/
 .venv-voice/
 stories/
+voice-renders/

@@ -54,10 +54,14 @@ class NarratorTest(unittest.TestCase):
         wd.state["chapters"]["1"] = {"pid": "abcdef123456", "voice": "pocket", "narrator": "carabau"}
         with patch.object(build.studio, "call") as call:
             build.voice(wd, wd.chapters[0], "abcdef123456", "pocket")
-            call.assert_called_once_with("POST", "/api/projects/abcdef123456/audio/pocket-voice", {"voice": "jane"}, timeout=1200)
+            call.assert_called_once_with("POST", "/api/projects/abcdef123456/audio/pocket-voice", {"voice": "jane", "style": "natural"}, timeout=1200)
             build.voice(wd, wd.chapters[0], "abcdef123456", "pocket")
             self.assertEqual(call.call_count, 1)
             self.assertEqual(wd.state["chapters"]["1"]["narrator"], "jane")
+            wd.chapters[0]["narrationStyle"] = "news"
+            build.voice(wd, wd.chapters[0], "abcdef123456", "pocket")
+            self.assertEqual(call.call_count, 2)
+            self.assertEqual(wd.state["chapters"]["1"]["narrationStyle"], "news")
 
 
 class FilmTest(unittest.TestCase):

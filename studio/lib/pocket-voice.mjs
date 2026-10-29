@@ -9,6 +9,12 @@ const registry = JSON.parse(await fs.readFile(path.join(ROOT, 'config', 'narrati
 const localPython = path.join(ROOT, '.venv-voice', process.platform === 'win32' ? 'Scripts/python.exe' : 'bin/python');
 export const POCKET_VOICES = registry.voices;
 export const DEFAULT_NARRATOR = registry.defaultVoice;
+export const POCKET_STYLES = registry.styles;
+export function requireNarrationStyle(id) {
+  const style = POCKET_STYLES.find(s => s.id === id);
+  if (!style) throw new HttpError(400, 'Choose natural or news narration style');
+  return style;
+}
 export function requireNarrator(id) {
   const voice = POCKET_VOICES.find(v => v.id === id);
   if (!voice) throw new HttpError(400, 'Choose Carabau, Charles or Jane');
@@ -38,16 +44,18 @@ export async function pocketStatus() {
   try { return await run(['--status']); }
   catch (error) {
     return {runtimeReady: false, defaultVoice: DEFAULT_NARRATOR, standardVersion: registry.standardVersion,
-      error: error.message, voices: POCKET_VOICES.map(({id, label, gender}) => ({id, label, gender, ready: false}))};
+      error: error.message, voices: POCKET_VOICES.map(({id, label, gender}) => ({id, label, gender, ready: false})),
+      styles: POCKET_STYLES.map(s => ({...s, ready: false}))};
   }
 }
 
 // Pocket TTS is not thread-safe. Keep one CPU synthesis running at a time.
 let queue = Promise.resolve();
-export function narratePocket(text, voice, outFile) {
+export function narratePocket(text, voice, outFile, style = 'natural') {
   requireNarrator(voice);
+  requireNarrationStyle(style);
   if (!String(text || '').trim() || text.length > 20000) throw new HttpError(400, 'Add a script of up to 20,000 characters');
-  const task = queue.then(() => run(['--output', outFile], {text, voice}, 20 * 60 * 1000));
+  const task = queue.then(() => run(['--output', outFile], {text, voice, style}, 20 * 60 * 1000));
   queue = task.catch(() => {});
   return task;
 }

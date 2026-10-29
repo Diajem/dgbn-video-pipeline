@@ -8,6 +8,8 @@ After the [one-time voice setup](narration-voices.md), put an episode script in 
 npm run storyhouse:voice -- --project stories/my-episode --voice jane
 ```
 
+The default sound is `natural`. Optional `--style news` selects the approved lighter news treatment, and the choice is saved per episode. Claude Code and other local production tools can use this command or the standalone [shared voice command](claude-narration.md); they do not need separate voice clones or subscriptions.
+
 The command writes a new WAV in that episode's `audio/` folder and saves the chosen narrator and original script in `episode.json`. Use that WAV as the narration source in the existing Storyhouse edit or upload it into a Studio project. The audio is marked DRAFT for listening review.
 
 To switch the same episode to the male preset:

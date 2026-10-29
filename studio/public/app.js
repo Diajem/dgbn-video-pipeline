@@ -229,16 +229,23 @@ function pocketVoiceBox(p) {
       setProject(await api('PUT', `/api/projects/${p.id}`, {narratorId: id}));
     }), {'aria-label': 'Narrator voice'}, labels);
     const selected = info.voices.find(v => v.id === current);
-    const button = h('button', {disabled: !selected?.ready, onclick: guard(async () => {
+    const styleId = p.narrationStyle || 'natural';
+    const styles = info.styles || [{id: 'natural', label: 'Story / natural', ready: true}];
+    const styleChoice = select(styles.map(s => s.id), styleId, guard(async id => {
+      setProject(await api('PUT', `/api/projects/${p.id}`, {narrationStyle: id}));
+    }), {'aria-label': 'Narration style'}, Object.fromEntries(styles.map(s => [s.id, s.label])));
+    const styleReady = styles.find(s => s.id === styleId)?.ready;
+    const button = h('button', {disabled: !selected?.ready || !styleReady, onclick: guard(async () => {
       button.disabled = true;
       try {
         toast('Generating narration with ' + (selected?.label || current) + '…');
-        setProject(await api('POST', `/api/projects/${p.id}/audio/pocket-voice`, {voice: choice.value}));
+        setProject(await api('POST', `/api/projects/${p.id}/audio/pocket-voice`, {voice: choice.value, style: styleChoice.value}));
         toast('Narration ready to listen and review');
       } finally { button.disabled = false; }
     })}, 'Generate local narration');
-    put(box, h('h4', {style: 'margin:0 0 8px'}, 'Narrator'), h('div', {class: 'row'}, choice, button),
-      h('p', {class: 'muted'}, 'Choose a voice for this video or story. Generated audio stays a draft until you listen and approve it.'));
+    put(box, h('h4', {style: 'margin:0 0 8px'}, 'Narrator'), h('div', {class: 'row'}, choice, styleChoice, button),
+      h('p', {class: 'muted'}, 'Choose a voice and sound for this production. With avatar intro/outro clips, put only the bulletin body in the script. Listen before approving.'));
+    if (selected?.ready && !styleReady) put(box, h('p', {class: 'blocker'}, 'The news sound needs FFmpeg installed on this computer.'));
     if (!selected?.ready) put(box, h('p', {class: 'blocker'}, info.error || 'This voice needs the one-time Pocket TTS setup on this computer. See docs/narration-voices.md.'));
   };
   api('GET', '/api/voice/pocket').then(draw).catch(error => { box.textContent = 'Local narration unavailable: ' + error.message; });

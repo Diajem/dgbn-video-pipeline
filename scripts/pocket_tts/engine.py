@@ -8,6 +8,8 @@ import os
 from pathlib import Path
 import re
 import sys
+import shutil
+import subprocess
 
 ROOT = Path(__file__).resolve().parents[2]
 REGISTRY = ROOT / "config/narration-voices.json"
@@ -26,6 +28,52 @@ def voice_profile(voice):
         if profile["id"] == voice:
             return profile
     raise ValueError("Unknown narrator. Choose Carabau, Charles or Jane.")
+
+
+def style_profile(style):
+    for profile in registry()["styles"]:
+        if profile["id"] == style:
+            return profile
+    raise ValueError("Unknown narration style. Choose natural or news.")
+
+
+def finish_audio(source, output, style):
+    """Apply only the explicitly selected, approved news treatment."""
+    profile = style_profile(style)
+    if style == "natural":
+        shutil.copyfile(source, output)
+        return {}
+    executable = shutil.which("ffmpeg")
+    if not executable:
+        raise ValueError("FFmpeg is needed for the news clarity style. Install FFmpeg or select natural.")
+
+    def run(args):
+        try:
+            return subprocess.run([executable, "-hide_banner", "-nostats", *args],
+                                  capture_output=True, text=True, check=True, timeout=180)
+        except (subprocess.SubprocessError, OSError) as exc:
+            raise ValueError("News clarity processing failed; the previous narration was kept.") from exc
+
+    def measure(file):
+        result = run(["-i", str(file), "-af", "loudnorm=I=-18:TP=-1.5:LRA=11:print_format=json", "-f", "null", "-"])
+        matches = re.findall(r'\{[^{}]*"input_i"[^{}]*\}', result.stderr, re.S)
+        if not matches:
+            raise ValueError("Could not measure narration loudness.")
+        info = json.loads(matches[-1])
+        loudness = float(info["input_i"])
+        if not math.isfinite(loudness):
+            raise ValueError("Narration has no measurable speech.")
+        return loudness
+
+    import tempfile
+    with tempfile.TemporaryDirectory(prefix="pocket-news-") as folder:
+        equalized = Path(folder) / "equalized.wav"
+        run(["-v", "error", "-y", "-i", str(source), "-af", profile["ffmpegFilter"], "-c:a", "pcm_f32le", str(equalized)])
+        gain = measure(source) - measure(equalized)
+        treatment = (f'volume={gain:.3f}dB,alimiter=limit={profile["peakLimit"]}'
+                     ':level=false:attack=5:release=50:latency=true')
+        run(["-v", "error", "-y", "-i", str(equalized), "-af", treatment, "-c:a", "pcm_s16le", str(output)])
+    return {"clarityGainDb": round(gain, 3)}
 
 
 def sentences(text):
@@ -63,12 +111,18 @@ def status():
         voices.append({"id": voice["id"], "label": voice["label"], "gender": voice["gender"],
                        "ready": runtime and not missing, "missingAssets": missing})
     return {"runtimeReady": runtime, "defaultVoice": config["defaultVoice"],
-            "standardVersion": config["standardVersion"], "voices": voices}
+            "standardVersion": config["standardVersion"], "voices": voices,
+            "styles": [{"id": p["id"], "label": p["label"], "version": p["version"],
+                        "ready": p["id"] == "natural" or shutil.which("ffmpeg") is not None}
+                       for p in config["styles"]]}
 
 
-def render(text, voice, output):
+def render(text, voice, output, style="natural"):
     config = registry()
     profile = voice_profile(voice)
+    treatment = style_profile(style)
+    if style == "news" and not shutil.which("ffmpeg"):
+        raise ValueError("Install FFmpeg to use the news clarity style.")
     pieces = sentences(text)
     ready = next(v for v in status()["voices"] if v["id"] == voice)
     if not ready["ready"]:
@@ -132,9 +186,16 @@ def render(text, voice, output):
     output.parent.mkdir(parents=True, exist_ok=True)
     # Atomic publication: a failed generation cannot replace an earlier narration.
     temp_output = output.with_suffix(".part.wav")
-    scipy.io.wavfile.write(temp_output, rate, pcm)
-    temp_output.replace(output)
+    with tempfile.TemporaryDirectory(prefix="pocket-finish-") as folder:
+        raw = Path(folder) / "raw.wav"
+        scipy.io.wavfile.write(raw, rate, pcm)
+        try:
+            finishing = finish_audio(raw, temp_output, style)
+            temp_output.replace(output)
+        finally:
+            temp_output.unlink(missing_ok=True)
     return {"seconds": len(pcm) / rate, "voiceId": voice, "standardVersion": config["standardVersion"],
+            "styleId": style, "styleVersion": treatment["version"], **finishing,
             "scriptSha256": hashlib.sha256(text.encode()).hexdigest(), "sentences": timings,
             "gainDb": round(20 * math.log10(gain), 4)}
 
@@ -150,7 +211,7 @@ def main():
         request = json.load(sys.stdin)
         if not args.output:
             raise ValueError("An output WAV path is required.")
-        print(json.dumps(render(request.get("text", ""), request.get("voice", "carabau"), args.output)))
+        print(json.dumps(render(request.get("text", ""), request.get("voice", "carabau"), args.output, request.get("style", "natural"))))
 
 
 if __name__ == "__main__":

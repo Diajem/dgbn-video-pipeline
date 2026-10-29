@@ -12,6 +12,8 @@ Charles and Jane use local voice states prepared from synthetic samples of Kyuta
 
 ## One-time local setup
 
+For Claude Code and any other local production tool, see [the shared narration command](claude-narration.md). The Studio, Storyhouse and standalone `npm run voice` command use the same engine and assets. Choose `natural` for the original story sound or `news` for the approved lighter Charles news treatment. The latter applies the audition's light bass/presence EQ, static loudness match and transient peak protection with FFmpeg, without changing speed. Style/version metadata travels with generated audio; switching styles invalidates Studio approval.
+
 On the Windows PC, keep the existing authorised `model.safetensors` in Downloads, download the private `diajem-narration-voices.zip` alongside it, and run **Install Narration Voices.bat** from the updated repository. The installer creates a local Python environment, imports all three voices, and uses the model already downloaded. Then restart the Studio. Its normal launcher detects that Python environment automatically.
 
 For manual setup, use Python 3.10–3.14 and the CPU build of PyTorch:

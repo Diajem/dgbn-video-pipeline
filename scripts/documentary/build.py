@@ -88,15 +88,17 @@ def add_clip(wd, pid, sid, it, clips, videos):
 def voice(wd, ch, pid, kind):
     st = wd.state["chapters"][str(ch["n"])]
     narrator = ch.get("narrator", wd.meta.get("narrator", "carabau"))
+    style = ch.get("narrationStyle", wd.meta.get("narrationStyle", "natural"))
     if kind == "none": return
-    if st.get("voice") == kind and (kind != "pocket" or st.get("narrator") == narrator): return
+    if st.get("voice") == kind and (kind != "pocket" or (st.get("narrator") == narrator and st.get("narrationStyle", "natural") == style)): return
     if kind == "google":
         v = wd.meta.get("voice")
         if not v: raise SystemExit("Set meta.voice in chapters.json (a Google voice id, e.g. en-GB-Chirp3-HD-Charon) to use --voice google")
         studio.call("POST", f"/api/projects/{pid}/audio/google-voice", {"voice": v}, timeout=900)
     elif kind == "pocket":
-        studio.call("POST", f"/api/projects/{pid}/audio/pocket-voice", {"voice": narrator}, timeout=1200)
+        studio.call("POST", f"/api/projects/{pid}/audio/pocket-voice", {"voice": narrator, "style": style}, timeout=1200)
         st["narrator"] = narrator
+        st["narrationStyle"] = style
     else: studio.call("POST", f"/api/projects/{pid}/audio/draft-voice", {}, timeout=300)
     st["voice"] = kind; wd.save_state()
     print(f"  narration: {kind} voice", flush=True)

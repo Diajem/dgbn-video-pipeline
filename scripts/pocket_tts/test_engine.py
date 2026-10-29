@@ -3,10 +3,22 @@ from pathlib import Path
 import os
 import unittest
 from unittest.mock import patch
-from engine import sentences, spoken_text, voice_profile, status
+from engine import sentences, spoken_text, voice_profile, style_profile, finish_audio, status
 
 
 class NarrationContractTest(unittest.TestCase):
+    def test_story_sound_is_byte_identical_and_news_does_not_fall_back_if_ffmpeg_is_missing(self):
+        with tempfile.TemporaryDirectory() as folder:
+            source, output = Path(folder) / 'source.wav', Path(folder) / 'output.wav'
+            source.write_bytes(b'original PCM bytes')
+            with patch('engine.shutil.which', return_value=None):
+                finish_audio(source, output, 'natural')
+                self.assertEqual(output.read_bytes(), source.read_bytes())
+                with self.assertRaisesRegex(ValueError, 'FFmpeg'):
+                    finish_audio(source, output, 'news')
+                self.assertEqual(output.read_bytes(), source.read_bytes())
+        with self.assertRaises(ValueError): style_profile('unknown')
+
     def test_pronunciation_preserves_names_and_caption_input(self):
         original = "Benin's Oba met Obadiah. The neighbouring city is Cotonou."
         self.assertEqual(spoken_text(original), "Bee-nin's Urba met Obadiah. The neighbouring city is Cotonou.")
