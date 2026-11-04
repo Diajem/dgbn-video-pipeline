@@ -11,6 +11,8 @@
     "validate:sample": "node scripts/validate-manifest.mjs jobs/samples/dgbn-2026-08-05-evening.json",
     "produce": "node scripts/produce.mjs",
     "studio": "node studio/server.mjs",
+    "voice": "node scripts/pocket_tts/narrate.mjs",
+    "storyhouse:voice": "node scripts/storyhouse/narrate.mjs",
     "doc": "python scripts/documentary/doc.py",
     "test:documentary": "python -m unittest discover -s scripts/documentary/tests",
     "remotion:studio": "npm --workspace @dgbn/remotion-studio run studio",

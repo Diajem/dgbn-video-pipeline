@@ -9,7 +9,7 @@
   vfetch key:idx ...            download Commons videos, timestamped frame sheets for choosing clip start times
   clips [--force]               cut the clips defined in plan.json
   plan [--force]                check plan.json and list what is still to pick (writes a first draft if missing)
-  build [n ...] [--voice draft|google|none] [--rebuild]
+  build [n ...] [--voice draft|google|pocket|none] [--rebuild]
   check [n ...] [--final]       Studio checks (blockers and warnings)
   draft [n ...]                 draft renders, 720p previews and frame sheets
   approve [n ...]               mark narration APPROVED after listening (not possible for the draft voice)

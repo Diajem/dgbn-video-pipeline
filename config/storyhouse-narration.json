@@ -1,0 +1,9 @@
+{
+  "projectName": "Diajem Storyhouse",
+  "channel": "https://www.youtube.com/@DiajemStoryhouse",
+  "provider": "pocket-tts",
+  "defaultNarrator": "charles",
+  "secondaryFemaleNarrator": "jane",
+  "narrators": ["carabau", "charles", "jane"],
+  "voiceRegistry": "config/narration-voices.json"
+}
