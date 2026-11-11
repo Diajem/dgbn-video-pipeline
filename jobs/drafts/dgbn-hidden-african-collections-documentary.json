@@ -1,0 +1,416 @@
+{
+  "version": "CINEMATIC_STORY_MASTER_V1",
+  "storyId": "dgbn-britains-hidden-african-collections-2026",
+  "brand": "DGBN",
+  "outputMode": "DOCUMENTARY",
+  "theme": "HISTORICAL_INVESTIGATION",
+  "aspectRatio": "16:9",
+  "fps": 30,
+  "targetDurationSec": 525,
+  "outroHoldSec": 2.5,
+  "editorialStatus": "PRODUCTION_STAGED",
+  "narration": {
+    "provider": "QWEN_TTS_VC",
+    "voiceName": "carabau",
+    "model": "qwen3-tts-vc-2026-01-22",
+    "referenceAsset": "PRIVATE_RUNTIME_ONLY",
+    "textPath": "jobs/drafts/dgbn-hidden-african-collections-narration.txt",
+    "outputPath": "video-studio/remotion/public/documentaries/dgbn-britains-hidden-african-collections-2026/narration.wav",
+    "status": "PENDING_VOICE_TEST"
+  },
+  "disclosure": {
+    "aiGenerated": true,
+    "reconstructionLabel": "AI-generated historical reconstruction",
+    "historicalUncertaintyNotes": [
+      "Do not present generated reconstruction as archive footage.",
+      "Archive media must be rights-cleared before final render.",
+      "Do not imply every African object in a British collection was looted."
+    ]
+  },
+  "providerPolicy": {
+    "HEYGEN": "DISABLED_FOR_THIS_PRODUCTION",
+    "DREAMINA": "PRIMARY_RECONSTRUCTION_AND_IMAGE_TO_VIDEO",
+    "GPT_IMAGE": "PRIMARY_GENERATED_STILLS",
+    "HYPERFRAMES": "MAPS_TIMELINES_DATA_LEGAL_GRAPHICS",
+    "QWEN": "SHOT_PLANNING_AND_CARABAU_VOICE",
+    "WAN_3": "SECONDARY_MOTION_GENERATOR_ONLY_WHERE_NEEDED",
+    "REMOTION": "MASTER_ASSEMBLY"
+  },
+  "chapters": [
+    {
+      "id": "opening",
+      "start": 0,
+      "end": 55,
+      "title": "Sankofa"
+    },
+    {
+      "id": "routes",
+      "start": 55,
+      "end": 135,
+      "title": "How They Got Here"
+    },
+    {
+      "id": "benin",
+      "start": 135,
+      "end": 245,
+      "title": "Benin, 1897"
+    },
+    {
+      "id": "british-cities",
+      "start": 245,
+      "end": 330,
+      "title": "How Benin Reached British Cities"
+    },
+    {
+      "id": "law",
+      "start": 330,
+      "end": 415,
+      "title": "The Law"
+    },
+    {
+      "id": "hidden",
+      "start": 415,
+      "end": 475,
+      "title": "What Remains Hidden"
+    },
+    {
+      "id": "ending",
+      "start": 475,
+      "end": 525,
+      "title": "The Unfinished Journey"
+    }
+  ],
+  "shots": [
+    {
+      "shotId": "01-dumfries-exterior",
+      "start": 0,
+      "durationSec": 12,
+      "purpose": "HOOK",
+      "kind": "video",
+      "provider": "ARCHIVE_OR_RIGHTS_CLEARED",
+      "status": "SOURCE_REQUIRED",
+      "prompt": "Present-day exterior and approach to Dumfries Museum; neutral documentary establishing shot."
+    },
+    {
+      "shotId": "02-sankofa-objects",
+      "start": 12,
+      "durationSec": 16,
+      "purpose": "HOOK",
+      "kind": "image",
+      "provider": "GPT_IMAGE",
+      "status": "PLANNED",
+      "aiGenerated": true,
+      "prompt": "Editorial still of a carefully curated group of African historical objects in a small Scottish museum, neutral documentary lighting, no invented labels, no readable text."
+    },
+    {
+      "shotId": "03-uk-map-collections",
+      "start": 28,
+      "durationSec": 27,
+      "purpose": "CONTEXT",
+      "kind": "video",
+      "provider": "HYPERFRAMES",
+      "status": "PLANNED",
+      "prompt": "Animated UK map connecting Dumfries, Glasgow, Leeds, Bristol, London and Cambridge with restrained black-and-gold DGBN graphics and collection-count callouts."
+    },
+    {
+      "shotId": "04-museum-storage",
+      "start": 55,
+      "durationSec": 18,
+      "purpose": "PROVENANCE",
+      "kind": "video",
+      "provider": "DREAMINA",
+      "status": "PLANNED",
+      "aiGenerated": true,
+      "prompt": "Slow cinematic tracking shot through a museum reserve store with shelves, archive boxes and wrapped objects; realistic institutional lighting; no readable labels or logos."
+    },
+    {
+      "shotId": "05-routes-graphic",
+      "start": 73,
+      "durationSec": 22,
+      "purpose": "PROVENANCE",
+      "kind": "video",
+      "provider": "HYPERFRAMES",
+      "status": "PLANNED",
+      "prompt": "Animated provenance routes: purchase, gift, missionary, soldier, colonial official, dealer, auction and museum transfer; archival-paper visual treatment."
+    },
+    {
+      "shotId": "06-accession-ledger",
+      "start": 95,
+      "durationSec": 18,
+      "purpose": "PROVENANCE",
+      "kind": "image",
+      "provider": "GPT_IMAGE",
+      "status": "PLANNED",
+      "aiGenerated": true,
+      "prompt": "Close editorial still of a nineteenth-century-style museum accession ledger and handwritten provenance notes, generic, historically plausible, no fabricated institution names or claims."
+    },
+    {
+      "shotId": "07-crates-and-transfers",
+      "start": 113,
+      "durationSec": 22,
+      "purpose": "PROVENANCE",
+      "kind": "video",
+      "provider": "DREAMINA",
+      "status": "PLANNED",
+      "aiGenerated": true,
+      "prompt": "Restrained historical reconstruction of wooden museum crates and catalogued objects moving between institutions by rail and ship in late nineteenth and early twentieth century Britain; no identifiable real people."
+    },
+    {
+      "shotId": "08-benin-map",
+      "start": 135,
+      "durationSec": 15,
+      "purpose": "BENIN_CONTEXT",
+      "kind": "video",
+      "provider": "HYPERFRAMES",
+      "status": "PLANNED",
+      "prompt": "Map animation from Britain to Benin City in 1897, then focus on southern Nigeria; clear date marker 1897."
+    },
+    {
+      "shotId": "09-benin-archive-photo",
+      "start": 150,
+      "durationSec": 24,
+      "purpose": "BENIN_ARCHIVE",
+      "kind": "image",
+      "provider": "PUBLIC_DOMAIN_ARCHIVE",
+      "status": "SOURCE_REQUIRED",
+      "prompt": "Use verified public-domain photograph from the 1897 British Benin expedition; slow Ken Burns movement in Remotion."
+    },
+    {
+      "shotId": "10-palace-reconstruction",
+      "start": 174,
+      "durationSec": 20,
+      "purpose": "BENIN_RECONSTRUCTION",
+      "kind": "video",
+      "provider": "DREAMINA",
+      "status": "PLANNED",
+      "aiGenerated": true,
+      "prompt": "Historically restrained reconstruction of a late nineteenth-century Benin royal compound after military occupation, smoke haze and damaged architecture, no gore, no invented named individuals, cinematic documentary style."
+    },
+    {
+      "shotId": "11-bronze-details",
+      "start": 194,
+      "durationSec": 22,
+      "purpose": "OBJECT_MEANING",
+      "kind": "image",
+      "provider": "RIGHTS_CLEARED_OBJECT_PHOTOGRAPHY",
+      "status": "SOURCE_REQUIRED",
+      "prompt": "Macro details of Benin plaques and commemorative heads with slow pan and push-in."
+    },
+    {
+      "shotId": "12-dispersal-map",
+      "start": 216,
+      "durationSec": 29,
+      "purpose": "DISPERSAL",
+      "kind": "video",
+      "provider": "HYPERFRAMES",
+      "status": "PLANNED",
+      "prompt": "Animated lines radiating from Benin City to London and international museum collections; include Digital Benin totals only after final fact-check."
+    },
+    {
+      "shotId": "13-bristol",
+      "start": 245,
+      "durationSec": 18,
+      "purpose": "BRITISH_CITIES",
+      "kind": "image",
+      "provider": "RIGHTS_CLEARED_OBJECT_PHOTOGRAPHY",
+      "status": "SOURCE_REQUIRED",
+      "prompt": "Bristol Museum exterior or verified Benin object image, documentary treatment."
+    },
+    {
+      "shotId": "14-glasgow",
+      "start": 263,
+      "durationSec": 18,
+      "purpose": "RETURN_CASE",
+      "kind": "video",
+      "provider": "ARCHIVE_OR_RIGHTS_CLEARED",
+      "status": "SOURCE_REQUIRED",
+      "prompt": "Glasgow museum exterior and return/repatriation-related archival material where licensed."
+    },
+    {
+      "shotId": "15-horniman",
+      "start": 281,
+      "durationSec": 22,
+      "purpose": "RETURN_CASE",
+      "kind": "video",
+      "provider": "ARCHIVE_OR_RIGHTS_CLEARED",
+      "status": "SOURCE_REQUIRED",
+      "prompt": "Horniman Museum exterior and 2022 ownership-transfer visuals where reuse rights permit."
+    },
+    {
+      "shotId": "16-cambridge",
+      "start": 303,
+      "durationSec": 27,
+      "purpose": "RETURN_CASE",
+      "kind": "video",
+      "provider": "HYPERFRAMES",
+      "status": "PLANNED",
+      "prompt": "Timeline card showing Cambridge transfer of ownership of 116 Benin artefacts, followed by map line Cambridge to Nigeria; no claim beyond sourced record."
+    },
+    {
+      "shotId": "17-british-museum-exterior",
+      "start": 330,
+      "durationSec": 18,
+      "purpose": "LAW",
+      "kind": "video",
+      "provider": "ARCHIVE_OR_RIGHTS_CLEARED",
+      "status": "SOURCE_REQUIRED",
+      "prompt": "British Museum exterior, slow neutral push-in."
+    },
+    {
+      "shotId": "18-act-1963",
+      "start": 348,
+      "durationSec": 25,
+      "purpose": "LAW",
+      "kind": "video",
+      "provider": "HYPERFRAMES",
+      "status": "PLANNED",
+      "prompt": "British Museum Act 1963 legal explainer: statutory title, simplified disposal restrictions and exceptions, clean typography, no legal conclusion beyond cited text."
+    },
+    {
+      "shotId": "19-spoliation-panel",
+      "start": 373,
+      "durationSec": 20,
+      "purpose": "LAW_COMPARISON",
+      "kind": "video",
+      "provider": "HYPERFRAMES",
+      "status": "PLANNED",
+      "prompt": "Timeline: Spoliation Advisory Panel 2000, Holocaust Return of Cultural Objects Act 2009, permanence in 2019; visually distinguish Nazi-era restitution framework from colonial provenance questions."
+    },
+    {
+      "shotId": "20-legal-contrast",
+      "start": 393,
+      "durationSec": 22,
+      "purpose": "LAW_COMPARISON",
+      "kind": "video",
+      "provider": "HYPERFRAMES",
+      "status": "PLANNED",
+      "prompt": "Split-screen legal pathway graphic: Nazi-era qualifying claims versus colonial-era objects at national museums; neutral language, no false equivalence."
+    },
+    {
+      "shotId": "21-leeds-discovery",
+      "start": 415,
+      "durationSec": 18,
+      "purpose": "HIDDEN_COLLECTIONS",
+      "kind": "video",
+      "provider": "ARCHIVE_OR_RIGHTS_CLEARED",
+      "status": "SOURCE_REQUIRED",
+      "prompt": "Leeds Discovery Centre exterior/interior reserve collections if rights-cleared."
+    },
+    {
+      "shotId": "22-storage-motion",
+      "start": 433,
+      "durationSec": 20,
+      "purpose": "HIDDEN_COLLECTIONS",
+      "kind": "video",
+      "provider": "DREAMINA",
+      "status": "PLANNED",
+      "aiGenerated": true,
+      "prompt": "Museum storage aisle with carefully wrapped sculptures, textiles and archive boxes, slow lateral camera movement, no identifiable real artefact copied exactly, documentary reconstruction."
+    },
+    {
+      "shotId": "23-provenance-questions",
+      "start": 453,
+      "durationSec": 22,
+      "purpose": "QUESTIONS",
+      "kind": "video",
+      "provider": "HYPERFRAMES",
+      "status": "PLANNED",
+      "prompt": "Sequential questions on screen: Who made it? Who controlled it? How did it leave? Was it sold, gifted, exchanged or seized? Who later donated it? Was the transfer authorised?"
+    },
+    {
+      "shotId": "24-1897-photo-return",
+      "start": 475,
+      "durationSec": 18,
+      "purpose": "ENDING",
+      "kind": "image",
+      "provider": "PUBLIC_DOMAIN_ARCHIVE",
+      "status": "SOURCE_REQUIRED",
+      "prompt": "Return to verified 1897 photograph of looted Benin objects; slow crop across image."
+    },
+    {
+      "shotId": "25-return-footage",
+      "start": 493,
+      "durationSec": 18,
+      "purpose": "ENDING",
+      "kind": "video",
+      "provider": "ARCHIVE_OR_RIGHTS_CLEARED",
+      "status": "SOURCE_REQUIRED",
+      "prompt": "Modern restitution/return handover imagery from Horniman, Glasgow or Cambridge where licensing permits."
+    },
+    {
+      "shotId": "26-empty-plinth-to-benin",
+      "start": 511,
+      "durationSec": 14,
+      "purpose": "ENDING",
+      "kind": "video",
+      "provider": "DREAMINA",
+      "status": "PLANNED",
+      "aiGenerated": true,
+      "prompt": "Symbolic but restrained closing shot: empty museum plinth dissolves into a quiet contemporary view of Benin City at dusk, no text, no triumphalist imagery."
+    }
+  ],
+  "captions": [
+    {
+      "start": 35,
+      "end": 40,
+      "text": "23,000+ AFRICAN OBJECTS IDENTIFIED ACROSS SCOTTISH COLLECTIONS",
+      "emphasis": [
+        "23,000+"
+      ]
+    },
+    {
+      "start": 43,
+      "end": 48,
+      "text": "3,000+ SUB-SAHARAN AFRICAN OBJECTS IN LEEDS",
+      "emphasis": [
+        "3,000+"
+      ]
+    },
+    {
+      "start": 139,
+      "end": 144,
+      "text": "BENIN CITY — 1897",
+      "emphasis": [
+        "1897"
+      ]
+    },
+    {
+      "start": 238,
+      "end": 243,
+      "text": "THE DISPERSAL BECAME GLOBAL",
+      "emphasis": [
+        "GLOBAL"
+      ]
+    },
+    {
+      "start": 318,
+      "end": 324,
+      "text": "RETURN IS POSSIBLE",
+      "emphasis": [
+        "POSSIBLE"
+      ]
+    },
+    {
+      "start": 406,
+      "end": 413,
+      "text": "THE LEGAL ROUTES ARE NOT THE SAME",
+      "emphasis": [
+        "NOT THE SAME"
+      ]
+    },
+    {
+      "start": 498,
+      "end": 505,
+      "text": "SOME HAVE GONE HOME. THOUSANDS REMAIN.",
+      "emphasis": [
+        "THOUSANDS REMAIN."
+      ]
+    }
+  ],
+  "audio": {
+    "narrationSrc": "video-studio/remotion/public/documentaries/dgbn-britains-hidden-african-collections-2026/narration.wav",
+    "narrationVolume": 1,
+    "musicSrc": null,
+    "musicVolume": 0.1
+  }
+}
