@@ -59,11 +59,20 @@ jobs:
         run: node scripts/stage-dgbn-faceless.mjs "${{ steps.resolve.outputs.job_path }}" jobs/samples/dgbn-faceless-v1.json
       - name: Validate staged job
         run: node scripts/validate-dgbn-faceless.mjs jobs/samples/dgbn-faceless-v1.json
+      - name: Select approved output composition
+        id: format
+        run: |
+          node - <<'NODE' >> "$GITHUB_OUTPUT"
+          const fs = require('fs');
+          const job = JSON.parse(fs.readFileSync('jobs/samples/dgbn-faceless-v1.json', 'utf8'));
+          const composition = job.aspectRatio === '16:9' ? 'DGBNFaceless16x9' : 'DGBNFaceless9x16';
+          process.stdout.write('composition=' + composition + '\n');
+          NODE
       - name: Render DGBN MP4
         run: |
           mkdir -p renders
           cd video-studio/remotion
-          npx remotion render src/index.jsx DGBNFaceless9x16 ../../renders/dgbn-faceless.mp4
+          npx remotion render src/index.jsx ${{ steps.format.outputs.composition }} ../../renders/dgbn-faceless.mp4
       - name: Upload render
         id: upload
         uses: actions/upload-artifact@v4
