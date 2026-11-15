@@ -216,7 +216,12 @@ const FacelessStory = ({config}) => {
   const presenterRatio = presenter?.width && presenter?.height ? presenter.width / presenter.height : null;
   const presenterContained = !!presenterRatio && (landscape ? presenterRatio < 1.2 : presenterRatio > 1.2 && config.presenterFit === 'whole');
   const shots = buildShots(visuals, mainFrames, fps);
-  const current = shots.find(s => frame >= s.start && frame < s.end) || shots[shots.length - 1];
+  const current = shots.find(s => frame >= s.start && frame < s.end)
+    || (config.bulletin ? undefined : shots[shots.length - 1]);
+  const story = config.bulletin?.stories?.find(item => frame >= item.start * mainFrames && frame < item.end * mainFrames);
+  const studio = config.bulletin && !story && frame < mainFrames;
+  const headline = config.bulletin ? story?.headline : config.headline;
+  const closing = config.bulletin && frame >= config.bulletin.outroStart * mainFrames;
 
   // Word-by-word captions: three or four words at a time, the spoken word highlighted.
   const chunks = config.captionWords?.length
@@ -236,6 +241,14 @@ const FacelessStory = ({config}) => {
 
   return <AbsoluteFill style={{background:'#080807', color:'#fff', fontFamily:'Arial, Helvetica, sans-serif'}}>
     {config.audio?.voiceoverSrc && <Sequence from={0} durationInFrames={mainFrames}><Audio src={resolveSrc(config.audio.voiceoverSrc)} volume={1} /></Sequence>}
+    {config.bulletin && frame < mainFrames && <AbsoluteFill style={{background:'radial-gradient(ellipse at 50% 35%, #234477, #060e22 72%)',alignItems:'center',justifyContent:'center',overflow:'hidden'}}>
+      <AbsoluteFill style={{background:'repeating-linear-gradient(108deg, transparent 0 105px, rgba(125,184,255,.13) 106px 108px, transparent 110px 190px)',transform:`translateX(${(frame % 240) / 2 - 60}px) scale(1.2)`}} />
+      <div style={{position:'relative',textAlign:'center',borderTop:`5px solid ${ACCENT}`,borderBottom:`1px solid ${ACCENT}`,padding:'42px 60px',background:'#081a32ec',boxShadow:'0 24px 95px #0009'}}>
+        <div style={{color:ACCENT,fontWeight:900,fontSize:L(37,42),letterSpacing:10}}>DIAJEM GLOBAL BLACK NEWS</div>
+        <div style={{fontWeight:800,fontSize:L(58,72),marginTop:24,maxWidth:1350}}>{studio ? (closing ? 'Our People. Our Story. Our Own Way.' : config.headline) : story?.headline}</div>
+        {studio && closing && <div style={{fontSize:30,marginTop:26}}>diajemblacknews.com</div>}
+      </div>
+    </AbsoluteFill>}
     {presenter?.src && frame < mainFrames && showFullPresenter && (presenterContained
       ? <>
           {/* blurred backdrop drawn at quarter size then scaled up: same look, a fraction of the blur cost */}
@@ -259,9 +272,9 @@ const FacelessStory = ({config}) => {
     <div style={{position:'absolute',top:0,left:0,right:0,height:12,background:ACCENT}} />
     <div style={{position:'absolute',top:12,left:0,height:6,width:`${progress * 100}%`,background:'rgba(255,255,255,.75)'}} />
     <div style={{position:'absolute',top:L(62,36),left:64,fontWeight:900,letterSpacing:4,fontSize:L(35,28),textShadow:'0 2px 8px #000'}}>{brand.tag}</div>
-    <div style={{position:'absolute',top:L(150,100),left:L(48,64),right:L(48,'auto'),maxWidth:L('none',1240),background:ACCENT,color:'#0b0b0b',borderRadius:10,padding:L('18px 26px','12px 22px'),fontWeight:900,lineHeight:1.08,textTransform:'uppercase',
-      fontSize:(String(config.headline || '').length > 80 ? 38 : String(config.headline || '').length > 48 ? 46 : 56) * L(1,.72),boxShadow:'0 8px 28px rgba(0,0,0,.5)',
-      opacity:headlineIn,transform:`translateY(${(1 - headlineIn) * -30}px)`}}>{config.headline}</div>
+    {headline && (!config.bulletin || current) && <div style={{position:'absolute',top:L(150,100),left:L(48,64),right:L(48,'auto'),maxWidth:L('none',1240),background:ACCENT,color:'#0b0b0b',borderRadius:10,padding:L('18px 26px','12px 22px'),fontWeight:900,lineHeight:1.08,textTransform:'uppercase',
+      fontSize:(String(headline || '').length > 80 ? 38 : String(headline || '').length > 48 ? 46 : 56) * L(1,.72),boxShadow:'0 8px 28px rgba(0,0,0,.5)',
+      opacity:headlineIn,transform:`translateY(${(1 - headlineIn) * -30}px)`}}>{headline}</div>}
     {frame < mainFrames && chunk && <div style={{position:'absolute',bottom:L(330,110),left:L(48,160),right:L(48,160),textAlign:'center',fontSize:L(76,64),fontWeight:900,lineHeight:1.12,
       transform:`scale(${.9 + .1 * pop})`,opacity:.25 + .75 * pop,WebkitTextStroke:L('10px #000','8px #000'),paintOrder:'stroke fill',textShadow:'0 6px 22px rgba(0,0,0,.85)'}}>
       {chunk.words.map((w, i) => <span key={i} style={{color: w === activeWord ? ACCENT : '#fff'}}>{w.text}{i < chunk.words.length - 1 ? ' ' : ''}</span>)}
