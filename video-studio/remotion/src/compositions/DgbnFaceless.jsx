@@ -209,7 +209,7 @@ const FacelessStory = ({config}) => {
   const layout = currentScene?.layout || 'presenter';
   // The full-screen recording is only decoded while it can be seen: in presenter scenes and during the crossfade into a cutaway.
   const showFullPresenter = layout === 'presenter' || (currentScene && frame < Math.round(currentScene.startSec * fps) + FADE_FRAMES + 2);
-  if (config.qualityPolicy === 'PRODUCTION' && (!config.audio?.voiceoverSrc || (!visuals.length && !presenter?.src))) {
+  if (config.qualityPolicy === 'PRODUCTION' && (!config.audio?.voiceoverSrc || (!visuals.length && !presenter?.src && !config.bulletin))) {
     throw new Error('DGBN production needs approved narration and at least one reviewed visual');
   }
   // A portrait recording in a wide frame (or the reverse) is shown whole over a blurred copy, not cropped.
@@ -259,7 +259,7 @@ const FacelessStory = ({config}) => {
         </>
       : <OffthreadVideo src={resolveSrc(presenter.src)} muted style={{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover'}} />)}
     {(!presenter || layout !== 'presenter') && shots.map((shot, index) => (
-      <Sequence key={index} from={shot.start} durationInFrames={Math.max(1, shot.end - shot.start + (index < shots.length - 1 ? FADE_FRAMES : 0))}>
+      <Sequence key={index} from={shot.start} durationInFrames={Math.max(1, shot.end - shot.start + (!config.bulletin && index < shots.length - 1 ? FADE_FRAMES : 0))}>
         <Shot shot={{...shot, accent: ACCENT, landscape}} fps={fps} />
       </Sequence>
     ))}
