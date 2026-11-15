@@ -11,14 +11,20 @@ await fs.mkdir(folder, {recursive:true});
 
 async function stage(url, file, label) {
   if (!/^https:\/\//i.test(url || '')) throw new Error(label + ' requires an HTTPS asset URL');
-  const headers = {};
+  const headers = {'User-Agent': 'DiajemVideoPipeline/1.0 (https://diajemblacknews.com)'};
   if (job.mediaBaseUrl && new URL(url).origin === new URL(job.mediaBaseUrl).origin) {
     const token = process.env.VIDEO_RENDER_CALLBACK_TOKEN;
     if (!token) throw new Error('Renderer media token is missing');
     headers.Authorization = 'Bearer ' + token;
   }
   // Never follow redirects with the newsroom token; public asset hosts (Commons, Pexels) may redirect to a CDN.
-  const response = await fetch(url, {headers, redirect: headers.Authorization ? 'error' : 'follow'});
+  let response;
+  for (const delay of [0, 5000, 20000]) {
+    if (delay) await new Promise(resolve => setTimeout(resolve, delay));
+    response = await fetch(url, {headers, redirect: headers.Authorization ? 'error' : 'follow', signal: AbortSignal.timeout(45000)});
+    if (![429, 503].includes(response.status)) break;
+    await response.body?.cancel();
+  }
   if (!response.ok) throw new Error(label + ' download failed: ' + response.status);
   const data = Buffer.from(await response.arrayBuffer());
   if (!data.length || data.length > 120 * 1024 * 1024) throw new Error(label + ' asset is empty or too large');
