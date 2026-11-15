@@ -70,6 +70,9 @@ jobs:
           npx remotion render src/index.jsx DGBNFaceless9x16 ../../renders/dgbn-faceless-smoke.mp4 --props ../../jobs/samples/smoke-dgbn-props.json --scale=0.25 --log=error
           ffprobe -v error -select_streams v:0 -show_entries stream=codec_name -of csv=p=0 ../../renders/dgbn-faceless-smoke.mp4 | grep -q h264
           ffprobe -v error -select_streams a:0 -show_entries stream=codec_name -of csv=p=0 ../../renders/dgbn-faceless-smoke.mp4 | grep -q aac
+          npx remotion render src/index.jsx DGBNFaceless16x9 ../../renders/dgbn-faceless-16x9-smoke.mp4 --props ../../jobs/samples/smoke-dgbn-props.json --scale=0.25 --log=error
+          ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0 ../../renders/dgbn-faceless-16x9-smoke.mp4 | grep -q '480,270'
+          ffprobe -v error -select_streams a:0 -show_entries stream=codec_name -of csv=p=0 ../../renders/dgbn-faceless-16x9-smoke.mp4 | grep -q aac
 
       - name: Validate scheduled bulletin fixture
         run: node scripts/validate-manifest.mjs jobs/samples/dgbn-2026-08-05-evening.json

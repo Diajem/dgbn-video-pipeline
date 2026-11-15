@@ -14,6 +14,7 @@ const draftAllowed = process.env.ALLOW_DRAFT === '1' && job.draft === true && jo
 const BRANDS = Object.keys(JSON.parse(fs.readFileSync(new URL('../config/brands.json', import.meta.url), 'utf8')));
 
 if (job.version !== 'DGBN_FACELESS_V1' || !BRANDS.includes(job.brand)) fail('wrong job version or brand');
+if (job.aspectRatio !== undefined && !['9:16', '16:9'].includes(job.aspectRatio)) fail('unsupported aspect ratio');
 for (const slot of ['intro', 'outro']) {
   const clip = job[slot];
   if (clip === undefined) continue;
