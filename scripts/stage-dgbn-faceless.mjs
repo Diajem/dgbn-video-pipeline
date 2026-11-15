@@ -39,6 +39,10 @@ for (let i=0;i<staged.visuals.length;i++) {
   const extension = allowed.includes(fromUrl) ? fromUrl : (visual.kind === 'video' ? '.mp4' : '.png');
   const output = await stage(visual.src,'visual-'+String(i+1).padStart(2,'0')+extension,'Approved visual '+(i+1));
   visual.src = output.relative;
+  if (job.bulletin) {
+    visual.startSec = visual.startRatio * seconds;
+    visual.endSec = visual.endRatio * seconds;
+  }
 }
 staged.staged = true;
 await fs.mkdir(path.dirname(target), {recursive:true});

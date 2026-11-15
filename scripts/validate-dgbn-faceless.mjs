@@ -25,7 +25,7 @@ if (job.qualityPolicy !== 'PRODUCTION' && !draftAllowed) fail('only production j
 if (!job.storyId || !job.sourceScriptArtifactId || !job.narrationArtifactId) fail('approved source lineage is missing');
 if (!job.script || !job.headline || !job.audio?.voiceoverSrc) fail('script and narration are required');
 if (job.audio.voiceoverStatus !== 'APPROVED' && !draftAllowed) fail('approved narration is required');
-if (!Array.isArray(job.visuals) || !job.visuals.length || job.visuals.length > 40) fail('one to forty reviewed visuals are required');
+if (!Array.isArray(job.visuals) || (!job.visuals.length && !job.bulletin) || job.visuals.length > 40) fail('one to forty reviewed visuals are required');
 if (job.presenterSpine || job.heygenJob) fail('a faceless job cannot contain a presenter or HeyGen job');
 for (const visual of job.visuals) {
   if (!visual.assetId || !visual.src || !['image', 'video'].includes(visual.kind)) fail('visual is missing its reviewed asset and type');
@@ -36,6 +36,23 @@ for (const visual of job.visuals) {
     if (!ai && visual.rights === 'ai_labelled') fail('visual ' + visual.assetId + ' is marked ai_labelled but is not labelled as AI-generated');
     if (!draftAllowed && !relaxedRights && !['cleared', 'ai_labelled'].includes(visual.rights)) fail('visual ' + visual.assetId + ' has unresolved rights (' + visual.rights + ')');
     if (visual.rights === 'cleared' && !String(visual.rightsNote || '').trim()) fail('cleared visual ' + visual.assetId + ' has no rights note');
+  }
+}
+if (job.bulletin) {
+  const {stories, outroStart} = job.bulletin;
+  if (job.aspectRatio !== '16:9' || !Array.isArray(stories) || !stories.length
+    || !Number.isFinite(outroStart) || outroStart >= 1) fail('invalid bulletin timeline');
+  let end = 0;
+  for (const story of stories) {
+    if (!story.headline || !Number.isFinite(story.start) || !Number.isFinite(story.end)
+      || story.start < end || story.end <= story.start || story.end > outroStart) fail('invalid bulletin story window');
+    end = story.end;
+  }
+  for (const visual of job.visuals) {
+    if (!Number.isFinite(visual.startRatio) || !Number.isFinite(visual.endRatio)
+      || visual.endRatio <= visual.startRatio
+      || !stories.some(s => s.storyId === visual.storyId && visual.startRatio >= s.start && visual.endRatio <= s.end))
+      fail('visual timing must stay within its own story');
   }
 }
 if (job.visuals.some(v => v.startSec !== undefined)) {
