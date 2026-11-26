@@ -85,8 +85,7 @@ export async function narrate(text, voice, outFile) {
   if (!VOICES.some(v => v.id === voice)) throw new HttpError(400, 'Unknown voice');
   const parts = [];
   const gap = Buffer.alloc(Math.round(SAMPLE_RATE * 0.35) * 2);
-  const signal = AbortSignal.timeout(120000);
-  for (const chunk of chunkText(text)) { parts.push(await synth(chunk, voice, key, signal), gap); }
+  for (const chunk of chunkText(text)) { parts.push(await synth(chunk, voice, key, AbortSignal.timeout(120000)), gap); }
   const pcm = Buffer.concat(parts);
   const header = Buffer.alloc(44);
   header.write('RIFF', 0); header.writeUInt32LE(36 + pcm.length, 4); header.write('WAVEfmt ', 8);
