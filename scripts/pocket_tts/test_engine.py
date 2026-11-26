@@ -29,7 +29,8 @@ class NarrationContractTest(unittest.TestCase):
             ["It cost 3.5 million.", "The king arrived!", "A new chapter begins."])
         self.assertGreater(len(sentences("word " * 90)), 1)
         with self.assertRaises(ValueError): sentences("")
-        with self.assertRaises(ValueError): sentences("x" * 20001)
+        self.assertTrue(sentences("x" * 20001))
+        with self.assertRaises(ValueError): sentences("x" * 80001)
 
     def test_unknown_voice_cannot_select_a_file_or_trigger_fallback(self):
         self.assertEqual(voice_profile("Peter1"), voice_profile("carabau"))

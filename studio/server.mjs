@@ -37,6 +37,7 @@ if (REMOTE) {
 const PUBLIC = path.join(HERE, 'public');
 const RENDERS = path.join(ROOT, 'renders');
 const AI_LABEL = 'AI-GENERATED ILLUSTRATION';
+const MAX_SCRIPT_CHARS = 80_000;
 
 const MEDIA = {
   '.jpg': ['image', 'image/jpeg'], '.jpeg': ['image', 'image/jpeg'], '.png': ['image', 'image/png'], '.webp': ['image', 'image/webp'],
@@ -162,8 +163,9 @@ async function api(req, res, url, p) {
         if (b.narrationStyle !== (project.narrationStyle || 'natural') && project.audio?.origin === 'pocket-tts') project.audio.status = 'DRAFT';
         project.narrationStyle = b.narrationStyle;
       }
-      if (typeof b.script === 'string' && b.script.slice(0, 20000) !== project.script) {
-        project.script = b.script.slice(0, 20000);
+      if (typeof b.script === 'string' && b.script.length > MAX_SCRIPT_CHARS) throw new HttpError(400, 'Script exceeds 80,000 characters. Split it into parts before saving.');
+      if (typeof b.script === 'string' && b.script !== project.script) {
+        project.script = b.script;
         if (project.audio) project.audio.status = 'DRAFT';
         if (project.presenter) project.presenter.status = 'DRAFT';
       }
@@ -333,7 +335,8 @@ async function api(req, res, url, p) {
             if (fresh.presenter?.file !== presenterFile) throw new Error('The recording changed while transcribing. Run it again.');
             fresh.presenter.transcript = {text: t.text, words: t.words, model: t.model, language, durationSec: t.durationSec, createdAt: new Date().toISOString()};
             if (!fresh.script.trim()) {
-              fresh.script = t.text.slice(0, 20000);
+              if (t.text.length > MAX_SCRIPT_CHARS) throw new Error('Transcript exceeds 80,000 characters. The existing project was not changed.');
+              fresh.script = t.text;
               fresh.scenes = splitScenes(fresh.script, fresh.scenes);
               fresh.presenter.status = 'DRAFT';
             }

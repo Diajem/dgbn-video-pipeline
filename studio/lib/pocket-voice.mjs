@@ -62,8 +62,8 @@ export function narratePocket(text, voice, outFile, style = 'natural') {
   voice = normalizeNarrator(voice);
   requireNarrator(voice);
   requireNarrationStyle(style);
-  if (!String(text || '').trim() || text.length > 20000) throw new HttpError(400, 'Add a script of up to 20,000 characters');
-  const task = queue.then(() => run(['--output', outFile], {text, voice, style}, 20 * 60 * 1000));
+  if (!String(text || '').trim() || text.length > 80000) throw new HttpError(400, 'Add a script of up to 80,000 characters');
+  const task = queue.then(() => run(['--output', outFile], {text, voice, style}, 80 * 60 * 1000));
   queue = task.catch(() => {});
   return task;
 }
