@@ -103,8 +103,8 @@ def finish_audio(source, output, style, voice=None):
 def sentences(text):
     """Preserve sentences, splitting very long ones at a clause/word boundary."""
     text = str(text).strip()
-    if not text or len(text) > 20000:
-        raise ValueError("Narration needs between 1 and 20,000 characters.")
+    if not text or len(text) > 80000:
+        raise ValueError("Narration needs between 1 and 80,000 characters.")
     result = []
     for paragraph in re.split(r"\n+", text):
         for sentence in re.split(r"(?<=[.!?])\s+(?=[\w\"'“])", paragraph.strip()):
